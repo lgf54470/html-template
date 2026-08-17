@@ -256,11 +256,107 @@
     settings = Object.assign({}, settings, patch);
     App.settings.applySettings(settings);
     App.settings.persistSettings(settings);
+    pushSettingsToServer(); // 双向同步:本地改动异步写入数据库 app_settings
     syncHeaderThemeButtons();
     refreshSidebar(); // 菜单项可见性/侧边栏样式随设置变化
     if (sheetOpen) App.shell.rerenderSheetContent(settings, tFor(settings.locale));
     // 设置页与右上角面板同源:任一侧修改,当前设置页内容同步刷新(双向同步)
     if (currentPath().indexOf('/settings') === 0) rerenderContent();
+  }
+
+  /* ---------- 数据库 app_settings 双向同步 ---------- */
+  /** 本地设置 → 数据库 KV(键遵循 README 命名规范:settings:appearance / settings:display) */
+  function serverSettingsPayload() {
+    var a = settings.appearance;
+    return {
+      'settings:appearance': JSON.stringify({
+        theme: settings.theme,
+        style: a.style,
+        baseColor: a.baseColor,
+        chartColor: a.chartColor,
+        radius: a.radius,
+        bodyFont: a.bodyFont,
+        headingFont: a.headingFont,
+        menuColor: a.menuColor,
+        menuAppearance: a.menuAppearance,
+      }),
+      'settings:display': JSON.stringify({
+        sidebarVariant: settings.sidebarVariant,
+        sidebarCollapsible: settings.sidebarCollapsible,
+        sidebarWidth: settings.sidebarWidth,
+        hiddenNav: settings.hiddenNav || [],
+      }),
+    };
+  }
+
+  /** 写入数据库(防抖:拖拽调宽等高频调用只合并一次) */
+  var serverSyncTimer = null;
+  function pushSettingsToServer() {
+    if (!App.auth || !App.auth.token()) return; // 未登录(如 file:// 直开)仅本地
+    if (serverSyncTimer) clearTimeout(serverSyncTimer);
+    serverSyncTimer = setTimeout(function () {
+      serverSyncTimer = null;
+      App.api.put('/api/settings', { settings: serverSettingsPayload() })
+        .catch(function (e) {
+          if (e && e.status !== 401) console.warn('[app] 设置同步到数据库失败', e);
+        });
+    }, 400);
+  }
+
+  /** 数据库值 → 本地存储键(白名单校验由 readSettings 兜底),返回合并后的设置对象 */
+  function mergeServerSettings(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var appearance = null;
+    var display = null;
+    try { appearance = JSON.parse(raw['settings:appearance'] || 'null'); } catch (e) { appearance = null; }
+    try { display = JSON.parse(raw['settings:display'] || 'null'); } catch (e) { display = null; }
+    if (!appearance && !display) return null;
+    var K = App.settings.K;
+    var set = App.settings.writeStorage;
+    if (appearance && typeof appearance === 'object') {
+      if (appearance.theme) set(K('theme'), String(appearance.theme));
+      if (appearance.style) set(K('style'), String(appearance.style));
+      if (appearance.baseColor) set(K('base'), String(appearance.baseColor));
+      if (appearance.chartColor) set(K('chart'), String(appearance.chartColor));
+      if (appearance.radius) {
+        var r = App.settings.RADII.find(function (x) { return x.value === appearance.radius; });
+        if (r) set(K('radius'), r.px);
+      }
+      if (appearance.bodyFont) {
+        var bf = App.settings.FONTS.find(function (x) { return x.value === appearance.bodyFont; });
+        if (bf) set(K('font'), bf.stack);
+      }
+      if (appearance.headingFont) {
+        var hf = App.settings.FONTS.find(function (x) { return x.value === appearance.headingFont; });
+        if (hf) set(K('heading-font'), hf.stack);
+      }
+      if (appearance.menuColor) set(K('menu-color'), String(appearance.menuColor));
+      if (appearance.menuAppearance) set(K('menu-appearance'), String(appearance.menuAppearance));
+    }
+    if (display && typeof display === 'object') {
+      if (display.sidebarVariant) set(K('sidebar-variant'), String(display.sidebarVariant));
+      if (display.sidebarCollapsible) set(K('sidebar-collapsible'), String(display.sidebarCollapsible));
+      if (display.sidebarWidth != null) set(K('sidebar-width'), String(display.sidebarWidth));
+      if (Array.isArray(display.hiddenNav)) set(K('hidden-nav'), JSON.stringify(display.hiddenNav));
+    }
+    return App.settings.readSettings();
+  }
+
+  /** 登录后从数据库拉取设置并应用(服务端为准;失败时静默回退本地) */
+  function syncSettingsFromServer() {
+    if (!App.auth || !App.auth.token()) return;
+    App.api.get('/api/settings')
+      .then(function (raw) {
+        var merged = mergeServerSettings(raw);
+        if (!merged) return;
+        settings = merged;
+        App.settings.applySettings(settings);
+        document.documentElement.lang = settings.locale;
+        renderApp();
+      })
+      .catch(function (e) {
+        if (e && e.status !== 401) console.warn('[app] 从数据库同步设置失败', e);
+      });
   }
 
   function setTheme(theme) {
@@ -333,6 +429,7 @@
     openSubmenus = {};
     App.settings.applySettings(settings);
     document.documentElement.lang = settings.locale;
+    pushSettingsToServer(); // 重置结果写回数据库
     renderApp();
     if (sheetOpen) App.shell.rerenderSheetContent(settings, tFor(settings.locale));
   }
@@ -502,6 +599,12 @@
   document.addEventListener('click', function (e) {
     var target = e.target;
 
+    // 登出(顶栏按钮 / 侧边栏用户菜单)
+    if (target.closest && target.closest('[data-signout]')) {
+      closeSheet();
+      App.auth.logout();
+      return;
+    }
     // 导航链接
     var link = target.closest ? target.closest('a[data-link]') : null;
     if (link) {
@@ -625,9 +728,15 @@
   }
 
   // ---------- 启动 ----------
+  /** 鉴权门禁:未登录渲染登录页,登录成功后由 auth.js 再次调用 start() */
   function start() {
+    if (App.auth && !App.auth.isAuthed()) {
+      App.auth.renderLogin();
+      return;
+    }
     document.documentElement.lang = settings.locale;
     renderApp();
+    syncSettingsFromServer();
   }
 
   window.App = window.App || {};

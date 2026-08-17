@@ -15,7 +15,7 @@
   'use strict';
 
   /** 核心运行时加载顺序(依赖顺序,勿乱序) */
-  var CORE = ['i18n', 'icons-data', 'icons', 'settings', 'ui', 'shell', 'app', 'interactions'];
+  var CORE = ['i18n', 'icons-data', 'icons', 'settings', 'api', 'auth', 'ui', 'shell', 'app', 'interactions'];
 
   /** 模块目录清单:侧边栏每个一级菜单对应一个模块 */
   var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'settings'];

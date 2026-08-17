@@ -70,7 +70,7 @@
       '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('credit-card', { class: 'size-4' }) + '<span>' + t('sidebar.billing') + '</span></button>' +
       '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('settings', { class: 'size-4' }) + '<span>' + t('sidebar.settings') + '</span></button>' +
       ui().dropdownSeparator() +
-      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('log-out', { class: 'size-4' }) + '<span>' + t('sidebar.signOut') + '</span></button>';
+      '<button type="button" role="menuitem" data-signout class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('log-out', { class: 'size-4' }) + '<span>' + t('sidebar.signOut') + '</span></button>';
 
     return '<div class="group peer hidden text-sidebar-foreground md:block" data-state="expanded" data-collapsible="" data-variant="' + settings.sidebarVariant + '" data-side="left" data-slot="sidebar">' +
       '<div data-slot="sidebar-gap" class="relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 ' + ui().cn(
@@ -179,7 +179,7 @@
       langMenu + themeGroup +
       '<button type="button" data-sheet-trigger class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" aria-label="' + t('settings.title') + '" title="' + t('settings.title') + '">' +
       icon().iconSvg('palette', { class: 'size-4' }) + '</button>' +
-      '<button type="button" class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" title="' + t('sidebar.signOut') + '" aria-label="' + t('sidebar.signOut') + '">' +
+      '<button type="button" data-signout class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" title="' + t('sidebar.signOut') + '" aria-label="' + t('sidebar.signOut') + '">' +
       icon().iconSvg('log-out', { class: 'size-4' }) + '</button>' +
       '</div></header>';
   }

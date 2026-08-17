@@ -25,6 +25,8 @@ node server.js            # 默认 http://127.0.0.1:3000,数据库 sqlite.db(首
 AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
 ```
 
+所有环境变量(`PORT` / `AUTH_PASSWORD` / `DB_DRIVER` / `SQLITE_PATH` / `DATABASE_URL` / `DATABASE_AUTH_TOKEN`)也支持写入项目根目录的 `.env`(零依赖加载器 `server/env.js`,进程环境变量优先;模板见 `.env.example`,`.env` 已 gitignore)。
+
 ## 服务器模式与全局鉴权(x-auth-password)
 
 `node server.js` 启动后,应用进入**鉴权门禁**:未登录时渲染整页登录卡片,登录成功后才启动 App Shell。

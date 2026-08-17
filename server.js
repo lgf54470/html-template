@@ -21,6 +21,8 @@
  * ============================================================ */
 'use strict';
 
+require('./server/env'); // 零依赖 .env 加载(须在任何 env 读取之前)
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');

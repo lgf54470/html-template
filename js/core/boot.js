@@ -18,7 +18,7 @@
   var CORE = ['i18n', 'icons-data', 'icons', 'settings', 'ui', 'shell', 'app'];
 
   /** 模块目录清单:侧边栏每个一级菜单对应一个模块 */
-  var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'system', 'docs', 'settings'];
+  var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'settings'];
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {

@@ -47,7 +47,6 @@ npx serve .
         ├── channels/         # 渠道(路由 /channels)
         ├── tokens/           # 令牌(路由 /tokens)
         ├── logs/             # 日志(路由 /logs)
-        ├── system/           # 系统(路由 /system)
         ├── docs/             # 文档:含 4 个子模块(二级菜单)
             ├── manifest.js   # 模块清单(元信息 + children + i18n)
             ├── module.css    # 模块私有样式(懒加载)
@@ -125,7 +124,7 @@ App.defineModule({ id: 'docs', sub: 'intro', render: function (route, ctx) { /* 
 在 `js/core/boot.js` 的 `MODULE_DIRS` 数组中追加目录名:
 
 ```js
-var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'system', 'docs', 'mymod'];
+var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 ```
 
 **新增一个模块不需要修改 `index.html` 或任何核心文件** —— 侧边栏、路由、懒加载全部由模块注册表自动推导。

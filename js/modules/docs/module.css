@@ -1,0 +1,51 @@
+/* ============================================================
+ * docs 模块私有样式(懒加载)
+ * ------------------------------------------------------------
+ * 通过 manifest.js 的 css 字段声明,首次访问 docs 路由时才注入。
+ * 仅作用于 .docs-page 作用域,不影响其它模块。
+ * ============================================================ */
+.docs-page code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: color-mix(in oklab, var(--muted) 65%, transparent);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  color: var(--foreground);
+}
+
+.docs-page pre {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.docs-page pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.docs-page h2 {
+  font-family: var(--font-heading-base, inherit);
+}
+
+.docs-page ul,
+.docs-page ol {
+  padding-left: 1.25rem;
+}
+
+.docs-page li {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+}
+
+.docs-page li code {
+  color: var(--foreground);
+}

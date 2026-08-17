@@ -1,0 +1,59 @@
+<!doctype html>
+<html
+  lang="zh-CN"
+  class="style-nova base-zinc chart-zinc menu-color-default menu-appearance-solid"
+  data-sidebar-variant="inset"
+  data-sidebar-collapsible="icon"
+>
+  <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'"
+    />
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>One API</title>
+    <link rel="stylesheet" href="assets/css/app.css" />
+    <script>
+      /* PREPAINT — 首帧脚本:在应用启动前应用主题/语言/外观,避免闪烁。
+         读取 localStorage(键前缀 html-template-),非法值回退默认。 */
+      (function () {
+        try {
+          function get(key) {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+          }
+          var root = document.documentElement;
+          var loc = get('html-template-locale');
+          root.lang = loc === 'zh-CN' || loc === 'zh-TW' || loc === 'en' ? loc : 'zh-CN';
+          var stored = get('html-template-theme');
+          var dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          root.classList.toggle('dark', dark);
+          root.style.colorScheme = dark ? 'dark' : 'light';
+          var ap = { style: 'nova', base: 'zinc', chart: 'zinc', 'menu-color': 'default', 'menu-appearance': 'solid' };
+          Object.keys(ap).forEach(function (k) {
+            var v = get('html-template-' + k);
+            root.classList.add(k + '-' + (v || ap[k]));
+          });
+          var radius = get('html-template-radius');
+          if (radius) root.style.setProperty('--radius', radius);
+          var font = get('html-template-font');
+          if (font) root.style.setProperty('--font-sans-base', font);
+          var headingFont = get('html-template-heading-font');
+          if (headingFont) root.style.setProperty('--font-heading-base', headingFont);
+          root.setAttribute('data-sidebar-variant', get('html-template-sidebar-variant') || 'inset');
+          root.setAttribute('data-sidebar-collapsible', get('html-template-sidebar-collapsible') || 'icon');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>
+      <div style="padding: 40px; font-family: monospace">
+        This template requires JavaScript to render the app shell.
+      </div>
+    </noscript>
+    <script src="js/core/boot.js"></script>
+  </body>
+</html>

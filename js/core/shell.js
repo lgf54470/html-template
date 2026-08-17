@@ -1,0 +1,360 @@
+/* ============================================================
+ * shell.js — App Shell 渲染(零依赖)
+ * ------------------------------------------------------------
+ * 侧边栏 / 顶栏 / 主题设置面板的 HTML 渲染。
+ * 导航项由 app.js 根据模块注册表构建(navItems),
+ * 本文件只负责把结构画出来,不关心模块内部实现。
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var TEAMS = ['One API', 'One API Pro', 'One API Cloud'];
+
+  var ui = function () { return App.ui; };
+  var icon = function () { return App.icon; };
+
+  // ---------- Sidebar ----------
+  function sidebarHtml(navItems, settings, t, pathname, openSubmenus) {
+    var navList = navItems.map(function (item) {
+      if (item.children && item.children.length) {
+        var open = !!(openSubmenus && openSubmenus[item.id]);
+        var sub = item.children.map(function (sub) {
+          return '<li data-slot="sidebar-menu-sub-item" data-sidebar="menu-sub-item" class="group/menu-sub-item relative">' +
+            '<a href="#' + sub.href + '" data-link="' + sub.href + '" class="' + ui().cn(
+              'flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground',
+              pathname === sub.href ? 'data-active bg-sidebar-accent text-sidebar-accent-foreground' : '',
+            ) + '">' +
+            '<span>' + sub.title + '</span>' +
+            '</a></li>';
+        }).join('');
+        return '<li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">' +
+          '<button type="button" data-submenu-toggle="' + item.id + '" data-open="' + open + '" data-slot="sidebar-menu-button" data-sidebar="menu-button" class="' + ui().cn(
+            'peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate',
+          ) + '">' +
+          icon().iconSvg(item.icon, { class: 'size-4' }) +
+          '<span>' + item.title + '</span>' +
+          '<svg class="ml-auto size-4 ' + (open ? 'rotate-90' : '') + '" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>' +
+          '</button>' +
+          (open ? '<ul data-slot="sidebar-menu-sub" data-sidebar="menu-sub" class="mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5 group-data-[collapsible=icon]:hidden">' + sub + '</ul>' : '') +
+          '</li>';
+      }
+      var active = pathname === item.href;
+      return '<li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">' +
+        '<a href="#' + item.href + '" data-link="' + item.href + '" data-slot="sidebar-menu-button" data-sidebar="menu-button" aria-current="' + (active ? 'page' : '') + '" class="' + ui().cn(
+          'peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate',
+          active ? 'data-active bg-sidebar-accent font-medium text-sidebar-accent-foreground' : '',
+        ) + '">' +
+        icon().iconSvg(item.icon, { class: 'size-4' }) +
+        '<span>' + item.title + '</span>' +
+        '</a></li>';
+    }).join('');
+
+    var teamItems = TEAMS.map(function (team) {
+      return '<button type="button" role="menuitem" data-team="' + team + '" class="' + ui().dropdownItemClass('gap-2 p-2') + '">' +
+        '<div class="flex size-6 items-center justify-center rounded-sm border bg-muted/30">' + icon().iconSvg('brain-circuit', { class: 'size-3.5' }) + '</div>' +
+        '<span class="min-w-0 flex-1 truncate">' + team + '</span>' +
+        '<span class="ml-auto flex items-center">' + icon().iconSvg('circle-check', { class: 'size-4 text-primary' }) + '</span>' +
+        '</button>';
+    }).join('');
+
+    var userItems =
+      '<div class="' + ui().dropdownLabelClass('p-0 font-normal') + '">' +
+      '<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">' +
+      '<span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">A</span>' +
+      '<div class="grid flex-1 text-left text-sm leading-tight">' +
+      '<span class="truncate font-semibold">Admin</span>' +
+      '<span class="truncate text-xs">admin@example.com</span>' +
+      '</div></div>' +
+      ui().dropdownSeparator() +
+      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('user', { class: 'size-4' }) + '<span>' + t('sidebar.profile') + '</span></button>' +
+      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('credit-card', { class: 'size-4' }) + '<span>' + t('sidebar.billing') + '</span></button>' +
+      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('settings', { class: 'size-4' }) + '<span>' + t('sidebar.settings') + '</span></button>' +
+      ui().dropdownSeparator() +
+      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass() + '">' + icon().iconSvg('log-out', { class: 'size-4' }) + '<span>' + t('sidebar.signOut') + '</span></button>';
+
+    return '<div class="group peer hidden text-sidebar-foreground md:block" data-state="expanded" data-collapsible="" data-variant="' + settings.sidebarVariant + '" data-side="left" data-slot="sidebar">' +
+      '<div data-slot="sidebar-gap" class="relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 ' + ui().cn(
+        settings.sidebarVariant === 'inset' || settings.sidebarVariant === 'floating'
+          ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
+          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',
+      ) + '"></div>' +
+      '<div data-slot="sidebar-container" data-side="left" class="fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 md:flex ' + ui().cn(
+        'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]',
+        settings.sidebarVariant === 'sidebar' ? 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r' : '',
+      ) + '">' +
+      '<div data-sidebar="sidebar" data-slot="sidebar-inner" class="flex size-full flex-col bg-sidebar ' + ui().cn(
+        'group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border',
+      ) + '">' +
+      '<div role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize sidebar" data-resize-handle class="group/handle absolute inset-y-0 right-0 z-10 flex w-3 translate-x-1/2 cursor-col-resize touch-none items-center justify-center select-none">' +
+      '<span class="h-10 w-1 rounded-full bg-border group-hover/handle:bg-muted-foreground/40"></span>' +
+      '</div>' +
+      '<div data-slot="sidebar-header" data-sidebar="header" class="flex flex-col gap-2 p-2">' +
+      '<ul data-slot="sidebar-menu" data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-0">' +
+      '<li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">' +
+      '<div class="relative" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="' + ui().buttonClass('ghost', 'lg', 'w-full rounded-lg p-2 text-left data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center') + '" aria-haspopup="menu">' +
+      '<span class="flex w-full items-center gap-2">' +
+      '<span class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">' + icon().iconSvg('brain-circuit', { class: 'size-4' }) + '</span>' +
+      '<span class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
+      '<span class="truncate font-semibold" data-selected-team>One API</span>' +
+      '<span class="truncate text-xs">' + t('sidebar.freePlan') + '</span>' +
+      '</span>' +
+      '<span class="ml-auto group-data-[collapsible=icon]:hidden">' + icon().iconSvg('chevrons-up-down', { class: 'size-4' }) + '</span>' +
+      '</span></button>' +
+      '<div data-dropdown-menu class="' + ui().dropdownContentClass('w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg') + '" data-side="right" role="menu">' +
+      '<div class="px-2 py-1.5 text-xs text-muted-foreground">' + t('sidebar.teams') + '</div>' +
+      teamItems +
+      ui().dropdownSeparator() +
+      '<button type="button" role="menuitem" class="' + ui().dropdownItemClass('gap-2 p-2') + '">' +
+      '<div class="flex size-6 items-center justify-center rounded-sm border bg-muted/30">' + icon().iconSvg('plus', { class: 'size-3.5' }) + '</div>' +
+      '<span>' + t('sidebar.createTeam') + '</span>' +
+      '</button></div></div></li></ul></div>' +
+      '<div data-slot="sidebar-content" data-sidebar="content" class="no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden">' +
+      '<div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">' +
+      '<div data-slot="sidebar-group-label" data-sidebar="group-label" class="flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0">' + t('sidebar.main') + '</div>' +
+      '<div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">' +
+      '<ul data-slot="sidebar-menu" data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-0">' + navList + '</ul>' +
+      '</div></div></div>' +
+      '<div data-slot="sidebar-footer" data-sidebar="footer" class="flex flex-col gap-2 p-2">' +
+      '<ul data-slot="sidebar-menu" data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-0">' +
+      '<li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">' +
+      '<div class="relative" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="' + ui().buttonClass('ghost', 'lg', 'w-full rounded-lg p-2 text-left data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center') + '" aria-haspopup="menu">' +
+      '<span class="flex w-full items-center gap-2">' +
+      '<span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">A</span>' +
+      '<span class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
+      '<span class="truncate font-semibold">Admin</span>' +
+      '<span class="truncate text-xs">admin@example.com</span>' +
+      '</span>' +
+      '<span class="ml-auto group-data-[collapsible=icon]:hidden">' + icon().iconSvg('chevrons-up-down', { class: 'size-4' }) + '</span>' +
+      '</span></button>' +
+      '<div data-dropdown-menu class="' + ui().dropdownContentClass('w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg') + '" data-side="right" role="menu">' + userItems + '</div>' +
+      '</div></li></ul></div>' +
+      '</div></div></div>';
+  }
+
+  // ---------- Header ----------
+  function headerHtml(t, settings) {
+    var theme = settings.theme;
+    var locale = settings.locale;
+    var themeButtons = [
+      { value: 'system', icon: 'monitor', key: 'header.system' },
+      { value: 'light', icon: 'sun', key: 'header.light' },
+      { value: 'dark', icon: 'moon', key: 'header.dark' },
+    ];
+    // mpages 胶囊式 radio group:选中项反白填充,未选中悬停高亮
+    var themeGroup = '<div class="theme-switch" role="group">' +
+      themeButtons.map(function (b) {
+        return '<button type="button" data-theme-btn="' + b.value + '" aria-pressed="' + (theme === b.value) + '" class="' + (theme === b.value ? 'is-checked' : '') + '" title="' + t(b.key) + '" aria-label="' + t(b.key) + '">' +
+          icon().iconSvg(b.icon) + '<span class="sr-only">' + t(b.key) + '</span></button>';
+      }).join('') + '</div>';
+
+    var langItems = [
+      { value: 'zh-CN', native: '简体中文', short: '简体' },
+      { value: 'zh-TW', native: '繁體中文', short: '繁體' },
+      { value: 'en', native: 'English', short: 'EN' },
+    ];
+    var langMenu = '<div class="relative" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" aria-label="' + t('header.language') + '" title="' + t('header.language') + '">' +
+      icon().iconSvg('languages', { class: 'size-4' }) +
+      '<span class="sr-only">' + t('header.language') + '</span></button>' +
+      '<div data-dropdown-menu class="' + ui().dropdownContentClass('min-w-44') + '" data-side="bottom" role="menu">' +
+      '<div class="' + ui().dropdownLabelClass('text-xs text-muted-foreground') + '">' + t('header.language') + '</div>' +
+      ui().dropdownSeparator() +
+      langItems.map(function (l) {
+        return '<button type="button" role="menuitem" data-lang="' + l.value + '" class="' + ui().dropdownItemClass('gap-2') + '">' +
+          '<span class="flex w-4 justify-center">' + (locale === l.value ? icon().iconSvg('check', { class: 'size-4' }) : '') + '</span>' +
+          '<span class="min-w-0 flex-1 truncate">' + l.native + '</span>' +
+          '<span class="text-xs text-muted-foreground">' + l.short + '</span>' +
+          '</button>';
+      }).join('') + '</div></div>';
+
+    return '<header class="relative isolate z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3">' +
+      '<button type="button" data-sidebar-trigger data-slot="sidebar-trigger" class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" aria-label="Toggle Sidebar" title="Toggle Sidebar">' +
+      icon().iconSvg('panel-left', { class: 'size-4' }) +
+      '<span class="sr-only">Toggle Sidebar</span></button>' +
+      '<div class="flex items-center gap-1.5 text-sm text-muted-foreground">' +
+      '<span class="font-medium text-foreground">One API</span></div>' +
+      '<div class="ms-auto flex items-center gap-1.5">' +
+      langMenu + themeGroup +
+      '<button type="button" data-sheet-trigger class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" aria-label="' + t('settings.title') + '" title="' + t('settings.title') + '">' +
+      icon().iconSvg('palette', { class: 'size-4' }) + '</button>' +
+      '<button type="button" class="' + ui().buttonClass('ghost', 'icon-sm', 'size-7') + '" title="' + t('sidebar.signOut') + '" aria-label="' + t('sidebar.signOut') + '">' +
+      icon().iconSvg('log-out', { class: 'size-4' }) + '</button>' +
+      '</div></header>';
+  }
+
+  /** 完整 App Shell(侧边栏 + 顶栏 + 内容区) */
+  function renderShell(settings, t, pathname, navItems, openSubmenus) {
+    return '<div class="group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar h-full min-h-0!" style="--sidebar-width:' + settings.sidebarWidth + 'px;--sidebar-width-icon:3rem" data-slot="sidebar-wrapper">' +
+      sidebarHtml(navItems, settings, t, pathname, openSubmenus) +
+      '<main data-slot="sidebar-inset" class="relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 flex min-h-0 flex-1 flex-col">' +
+      headerHtml(t, settings) +
+      '<div data-slot="scroll-area" class="relative min-h-0 flex-1">' +
+      '<div data-slot="scroll-area-viewport" class="size-full overflow-y-auto rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1">' +
+      '<div data-content-area class="p-4"></div>' +
+      '</div></div></main></div>';
+  }
+
+  // ---------- 主题设置面板(Sheet,mpages radio-group 风格) ----------
+  var GRID_COLS = { 2: 'ts-grid-2', 3: 'ts-grid-3', 4: 'ts-grid-4', 6: 'ts-grid-6', 7: 'ts-grid-7' };
+
+  function sectionTitle(label) {
+    return '<div class="ts-section-title"><span>' + label + '</span></div>';
+  }
+
+  function optCheck(selected) {
+    return selected ? '<span class="ts-opt-check">' + icon().iconSvg('circle-check') + '</span>' : '';
+  }
+
+  /** 图标预览卡(主题/侧边栏/布局):选中描边 ring-primary + 阴影 + 对勾徽标 */
+  function iconCard(iconName, label, selected, isTheme, extra) {
+    return '<button type="button" data-settings-card="' + extra + '" aria-pressed="' + selected + '" class="ts-opt' + (selected ? ' is-active' : '') + '">' +
+      '<span class="ts-opt-frame">' +
+      optCheck(selected) +
+      icon().previewIcon(iconName, isTheme ? '' : selected ? 'fill-primary stroke-primary' : 'fill-muted-foreground stroke-muted-foreground') +
+      '</span>' +
+      '<span class="ts-opt-label">' + label + '</span>' +
+      '</button>';
+  }
+
+  /** 色板卡(基础色/强调色):bordered 卡片 + 对勾徽标 */
+  function swatchPicker(current, options, cols, kind) {
+    return '<div class="ts-radio-grid ' + (GRID_COLS[cols] || 'ts-grid-3') + '">' +
+      options.map(function (c) {
+        var sel = current === c;
+        return '<button type="button" data-swatch="' + kind + '" data-value="' + c + '" aria-pressed="' + sel + '" class="ts-opt' + (sel ? ' is-active' : '') + '">' +
+          '<span class="ts-opt-swatch">' +
+          optCheck(sel) +
+          '<span class="ts-opt-dot swatch-' + c + '"></span>' +
+          '<span class="ts-opt-swatch-label">' + c + '</span>' +
+          '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+  }
+
+  /** 文本卡(风格/字体/圆角/菜单):h-14 描边卡片 + 对勾徽标 */
+  function segmented(options, current, cols, kind) {
+    return '<div class="ts-radio-grid ' + (GRID_COLS[cols] || 'ts-grid-3') + '">' +
+      options.map(function (o) {
+        var sel = current === o.value;
+        return '<button type="button" data-segmented="' + kind + '" data-value="' + o.value + '" aria-pressed="' + sel + '" class="ts-opt' + (sel ? ' is-active' : '') + '">' +
+          '<span class="ts-opt-text">' +
+          optCheck(sel) +
+          '<span class="text-sm font-medium">' + o.label + '</span>' +
+          '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+  }
+
+  function readonlyRow(label, value) {
+    return '<div class="flex items-center justify-between">' +
+      '<span class="text-sm font-semibold text-muted-foreground">' + label + '</span>' +
+      '<span class="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">' + value + '</span>' +
+      '</div>';
+  }
+
+  function renderSettingsSheet(s, t) {
+    var settings = App.settings;
+    var layout = s.sidebarVariant === 'inset' ? 'default' : s.sidebarCollapsible === 'offcanvas' ? 'offcanvas' : 'icon';
+    var themeItems = [
+      { value: 'system', icon: 'theme-system', labelKey: 'header.system' },
+      { value: 'light', icon: 'theme-light', labelKey: 'header.light' },
+      { value: 'dark', icon: 'theme-dark', labelKey: 'header.dark' },
+    ];
+    var sidebarItems = [
+      { value: 'inset', icon: 'sidebar-inset', labelKey: 'settings.variantOptions.inset' },
+      { value: 'floating', icon: 'sidebar-floating', labelKey: 'settings.variantOptions.floating' },
+      { value: 'sidebar', icon: 'sidebar-sidebar', labelKey: 'settings.variantOptions.sidebar' },
+    ];
+    var layoutItems = [
+      { value: 'default', icon: 'layout-default', labelKey: 'settings.layoutOptions.default' },
+      { value: 'icon', icon: 'layout-compact', labelKey: 'settings.layoutOptions.icon' },
+      { value: 'offcanvas', icon: 'layout-full', labelKey: 'settings.layoutOptions.offcanvas' },
+    ];
+
+    return '<div data-settings-sheet role="dialog" aria-modal="true" class="fixed inset-y-0 right-0 z-50 flex h-full w-3/4 flex-col gap-4 border-l bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg sm:max-w-sm">' +
+      '<div class="pb-0 pl-4 pr-4 pt-4 text-start">' +
+      '<h2 class="font-heading text-lg font-semibold leading-snug">' + t('settings.title') + '</h2>' +
+      '<p class="text-sm text-muted-foreground">' + t('settings.description') + '</p>' +
+      '<button type="button" data-sheet-close class="absolute top-3 right-3 ' + ui().buttonClass('ghost', 'icon-sm', 'size-7 rounded-lg') + '" aria-label="' + t('settings.close') + '">' + icon().iconSvg('x', { class: 'size-4' }) + '</button>' +
+      '</div>' +
+      '<div data-sheet-scroll class="min-h-0 flex-1 overflow-y-auto">' +
+      '<div class="space-y-6 p-4">' +
+      '<div>' + sectionTitle(t('settings.theme')) +
+      '<div class="ts-radio-grid ts-grid-3">' +
+      themeItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), s.theme === item.value, true, 'theme:' + item.value); }).join('') +
+      '</div></div>' +
+      '<div class="max-md:hidden">' + sectionTitle(t('settings.sidebar')) +
+      '<div class="ts-radio-grid ts-grid-3">' +
+      sidebarItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), s.sidebarVariant === item.value, false, 'sidebar:' + item.value); }).join('') +
+      '</div></div>' +
+      '<div class="max-md:hidden">' + sectionTitle(t('settings.layout')) +
+      '<div class="ts-radio-grid ts-grid-3">' +
+      layoutItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), layout === item.value, false, 'layout:' + item.value); }).join('') +
+      '</div></div>' +
+      '<div>' + sectionTitle(t('settings.baseColor')) +
+      '<div>' + swatchPicker(s.appearance.baseColor, settings.BASE_COLORS, 7, 'base') + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.chartColor')) +
+      '<div>' + swatchPicker(s.appearance.chartColor, [s.appearance.baseColor].concat(settings.CHART_COLORS), 6, 'chart') + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.style')) +
+      '<div>' + segmented(settings.STYLES.map(function (st) { return { value: st, label: st }; }), s.appearance.style, 4, 'style') + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.bodyFont')) +
+      '<div>' + segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.bodyFont, 3, 'body-font') + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.headingFont')) +
+      '<div>' + segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.headingFont, 3, 'heading-font') + '</div></div>' +
+      readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
+      '<div>' + sectionTitle(t('settings.radius')) +
+      '<div>' + segmented(settings.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), s.appearance.radius, 3, 'radius') + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.menuColor')) +
+      '<div>' + segmented(
+        [
+          { value: 'default', label: t('settings.menuColorOptions.default') },
+          { value: 'inverted', label: t('settings.menuColorOptions.inverted') },
+        ],
+        s.appearance.menuColor,
+        2,
+        'menu-color',
+      ) + '</div></div>' +
+      '<div>' + sectionTitle(t('settings.menuAppearance')) +
+      '<div>' + segmented(
+        [
+          { value: 'solid', label: t('settings.menuAppearanceOptions.solid') },
+          { value: 'translucent', label: t('settings.menuAppearanceOptions.translucent') },
+        ],
+        s.appearance.menuAppearance,
+        2,
+        'menu-appearance',
+      ) + '</div></div>' +
+      readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
+      '</div></div>' +
+      '<div class="border-t p-4">' +
+      '<button type="button" data-reset-settings class="w-full ' + ui().buttonClass('destructive') + '">' +
+      icon().iconSvg('rotate-ccw', { class: 'size-4' }) + t('settings.resetAll') +
+      '</button></div></div>';
+  }
+
+  /** 设置变更后重建设置面板(保留滚动位置) */
+  function rerenderSheetContent(s, t) {
+    var sheet = document.querySelector('[data-settings-sheet]');
+    if (!sheet) return;
+    var scrollEl = sheet.querySelector('[data-sheet-scroll]');
+    var scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+    var shell = document.createElement('div');
+    shell.innerHTML = renderSettingsSheet(s, t);
+    var fresh = shell.firstElementChild;
+    sheet.replaceWith(fresh);
+    var newScroll = document.querySelector('[data-settings-sheet] [data-sheet-scroll]');
+    if (newScroll) newScroll.scrollTop = scrollTop;
+  }
+
+  window.App = window.App || {};
+  App.shell = {
+    TEAMS: TEAMS,
+    sidebarHtml: sidebarHtml,
+    headerHtml: headerHtml,
+    renderShell: renderShell,
+    renderSettingsSheet: renderSettingsSheet,
+    rerenderSheetContent: rerenderSheetContent,
+  };
+})();

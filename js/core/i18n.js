@@ -1,0 +1,217 @@
+/* ============================================================
+ * i18n.js — 核心国际化运行时(零依赖)
+ * ------------------------------------------------------------
+ * - 核心词典只包含 App Shell / 设置面板 / 公共 UI 文案
+ * - 各模块自有文案放在各自 manifest.js 的 i18n 字段(模块内聚)
+ * - t(key, arg) 支持 {n} 插值;查找顺序:模块词典 → 核心词典 → key
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var LOCALES = ['zh-CN', 'zh-TW', 'en'];
+  var DEFAULT_LOCALE = 'zh-CN';
+  var LOCALE_KEY = 'html-template-locale';
+
+  var dict = {
+    en: {
+      'sidebar.main': 'Main',
+      'sidebar.freePlan': 'Free plan',
+      'sidebar.teams': 'Teams',
+      'sidebar.createTeam': 'Create team',
+      'sidebar.profile': 'Profile',
+      'sidebar.billing': 'Billing',
+      'sidebar.settings': 'Settings',
+      'sidebar.signOut': 'Sign out',
+      'header.system': 'System',
+      'header.light': 'Light',
+      'header.dark': 'Dark',
+      'header.language': 'Language',
+      'placeholder.wip': 'Work in progress',
+      'placeholder.back': 'Back to Dashboard',
+      'notFound.desc': 'The page you are looking for does not exist or has been moved.',
+      'settings.title': 'Theme Settings',
+      'settings.description': 'Customize appearance, style and layout.',
+      'settings.appearance': 'Appearance',
+      'settings.radius': 'Corner radius',
+      'settings.radiusOptions.default': 'Default',
+      'settings.radiusOptions.none': 'None',
+      'settings.radiusOptions.sm': 'Small',
+      'settings.radiusOptions.md': 'Medium',
+      'settings.radiusOptions.lg': 'Large',
+      'settings.radiusOptions.full': 'Full',
+      'settings.bodyFont': 'Body font',
+      'settings.headingFont': 'Heading font',
+      'settings.layout': 'Layout',
+      'settings.layoutDesc': 'Sidebar variant and collapsible mode are fixed to inset / icon (same as the reference defaults).',
+      'settings.resetWidth': 'Reset sidebar width',
+      'settings.close': 'Close',
+      'settings.theme': 'Theme mode',
+      'settings.sidebar': 'Sidebar style',
+      'settings.style': 'Style',
+      'settings.baseColor': 'Base color',
+      'settings.chartColor': 'Accent color',
+      'settings.menuColor': 'Menu color',
+      'settings.menuAppearance': 'Menu appearance',
+      'settings.iconLibrary': 'Icon library',
+      'settings.lucide': 'Lucide',
+      'settings.menuAccent': 'Menu accent',
+      'settings.subtle': 'Subtle',
+      'settings.resetAll': 'Reset all settings',
+      'settings.variantOptions.inset': 'Inset',
+      'settings.variantOptions.floating': 'Floating',
+      'settings.variantOptions.sidebar': 'Sidebar',
+      'settings.layoutOptions.default': 'Default',
+      'settings.layoutOptions.icon': 'Icon',
+      'settings.layoutOptions.offcanvas': 'Off-canvas',
+      'settings.menuColorOptions.default': 'Default',
+      'settings.menuColorOptions.inverted': 'Inverted',
+      'settings.menuAppearanceOptions.solid': 'Solid',
+      'settings.menuAppearanceOptions.translucent': 'Translucent',
+    },
+    'zh-CN': {
+      'sidebar.main': '主菜单',
+      'sidebar.freePlan': '免费计划',
+      'sidebar.teams': '团队',
+      'sidebar.createTeam': '创建团队',
+      'sidebar.profile': '个人资料',
+      'sidebar.billing': '账单',
+      'sidebar.settings': '设置',
+      'sidebar.signOut': '退出登录',
+      'header.system': '跟随系统',
+      'header.light': '浅色',
+      'header.dark': '深色',
+      'header.language': '语言',
+      'placeholder.wip': '开发中',
+      'placeholder.back': '返回仪表盘',
+      'notFound.desc': '您访问的页面不存在或已被移动。',
+      'settings.title': '主题设置',
+      'settings.description': '自定义外观、风格与布局。',
+      'settings.appearance': '外观',
+      'settings.radius': '圆角',
+      'settings.radiusOptions.default': '默认',
+      'settings.radiusOptions.none': '无',
+      'settings.radiusOptions.sm': '小',
+      'settings.radiusOptions.md': '中',
+      'settings.radiusOptions.lg': '大',
+      'settings.radiusOptions.full': '全圆角',
+      'settings.bodyFont': '正文字体',
+      'settings.headingFont': '标题字体',
+      'settings.layout': '布局',
+      'settings.layoutDesc': '侧边栏样式与折叠模式固定为 inset / 图标模式(与参考项目默认一致)。',
+      'settings.resetWidth': '重置侧边栏宽度',
+      'settings.close': '关闭',
+      'settings.theme': '主题模式',
+      'settings.sidebar': '侧边栏样式',
+      'settings.style': '风格',
+      'settings.baseColor': '基础色',
+      'settings.chartColor': '强调色',
+      'settings.menuColor': '菜单颜色',
+      'settings.menuAppearance': '菜单外观',
+      'settings.iconLibrary': '图标库',
+      'settings.lucide': 'Lucide',
+      'settings.menuAccent': '菜单强调',
+      'settings.subtle': 'Subtle',
+      'settings.resetAll': '重置全部设置',
+      'settings.variantOptions.inset': '内嵌',
+      'settings.variantOptions.floating': '悬浮',
+      'settings.variantOptions.sidebar': '侧边栏',
+      'settings.layoutOptions.default': '默认',
+      'settings.layoutOptions.icon': '图标',
+      'settings.layoutOptions.offcanvas': '全屏',
+      'settings.menuColorOptions.default': '默认',
+      'settings.menuColorOptions.inverted': '反色',
+      'settings.menuAppearanceOptions.solid': '实色',
+      'settings.menuAppearanceOptions.translucent': '半透明',
+    },
+    'zh-TW': {
+      'sidebar.main': '主選單',
+      'sidebar.freePlan': '免費方案',
+      'sidebar.teams': '團隊',
+      'sidebar.createTeam': '建立團隊',
+      'sidebar.profile': '個人資料',
+      'sidebar.billing': '帳單',
+      'sidebar.settings': '設定',
+      'sidebar.signOut': '登出',
+      'header.system': '跟隨系統',
+      'header.light': '淺色',
+      'header.dark': '深色',
+      'header.language': '語言',
+      'placeholder.wip': '開發中',
+      'placeholder.back': '返回儀表板',
+      'notFound.desc': '您造訪的頁面不存在或已被移動。',
+      'settings.title': '主題設定',
+      'settings.description': '自訂外觀、風格與佈局。',
+      'settings.appearance': '外觀',
+      'settings.radius': '圓角',
+      'settings.radiusOptions.default': '預設',
+      'settings.radiusOptions.none': '無',
+      'settings.radiusOptions.sm': '小',
+      'settings.radiusOptions.md': '中',
+      'settings.radiusOptions.lg': '大',
+      'settings.radiusOptions.full': '全圓角',
+      'settings.bodyFont': '正文字體',
+      'settings.headingFont': '標題字體',
+      'settings.layout': '佈局',
+      'settings.layoutDesc': '側邊欄樣式與收合模式固定為 inset / 圖示模式(與參考專案預設一致)。',
+      'settings.resetWidth': '重設側邊欄寬度',
+      'settings.close': '關閉',
+      'settings.theme': '主題模式',
+      'settings.sidebar': '側邊欄樣式',
+      'settings.style': '風格',
+      'settings.baseColor': '基礎色',
+      'settings.chartColor': '強調色',
+      'settings.menuColor': '選單顏色',
+      'settings.menuAppearance': '選單外觀',
+      'settings.iconLibrary': '圖示庫',
+      'settings.lucide': 'Lucide',
+      'settings.menuAccent': '選單強調',
+      'settings.subtle': 'Subtle',
+      'settings.resetAll': '重設全部設定',
+      'settings.variantOptions.inset': '內嵌',
+      'settings.variantOptions.floating': '懸浮',
+      'settings.variantOptions.sidebar': '側邊欄',
+      'settings.layoutOptions.default': '預設',
+      'settings.layoutOptions.icon': '圖示',
+      'settings.layoutOptions.offcanvas': '全螢幕',
+      'settings.menuColorOptions.default': '預設',
+      'settings.menuColorOptions.inverted': '反色',
+      'settings.menuAppearanceOptions.solid': '實色',
+      'settings.menuAppearanceOptions.translucent': '半透明',
+    },
+  };
+
+  /** 翻译:t(key, arg) 支持 {n} 插值;extra 为模块词典(按语言分组的扁平键值) */
+  function translate(locale, key, arg, extra) {
+    var d = dict[locale] || dict[DEFAULT_LOCALE];
+    var de = dict[DEFAULT_LOCALE];
+    var text = null;
+    if (extra) {
+      text = (extra[locale] && extra[locale][key]) || (extra[DEFAULT_LOCALE] && extra[DEFAULT_LOCALE][key]) || null;
+    }
+    if (text == null) text = d[key] || de[key] || key;
+    return arg !== undefined ? String(text).replace('{n}', String(arg)) : text;
+  }
+
+  /** 从 locale 映射(如 manifest.title)中取值,带默认语言兜底 */
+  function pick(map, locale) {
+    if (!map) return '';
+    return map[locale] || map[DEFAULT_LOCALE] || map.en || '';
+  }
+
+  /** 生成翻译函数;moduleDict 为可选模块词典(按语言分组) */
+  function makeT(locale, moduleDict) {
+    return function (key, arg) {
+      return translate(locale, key, arg, moduleDict);
+    };
+  }
+
+  window.App = window.App || {};
+  App.i18n = {
+    LOCALES: LOCALES,
+    DEFAULT_LOCALE: DEFAULT_LOCALE,
+    LOCALE_KEY: LOCALE_KEY,
+    translate: translate,
+    pick: pick,
+    makeT: makeT,
+  };
+})();

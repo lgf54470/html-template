@@ -214,8 +214,6 @@
   var settings = App.settings.readSettings();
   var sidebarOpen = readSidebarOpen();
   var sheetOpen = false;
-  var mobileSidebarOpen = false;
-  var dragging = false;
 
   /** 各可折叠父菜单的展开状态(模块 id → true/false),如 docs / settings */
   var openSubmenus = (function () {
@@ -403,7 +401,7 @@
         }
         if (opened) refreshSidebar();
         else updateNavActive(path);
-        closeMobileSidebar();
+        App.interactions.closeMobileSidebar();
         closeDropdowns();
       })
       .catch(function (e) {
@@ -494,41 +492,6 @@
     sheetOpen = false;
   }
 
-  // ---------- 移动端侧边栏 ----------
-  var mql = window.matchMedia('(max-width: 767px)');
-  var isMobile = mql.matches;
-
-  function openMobileSidebar() {
-    if (mobileSidebarOpen) return;
-    var overlay = document.createElement('div');
-    overlay.dataset.mobileOverlay = '';
-    overlay.className = 'fixed inset-0 z-40 bg-black/50';
-    overlay.addEventListener('click', closeMobileSidebar);
-    var sheet = document.createElement('div');
-    sheet.dataset.mobileSidebar = '';
-    sheet.className = 'fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-lg';
-    var navItems = buildNavItems(settings.locale);
-    sheet.innerHTML = App.shell.sidebarHtml(navItems, settings, tFor(settings.locale), currentPath(), openSubmenus);
-    var closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'absolute top-3 right-3 flex size-7 items-center justify-center rounded-lg hover:bg-sidebar-accent';
-    closeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
-    closeBtn.setAttribute('aria-label', 'Close sidebar');
-    closeBtn.addEventListener('click', closeMobileSidebar);
-    sheet.append(closeBtn);
-    document.body.append(overlay, sheet);
-    mobileSidebarOpen = true;
-  }
-
-  function closeMobileSidebar() {
-    if (!mobileSidebarOpen) return;
-    var overlay = document.querySelector('[data-mobile-overlay]');
-    if (overlay) overlay.remove();
-    var sheet = document.querySelector('[data-mobile-sidebar]');
-    if (sheet) sheet.remove();
-    mobileSidebarOpen = false;
-  }
-
   // ---------- 事件委托 ----------
   document.addEventListener('click', function (e) {
     var target = e.target;
@@ -575,10 +538,10 @@
       closeSheet();
       return;
     }
-    // 侧边栏折叠 / 移动端
+    // 侧边栏折叠 / 移动端(移动端抽屉在 js/core/interactions.js)
     var sidebarTrigger = target.closest ? target.closest('[data-sidebar-trigger]') : null;
     if (sidebarTrigger) {
-      if (isMobile) openMobileSidebar();
+      if (App.interactions.isMobile()) App.interactions.openMobileSidebar();
       else setSidebarOpen(!sidebarOpen);
       return;
     }
@@ -655,56 +618,6 @@
     });
   }
 
-  // ---------- 拖拽调整侧边栏宽度 ----------
-  document.addEventListener('pointerdown', function (e) {
-    var handle = e.target.closest ? e.target.closest('[data-resize-handle]') : null;
-    if (!handle) return;
-    dragging = true;
-    document.body.classList.add('sidebar-resizing');
-    try {
-      handle.setPointerCapture(e.pointerId);
-    } catch (err) { /* ignore */ }
-  });
-
-  var rafId = null;
-  var lastX = 0;
-  var dragWidth = 0;
-
-  function applyDragWidth() {
-    rafId = null;
-    var wrapper = app.querySelector('[data-slot="sidebar-wrapper"]');
-    if (!wrapper) return;
-    var left = wrapper.getBoundingClientRect().left;
-    dragWidth = Math.min(App.settings.SIDEBAR_MAX_WIDTH, Math.max(App.settings.SIDEBAR_MIN_WIDTH, Math.round(lastX - left)));
-    wrapper.style.setProperty('--sidebar-width', dragWidth + 'px');
-  }
-
-  document.addEventListener('pointermove', function (e) {
-    if (!dragging) return;
-    lastX = e.clientX;
-    if (rafId === null) rafId = requestAnimationFrame(applyDragWidth);
-  });
-
-  function endResize() {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('sidebar-resizing');
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-    if (dragWidth) setSidebarWidth(dragWidth);
-  }
-  document.addEventListener('pointerup', endResize);
-  document.addEventListener('pointercancel', endResize);
-  document.addEventListener('lostpointercapture', endResize);
-
-  // ---------- 移动端监听 ----------
-  mql.addEventListener('change', function (ev) {
-    isMobile = ev.matches;
-    if (!isMobile) closeMobileSidebar();
-  });
-
   // ---------- 启动 ----------
   function start() {
     document.documentElement.lang = settings.locale;
@@ -718,5 +631,9 @@
   App.buildNavItems = buildNavItems;
   App.buildAllNavItems = buildAllNavItems;
   App.currentPath = currentPath;
+  App.setSidebarWidth = setSidebarWidth; // 拖拽调宽收尾持久化(interactions.js 使用)
+  App.getShellContext = function () {  // 移动端抽屉构建侧边栏所需上下文(interactions.js 使用)
+    return { settings: settings, navItems: buildNavItems(settings.locale), pathname: currentPath(), openSubmenus: openSubmenus };
+  };
   App.start = start;
 })();

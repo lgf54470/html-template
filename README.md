@@ -39,9 +39,10 @@ npx serve .
     │   ├── icons-data.js     # lucide 图标节点数据(lucide v0.525.0,ISC)
     │   ├── icons.js          # 图标渲染(SVG)与设置面板预览图
     │   ├── settings.js       # 设置状态(localStorage,白名单校验)
-    │   ├── ui.js             # 共享 UI 组件(button/badge/card/placeholder/404)
+    │   ├── ui.js             # 共享 UI 组件(button/badge/card/radio-group/placeholder/404)
     │   ├── shell.js          # App Shell 渲染(侧边栏/顶栏/设置面板)
-    │   └── app.js            # 应用内核:模块注册表 + Hash 路由 + 事件委托
+    │   ├── app.js            # 应用内核:模块注册表 + Hash 路由 + 事件委托
+    │   └── interactions.js   # 交互层:拖拽调宽 + 移动端抽屉(自包含,依赖 App 公开 API)
     └── modules/              # 业务模块:一级菜单 = 一个目录
         ├── dashboard/        # 仪表盘(路由 /)
         ├── channels/         # 渠道(路由 /channels)

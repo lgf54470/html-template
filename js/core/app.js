@@ -71,6 +71,7 @@
         load: meta.load || 'module.js',
         css: meta.css || null,
         i18n: meta.i18n || null,
+        i18nFile: meta.i18nFile || null, // 模块词典懒加载文件(可选),加载后写入 meta.i18n
         children: (meta.children || []).map(function (c) {
           return {
             id: c.id,
@@ -129,6 +130,12 @@
     var tasks = [];
     if (meta.css) tasks.push(loadCss(moduleDir(meta.id) + meta.css));
     if (child && child.css) tasks.push(loadCss(moduleDir(meta.id) + child.css));
+    // 模块词典懒加载(manifest 仅声明 i18nFile,不内联文案)
+    if (meta.i18nFile && !meta.i18n) {
+      tasks.push(loadScript(moduleDir(meta.id) + meta.i18nFile).then(function () {
+        meta.i18n = window.__moduleI18n[meta.id] || null;
+      }));
+    }
 
     if (child) {
       var ckey = meta.id + ':' + child.id;
@@ -153,21 +160,14 @@
     return Promise.all(tasks);
   }
 
-  /** 渲染路由:返回 { html, status } */
+  /** 渲染路由:返回 { html, status };ctx.t 在词典懒加载完成后构建 */
   function resolveRoute(path, settings) {
-    var t = App.i18n.makeT(settings.locale);
     var hit = findRoute(path);
     if (!hit) {
-      return Promise.resolve({ html: App.ui.notFound(t), status: 404 });
+      return Promise.resolve({ html: App.ui.notFound(App.i18n.makeT(settings.locale)), status: 404 });
     }
     var m = hit.module;
     var meta = m.meta;
-    var ctx = {
-      path: path,
-      settings: settings,
-      t: App.i18n.makeT(settings.locale, meta.i18n),
-      App: App,
-    };
     return ensureModuleLoaded(m, hit.child).then(function () {
       // 子路由优先用子模块实现,未定义时回退到父模块实现(按路由分发)
       var def = null;
@@ -179,6 +179,12 @@
       if (!def || typeof def.render !== 'function') {
         throw new Error('模块 ' + meta.id + (hit.child ? '/' + hit.child.id : '') + ' 未定义 render');
       }
+      var ctx = {
+        path: path,
+        settings: settings,
+        t: App.i18n.makeT(settings.locale, meta.i18n),
+        App: App,
+      };
       return { html: def.render(path, ctx), status: 200 };
     });
   }

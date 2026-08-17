@@ -89,7 +89,7 @@ App.registerModule({
   route: '/mymod',                        // 一级菜单路由(缺省 /<id>)
   load: 'module.js',                      // 实现文件(缺省 module.js,懒加载)
   css: 'module.css',                      // 可选:模块私有样式(懒加载)
-  i18n: { 'zh-CN': { ... }, en: { ... } }, // 可选:模块自有文案(不进核心词典)
+  i18nFile: 'i18n.js',                    // 可选:模块词典懒加载文件,文案不进核心词典
   children: [                             // 可选:子模块(二级菜单)
     {
       id: 'intro',
@@ -101,9 +101,14 @@ App.registerModule({
 });
 ```
 
-### 2. 实现 `js/modules/<name>/module.js`
+### 2. 实现:模块词典 `i18n.js` + 实现 `module.js`
 
-首次访问对应路由时才懒加载。`ctx` 提供 `t`(模块词典优先的翻译)、`settings`、`path`、`App`。
+词典与实现均在**首次访问对应路由时才懒加载**(不随启动加载)。`ctx` 提供 `t`(模块词典优先的翻译)、`settings`、`path`、`App`。词典文件把三语文案写入全局注册表:
+
+```js
+window.__moduleI18n = window.__moduleI18n || {};
+window.__moduleI18n['mymod'] = { 'zh-CN': { 'mymod.desc': '...' }, en: { 'mymod.desc': '...' } };
+```
 
 ```js
 App.defineModule({
@@ -133,7 +138,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 ## 解耦与安全约定
 
 1. **模块之间禁止互相引用**;只允许依赖核心层(`App.ui` / `App.icon` / `App.i18n` / `App.settings` / `ctx`)
-2. 文案遵循 **模块内聚**:模块文案放各自 `manifest.js` 的 `i18n`,只有 App Shell / 设置面板等公共文案进核心词典
+2. 文案遵循 **模块内聚**:模块文案放各自懒加载的 `i18n.js`(manifest 仅声明 `i18nFile`),只有 App Shell / 设置面板等公共文案进核心词典
 3. **存储值白名单校验**:`settings.js` 对 localStorage 读入值一律校验,非法值回退默认
 4. **事件委托**:全部交互挂在 `document` 上,内容区重渲染后无需重新绑定
 5. 路由表有 404 兜底,未知路径渲染 404 页面

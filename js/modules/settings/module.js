@@ -106,62 +106,10 @@
     return contentSection(t, 'account.title', 'account.description', body);
   }
 
-  /* ---------- 外观(mpages radio-group 风格,与设置面板同源,静态展示) ---------- */
+  /* ---------- 外观(mpages radio-group 风格):卡片统一用 App.ui.radio(样式 app.css .rg-*) ---------- */
   function optSection(t, titleKey, inner) {
     return '<div class="sp-opt-group">' +
-      '<span class="sp-opt-title">' + t(titleKey) + '</span>' + inner +
-      '</div>';
-  }
-
-  function optCheck(selected) {
-    return selected ? '<span class="sp-opt-check">' + icon().iconSvg('circle-check') + '</span>' : '';
-  }
-
-  /** 图标预览卡(主题/侧边栏/布局):选中描边 ring-primary + 阴影 + 对勾徽标,点击实时生效 */
-  function optCard(iconName, label, selected, isTheme, extra) {
-    var fill = isTheme ? '' : selected ? 'fill-primary stroke-primary' : 'fill-muted-foreground stroke-muted-foreground';
-    return '<button type="button" data-settings-card="' + extra + '" aria-pressed="' + selected + '" class="sp-opt' + (selected ? ' is-active' : '') + '">' +
-      '<span class="sp-opt-frame">' +
-      optCheck(selected) +
-      icon().previewIcon(iconName, fill) +
-      '</span>' +
-      '<span class="sp-opt-label">' + label + '</span>' +
-      '</button>';
-  }
-
-  /** 色板卡(基础色/强调色):bordered 卡片 + 对勾徽标,点击实时生效 */
-  function swatchRow(current, colors, cols, kind) {
-    return '<div class="sp-radio-grid sp-cols-' + cols + '">' +
-      colors.map(function (c) {
-        var sel = current === c;
-        return '<button type="button" data-swatch="' + kind + '" data-value="' + c + '" aria-pressed="' + sel + '" class="sp-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="sp-opt-swatch">' +
-          optCheck(sel) +
-          '<span class="sp-opt-dot swatch-' + c + '"></span>' +
-          '<span class="sp-opt-swatch-label">' + c + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
-  }
-
-  /** 文本卡(风格/字体/圆角/菜单):h-14 描边卡片 + 对勾徽标,点击实时生效 */
-  function segRow(options, current, cols, kind) {
-    return '<div class="sp-radio-grid sp-cols-' + cols + '">' +
-      options.map(function (o) {
-        var sel = current === o.value;
-        return '<button type="button" data-segmented="' + kind + '" data-value="' + o.value + '" aria-pressed="' + sel + '" class="sp-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="sp-opt-text">' +
-          optCheck(sel) +
-          '<span class="text-sm font-medium">' + o.label + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
-  }
-
-  function readonlyRow(label, value) {
-    return '<div class="sp-readonly">' +
-      '<span class="sp-readonly-label">' + label + '</span>' +
-      '<span class="sp-readonly-value">' + value + '</span>' +
+      App.ui.radio.sectionTitle(t(titleKey)) + inner +
       '</div>';
   }
 
@@ -170,61 +118,49 @@
     var s = ctx.settings;
     var ap = s.appearance;
     var st = S();
+    var radio = App.ui.radio;
 
     var layout = s.sidebarVariant === 'inset' ? 'default' : s.sidebarCollapsible === 'offcanvas' ? 'offcanvas' : 'icon';
-
-    var themeItems = [
-      { value: 'system', icon: 'theme-system', labelKey: 'header.system' },
-      { value: 'light', icon: 'theme-light', labelKey: 'header.light' },
-      { value: 'dark', icon: 'theme-dark', labelKey: 'header.dark' },
-    ];
-    var sidebarItems = [
-      { value: 'inset', icon: 'sidebar-inset', labelKey: 'settings.variantOptions.inset' },
-      { value: 'floating', icon: 'sidebar-floating', labelKey: 'settings.variantOptions.floating' },
-      { value: 'sidebar', icon: 'sidebar-sidebar', labelKey: 'settings.variantOptions.sidebar' },
-    ];
-    var layoutItems = [
-      { value: 'default', icon: 'layout-default', labelKey: 'settings.layoutOptions.default' },
-      { value: 'icon', icon: 'layout-compact', labelKey: 'settings.layoutOptions.icon' },
-      { value: 'offcanvas', icon: 'layout-full', labelKey: 'settings.layoutOptions.offcanvas' },
-    ];
+    var themeItems = st.THEME_ITEMS;
+    var sidebarItems = st.SIDEBAR_ITEMS;
+    var layoutItems = st.LAYOUT_ITEMS;
 
     var body =
       '<div class="sp-form">' +
       optSection(t, 'settings.theme',
-        '<div class="sp-radio-grid sp-cols-3">' +
-        themeItems.map(function (it) { return optCard(it.icon, t(it.labelKey), s.theme === it.value, true, 'theme:' + it.value); }).join('') +
+        '<div class="' + radio.gridClass(3) + '">' +
+        themeItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), s.theme === it.value, true, 'theme:' + it.value); }).join('') +
         '</div>') +
       optSection(t, 'settings.sidebar',
-        '<div class="sp-radio-grid sp-cols-3">' +
-        sidebarItems.map(function (it) { return optCard(it.icon, t(it.labelKey), s.sidebarVariant === it.value, false, 'sidebar:' + it.value); }).join('') +
+        '<div class="' + radio.gridClass(3) + '">' +
+        sidebarItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), s.sidebarVariant === it.value, false, 'sidebar:' + it.value); }).join('') +
         '</div>') +
       optSection(t, 'settings.layout',
-        '<div class="sp-radio-grid sp-cols-3">' +
-        layoutItems.map(function (it) { return optCard(it.icon, t(it.labelKey), layout === it.value, false, 'layout:' + it.value); }).join('') +
+        '<div class="' + radio.gridClass(3) + '">' +
+        layoutItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), layout === it.value, false, 'layout:' + it.value); }).join('') +
         '</div>') +
-      optSection(t, 'settings.baseColor', swatchRow(ap.baseColor, st.BASE_COLORS, 7, 'base')) +
-      optSection(t, 'settings.chartColor', swatchRow(ap.chartColor, [ap.baseColor].concat(st.CHART_COLORS), 6, 'chart')) +
+      optSection(t, 'settings.baseColor', radio.swatchPicker(ap.baseColor, st.BASE_COLORS, 7, 'base')) +
+      optSection(t, 'settings.chartColor', radio.swatchPicker(ap.chartColor, [ap.baseColor].concat(st.CHART_COLORS), 6, 'chart')) +
       optSection(t, 'settings.style',
-        segRow(st.STYLES.map(function (v) { return { value: v, label: v }; }), ap.style, 4, 'style')) +
+        radio.segmented(st.STYLES.map(function (v) { return { value: v, label: v }; }), ap.style, 4, 'style')) +
       optSection(t, 'settings.bodyFont',
-        segRow(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.bodyFont, 3, 'body-font')) +
+        radio.segmented(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.bodyFont, 3, 'body-font')) +
       optSection(t, 'settings.headingFont',
-        segRow(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.headingFont, 3, 'heading-font')) +
-      readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
+        radio.segmented(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.headingFont, 3, 'heading-font')) +
+      radio.readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
       optSection(t, 'settings.radius',
-        segRow(st.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), ap.radius, 6, 'radius')) +
+        radio.segmented(st.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), ap.radius, 3, 'radius')) +
       optSection(t, 'settings.menuColor',
-        segRow([
+        radio.segmented([
           { value: 'default', label: t('settings.menuColorOptions.default') },
           { value: 'inverted', label: t('settings.menuColorOptions.inverted') },
         ], ap.menuColor, 2, 'menu-color')) +
       optSection(t, 'settings.menuAppearance',
-        segRow([
+        radio.segmented([
           { value: 'solid', label: t('settings.menuAppearanceOptions.solid') },
           { value: 'translucent', label: t('settings.menuAppearanceOptions.translucent') },
         ], ap.menuAppearance, 2, 'menu-appearance')) +
-      readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
+      radio.readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
       '<button type="button" data-reset-appearance class="' + App.ui.buttonClass('destructive') + '">' + t('appearance.reset') + '</button>' +
       '</div>';
     return contentSection(t, 'appearance.title', 'appearance.description', body);

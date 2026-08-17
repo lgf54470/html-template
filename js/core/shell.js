@@ -196,82 +196,14 @@
       '</div></div></main></div>';
   }
 
-  // ---------- 主题设置面板(Sheet,mpages radio-group 风格) ----------
-  var GRID_COLS = { 2: 'ts-grid-2', 3: 'ts-grid-3', 4: 'ts-grid-4', 6: 'ts-grid-6', 7: 'ts-grid-7' };
-
-  function sectionTitle(label) {
-    return '<div class="ts-section-title"><span>' + label + '</span></div>';
-  }
-
-  function optCheck(selected) {
-    return selected ? '<span class="ts-opt-check">' + icon().iconSvg('circle-check') + '</span>' : '';
-  }
-
-  /** 图标预览卡(主题/侧边栏/布局):选中描边 ring-primary + 阴影 + 对勾徽标 */
-  function iconCard(iconName, label, selected, isTheme, extra) {
-    return '<button type="button" data-settings-card="' + extra + '" aria-pressed="' + selected + '" class="ts-opt' + (selected ? ' is-active' : '') + '">' +
-      '<span class="ts-opt-frame">' +
-      optCheck(selected) +
-      icon().previewIcon(iconName, isTheme ? '' : selected ? 'fill-primary stroke-primary' : 'fill-muted-foreground stroke-muted-foreground') +
-      '</span>' +
-      '<span class="ts-opt-label">' + label + '</span>' +
-      '</button>';
-  }
-
-  /** 色板卡(基础色/强调色):bordered 卡片 + 对勾徽标 */
-  function swatchPicker(current, options, cols, kind) {
-    return '<div class="ts-radio-grid ' + (GRID_COLS[cols] || 'ts-grid-3') + '">' +
-      options.map(function (c) {
-        var sel = current === c;
-        return '<button type="button" data-swatch="' + kind + '" data-value="' + c + '" aria-pressed="' + sel + '" class="ts-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="ts-opt-swatch">' +
-          optCheck(sel) +
-          '<span class="ts-opt-dot swatch-' + c + '"></span>' +
-          '<span class="ts-opt-swatch-label">' + c + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
-  }
-
-  /** 文本卡(风格/字体/圆角/菜单):h-14 描边卡片 + 对勾徽标 */
-  function segmented(options, current, cols, kind) {
-    return '<div class="ts-radio-grid ' + (GRID_COLS[cols] || 'ts-grid-3') + '">' +
-      options.map(function (o) {
-        var sel = current === o.value;
-        return '<button type="button" data-segmented="' + kind + '" data-value="' + o.value + '" aria-pressed="' + sel + '" class="ts-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="ts-opt-text">' +
-          optCheck(sel) +
-          '<span class="text-sm font-medium">' + o.label + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
-  }
-
-  function readonlyRow(label, value) {
-    return '<div class="flex items-center justify-between">' +
-      '<span class="text-sm font-semibold text-muted-foreground">' + label + '</span>' +
-      '<span class="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">' + value + '</span>' +
-      '</div>';
-  }
-
+  // ---------- 主题设置面板(Sheet):radio-group 卡片统一用 App.ui.radio(样式 app.css .rg-*) ----------
   function renderSettingsSheet(s, t) {
     var settings = App.settings;
+    var radio = App.ui.radio;
     var layout = s.sidebarVariant === 'inset' ? 'default' : s.sidebarCollapsible === 'offcanvas' ? 'offcanvas' : 'icon';
-    var themeItems = [
-      { value: 'system', icon: 'theme-system', labelKey: 'header.system' },
-      { value: 'light', icon: 'theme-light', labelKey: 'header.light' },
-      { value: 'dark', icon: 'theme-dark', labelKey: 'header.dark' },
-    ];
-    var sidebarItems = [
-      { value: 'inset', icon: 'sidebar-inset', labelKey: 'settings.variantOptions.inset' },
-      { value: 'floating', icon: 'sidebar-floating', labelKey: 'settings.variantOptions.floating' },
-      { value: 'sidebar', icon: 'sidebar-sidebar', labelKey: 'settings.variantOptions.sidebar' },
-    ];
-    var layoutItems = [
-      { value: 'default', icon: 'layout-default', labelKey: 'settings.layoutOptions.default' },
-      { value: 'icon', icon: 'layout-compact', labelKey: 'settings.layoutOptions.icon' },
-      { value: 'offcanvas', icon: 'layout-full', labelKey: 'settings.layoutOptions.offcanvas' },
-    ];
+    var themeItems = App.settings.THEME_ITEMS;
+    var sidebarItems = App.settings.SIDEBAR_ITEMS;
+    var layoutItems = App.settings.LAYOUT_ITEMS;
 
     return '<div data-settings-sheet role="dialog" aria-modal="true" class="fixed inset-y-0 right-0 z-50 flex h-full w-3/4 flex-col gap-4 border-l bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg sm:max-w-sm">' +
       '<div class="pb-0 pl-4 pr-4 pt-4 text-start">' +
@@ -281,33 +213,33 @@
       '</div>' +
       '<div data-sheet-scroll class="min-h-0 flex-1 overflow-y-auto">' +
       '<div class="space-y-6 p-4">' +
-      '<div>' + sectionTitle(t('settings.theme')) +
-      '<div class="ts-radio-grid ts-grid-3">' +
-      themeItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), s.theme === item.value, true, 'theme:' + item.value); }).join('') +
+      '<div>' + radio.sectionTitle(t('settings.theme')) +
+      '<div class="' + radio.gridClass(3) + '">' +
+      themeItems.map(function (item) { return radio.iconCard(item.icon, t(item.labelKey), s.theme === item.value, true, 'theme:' + item.value); }).join('') +
       '</div></div>' +
-      '<div class="max-md:hidden">' + sectionTitle(t('settings.sidebar')) +
-      '<div class="ts-radio-grid ts-grid-3">' +
-      sidebarItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), s.sidebarVariant === item.value, false, 'sidebar:' + item.value); }).join('') +
+      '<div class="max-md:hidden">' + radio.sectionTitle(t('settings.sidebar')) +
+      '<div class="' + radio.gridClass(3) + '">' +
+      sidebarItems.map(function (item) { return radio.iconCard(item.icon, t(item.labelKey), s.sidebarVariant === item.value, false, 'sidebar:' + item.value); }).join('') +
       '</div></div>' +
-      '<div class="max-md:hidden">' + sectionTitle(t('settings.layout')) +
-      '<div class="ts-radio-grid ts-grid-3">' +
-      layoutItems.map(function (item) { return iconCard(item.icon, t(item.labelKey), layout === item.value, false, 'layout:' + item.value); }).join('') +
+      '<div class="max-md:hidden">' + radio.sectionTitle(t('settings.layout')) +
+      '<div class="' + radio.gridClass(3) + '">' +
+      layoutItems.map(function (item) { return radio.iconCard(item.icon, t(item.labelKey), layout === item.value, false, 'layout:' + item.value); }).join('') +
       '</div></div>' +
-      '<div>' + sectionTitle(t('settings.baseColor')) +
-      '<div>' + swatchPicker(s.appearance.baseColor, settings.BASE_COLORS, 7, 'base') + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.chartColor')) +
-      '<div>' + swatchPicker(s.appearance.chartColor, [s.appearance.baseColor].concat(settings.CHART_COLORS), 6, 'chart') + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.style')) +
-      '<div>' + segmented(settings.STYLES.map(function (st) { return { value: st, label: st }; }), s.appearance.style, 4, 'style') + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.bodyFont')) +
-      '<div>' + segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.bodyFont, 3, 'body-font') + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.headingFont')) +
-      '<div>' + segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.headingFont, 3, 'heading-font') + '</div></div>' +
-      readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
-      '<div>' + sectionTitle(t('settings.radius')) +
-      '<div>' + segmented(settings.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), s.appearance.radius, 3, 'radius') + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.menuColor')) +
-      '<div>' + segmented(
+      '<div>' + radio.sectionTitle(t('settings.baseColor')) +
+      '<div>' + radio.swatchPicker(s.appearance.baseColor, settings.BASE_COLORS, 7, 'base') + '</div></div>' +
+      '<div>' + radio.sectionTitle(t('settings.chartColor')) +
+      '<div>' + radio.swatchPicker(s.appearance.chartColor, [s.appearance.baseColor].concat(settings.CHART_COLORS), 6, 'chart') + '</div></div>' +
+      '<div>' + radio.sectionTitle(t('settings.style')) +
+      '<div>' + radio.segmented(settings.STYLES.map(function (st) { return { value: st, label: st }; }), s.appearance.style, 4, 'style') + '</div></div>' +
+      '<div>' + radio.sectionTitle(t('settings.bodyFont')) +
+      '<div>' + radio.segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.bodyFont, 3, 'body-font') + '</div></div>' +
+      '<div>' + radio.sectionTitle(t('settings.headingFont')) +
+      '<div>' + radio.segmented(settings.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), s.appearance.headingFont, 3, 'heading-font') + '</div></div>' +
+      radio.readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
+      '<div>' + radio.sectionTitle(t('settings.radius')) +
+      '<div>' + radio.segmented(settings.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), s.appearance.radius, 3, 'radius') + '</div></div>' +
+      '<div>' + radio.sectionTitle(t('settings.menuColor')) +
+      '<div>' + radio.segmented(
         [
           { value: 'default', label: t('settings.menuColorOptions.default') },
           { value: 'inverted', label: t('settings.menuColorOptions.inverted') },
@@ -316,8 +248,8 @@
         2,
         'menu-color',
       ) + '</div></div>' +
-      '<div>' + sectionTitle(t('settings.menuAppearance')) +
-      '<div>' + segmented(
+      '<div>' + radio.sectionTitle(t('settings.menuAppearance')) +
+      '<div>' + radio.segmented(
         [
           { value: 'solid', label: t('settings.menuAppearanceOptions.solid') },
           { value: 'translucent', label: t('settings.menuAppearanceOptions.translucent') },
@@ -326,7 +258,7 @@
         2,
         'menu-appearance',
       ) + '</div></div>' +
-      readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
+      radio.readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
       '</div></div>' +
       '<div class="border-t p-4">' +
       '<button type="button" data-reset-settings class="w-full ' + ui().buttonClass('destructive') + '">' +

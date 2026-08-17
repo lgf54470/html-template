@@ -47,6 +47,23 @@
     menuAppearance: 'solid',
   };
 
+  /** 外观 radio-group 选项(设置面板与 Settings → 外观页共用) */
+  var THEME_ITEMS = [
+    { value: 'system', icon: 'theme-system', labelKey: 'header.system' },
+    { value: 'light', icon: 'theme-light', labelKey: 'header.light' },
+    { value: 'dark', icon: 'theme-dark', labelKey: 'header.dark' },
+  ];
+  var SIDEBAR_ITEMS = [
+    { value: 'inset', icon: 'sidebar-inset', labelKey: 'settings.variantOptions.inset' },
+    { value: 'floating', icon: 'sidebar-floating', labelKey: 'settings.variantOptions.floating' },
+    { value: 'sidebar', icon: 'sidebar-sidebar', labelKey: 'settings.variantOptions.sidebar' },
+  ];
+  var LAYOUT_ITEMS = [
+    { value: 'default', icon: 'layout-default', labelKey: 'settings.layoutOptions.default' },
+    { value: 'icon', icon: 'layout-compact', labelKey: 'settings.layoutOptions.icon' },
+    { value: 'offcanvas', icon: 'layout-full', labelKey: 'settings.layoutOptions.offcanvas' },
+  ];
+
   function readStorage(key) {
     try {
       return window.localStorage.getItem(key);
@@ -241,6 +258,9 @@
     STORAGE_PREFIX: STORAGE_PREFIX,
     K: K,
     APPEARANCE_DEFAULTS: APPEARANCE_DEFAULTS,
+    THEME_ITEMS: THEME_ITEMS,
+    SIDEBAR_ITEMS: SIDEBAR_ITEMS,
+    LAYOUT_ITEMS: LAYOUT_ITEMS,
     readSettings: readSettings,
     applySettings: applySettings,
     persistSettings: persistSettings,

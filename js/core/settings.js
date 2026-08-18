@@ -53,14 +53,44 @@
     'trophy',
     'rocket',
   ];
-  // 默认工作空间(首次启动无本地数据时使用)
+  // 默认工作空间(首次启动无本地数据时使用);nameKey 供切语言时本地化显示名
   var DEFAULT_WORKSPACES = [
-    { id: 'ws-default', name: '默认', icon: 'house', color: 'zinc' },
-    { id: 'ws-work', name: '工作', icon: 'briefcase', color: 'blue' },
-    { id: 'ws-study', name: '学习', icon: 'book-open', color: 'violet' },
-    { id: 'ws-life', name: '生活', icon: 'heart', color: 'rose' },
-    { id: 'ws-fun', name: '娱乐', icon: 'gamepad-2', color: 'emerald' },
-    { id: 'ws-travel', name: '旅游', icon: 'plane', color: 'sky' },
+    {
+      id: 'ws-default',
+      name: '默认',
+      nameKey: 'workspace.name.default',
+      icon: 'house',
+      color: 'zinc',
+    },
+    {
+      id: 'ws-work',
+      name: '工作',
+      nameKey: 'workspace.name.work',
+      icon: 'briefcase',
+      color: 'blue',
+    },
+    {
+      id: 'ws-study',
+      name: '学习',
+      nameKey: 'workspace.name.study',
+      icon: 'book-open',
+      color: 'violet',
+    },
+    { id: 'ws-life', name: '生活', nameKey: 'workspace.name.life', icon: 'heart', color: 'rose' },
+    {
+      id: 'ws-fun',
+      name: '娱乐',
+      nameKey: 'workspace.name.fun',
+      icon: 'gamepad-2',
+      color: 'emerald',
+    },
+    {
+      id: 'ws-travel',
+      name: '旅游',
+      nameKey: 'workspace.name.travel',
+      icon: 'plane',
+      color: 'sky',
+    },
   ];
   var FONTS = [
     {

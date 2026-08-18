@@ -37,6 +37,16 @@
     );
   }
 
+  /** 工作空间显示名:内置默认工作空间按 id + 原文名本地化,用户改名/自定义则原样显示 */
+  function workspaceName(ws, t) {
+    var defs = App.settings.DEFAULT_WORKSPACES || [];
+    for (var i = 0; i < defs.length; i++) {
+      var d = defs[i];
+      if (d.id === ws.id && d.name === ws.name && d.nameKey) return t(d.nameKey);
+    }
+    return ws.name;
+  }
+
   // ---------- Sidebar ----------
   function sidebarHtml(navItems, settings, t, pathname, openSubmenus) {
     var navList = navItems
@@ -133,7 +143,7 @@
           '">' +
           workspaceIcon(ws, 'size-6 rounded-md') +
           '<span class="min-w-0 flex-1 truncate text-left">' +
-          esc(ws.name) +
+          esc(workspaceName(ws, t)) +
           '</span>' +
           (isActive
             ? '<span class="ml-auto flex items-center">' +
@@ -228,7 +238,7 @@
       workspaceIcon(activeWorkspace, 'size-8 rounded-lg') +
       '<span class="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
       '<span class="truncate text-left font-semibold" data-selected-workspace>' +
-      esc(activeWorkspace.name) +
+      esc(workspaceName(activeWorkspace, t)) +
       '</span>' +
       '<span class="truncate text-left text-xs text-muted-foreground">' +
       t('sidebar.workspaces') +

@@ -86,7 +86,7 @@
   function renderDialog() {
     var tt = t();
     return (
-      '<style>' +
+      '<style data-ws-style>' +
       WS_STYLE +
       '</style>' +
       '<div data-workspace-dialog class="ws-dialog-mask">' +
@@ -141,7 +141,9 @@
     draft = { icon: 'house', color: 'zinc' };
     var holder = document.createElement('div');
     holder.innerHTML = renderDialog();
-    document.body.appendChild(holder.firstElementChild);
+    // renderDialog 返回 <style> + <div data-workspace-dialog>,需全部挂到 body
+    //(此前只 append 了 firstElementChild,即 <style>,弹窗主体被遗留在游离节点上导致不显示)
+    while (holder.firstChild) document.body.appendChild(holder.firstChild);
     dialogOpen = true;
     var input = document.querySelector('[data-ws-name]');
     if (input) input.focus();
@@ -151,6 +153,8 @@
     if (!dialogOpen) return;
     var el = document.querySelector('[data-workspace-dialog]');
     if (el) el.remove();
+    var style = document.querySelector('[data-ws-style]');
+    if (style) style.remove();
     dialogOpen = false;
   }
 

@@ -374,6 +374,21 @@
     );
   }
 
+  // 自定义下拉菜单(shadcn 风格)悬停/按下反馈:编译产物(app.css)仅含 :focus
+  // 规则且依赖 Radix 的 data-highlighted,本项目自定义下拉不写该属性,
+  // 因此补充 hover / active / focus-visible 三态(仅作用于本项目的下拉菜单项)。
+  (function injectDropdownStyles() {
+    if (!document.head) return;
+    var style = document.createElement('style');
+    style.setAttribute('data-dropdown-style', '');
+    style.textContent =
+      '[data-dropdown-trigger][aria-expanded="true"]{background-color:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}' +
+      '[data-dropdown-menu] [class~="group/dropdown-menu-item"]:hover{background-color:var(--accent);color:var(--accent-foreground)}' +
+      '[data-dropdown-menu] [class~="group/dropdown-menu-item"]:active{background-color:color-mix(in oklab,var(--accent) 78%,var(--muted));color:var(--accent-foreground)}' +
+      '[data-dropdown-menu] [class~="group/dropdown-menu-item"]:focus-visible{background-color:var(--accent);color:var(--accent-foreground)}';
+    document.head.appendChild(style);
+  })();
+
   window.App = window.App || {};
   App.ui = {
     cn: cn,

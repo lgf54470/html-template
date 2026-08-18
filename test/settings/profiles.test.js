@@ -35,7 +35,7 @@ const PROFILES = [
     snapshot: {
       appearance: { theme: 'dark' },
       notifications: { type: 'none' },
-      display: { sidebarVariant: 'floating', hiddenNav: ['channels'] },
+      display: { sidebarOpen: false, sidebarVariant: 'floating', hiddenNav: ['channels'] },
     },
   },
 ];

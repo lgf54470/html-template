@@ -252,7 +252,6 @@
   // ---------- 全局状态 ----------
   var app = document.getElementById('app');
   var settings = App.settings.readSettings();
-  var sidebarOpen = readSidebarOpen();
   var sheetOpen = false;
 
   /** 各可折叠父菜单的展开状态(模块 id → true/false),如 docs / settings */
@@ -266,17 +265,6 @@
   })();
 
   App.settings.applySettings(settings);
-
-  function readSidebarOpen() {
-    try {
-      var v = window.localStorage.getItem(App.settings.K('sidebar-open'));
-      if (v === 'false') return false;
-      if (v === 'true') return true;
-      return true;
-    } catch (e) {
-      return true;
-    }
-  }
 
   function currentPath() {
     var h = window.location.hash || '';
@@ -302,6 +290,7 @@
     'theme',
     'appearance',
     'notifications',
+    'sidebarOpen',
     'sidebarVariant',
     'sidebarCollapsible',
     'sidebarWidth',
@@ -406,6 +395,7 @@
         menuAppearance: a.menuAppearance,
       }),
       'settings:display': JSON.stringify({
+        sidebarOpen: !!settings.sidebarOpen,
         sidebarVariant: settings.sidebarVariant,
         sidebarCollapsible: settings.sidebarCollapsible,
         sidebarWidth: settings.sidebarWidth,
@@ -478,6 +468,7 @@
       if (appearance.menuAppearance) set(K('menu-appearance'), String(appearance.menuAppearance));
     }
     if (display && typeof display === 'object') {
+      if (display.sidebarOpen != null) set(K('sidebar-open'), String(!!display.sidebarOpen));
       if (display.sidebarVariant) set(K('sidebar-variant'), String(display.sidebarVariant));
       if (display.sidebarCollapsible)
         set(K('sidebar-collapsible'), String(display.sidebarCollapsible));
@@ -525,6 +516,7 @@
     return JSON.stringify({
       theme: s.theme,
       appearance: s.appearance,
+      sidebarOpen: s.sidebarOpen,
       sidebarVariant: s.sidebarVariant,
       sidebarCollapsible: s.sidebarCollapsible,
       sidebarWidth: s.sidebarWidth,
@@ -864,7 +856,6 @@
 
   function resetSettings() {
     settings = App.settings.resetAllSettings();
-    sidebarOpen = true;
     openSubmenus = {};
     App.settings.applySettings(settings);
     document.documentElement.lang = settings.locale;
@@ -877,24 +868,24 @@
     return App.i18n.makeT(locale);
   }
 
-  // ---------- Sidebar ----------
+  // ---------- Sidebar(展开/收起状态纳入 settings.sidebarOpen,随配置文件与数据库同步) ----------
   function setSidebarOpen(open) {
-    sidebarOpen = open;
+    updateSettings({ sidebarOpen: !!open }, { noRerender: true });
     syncSidebarState();
-    App.settings.writeStorage(App.settings.K('sidebar-open'), String(open));
   }
 
   function syncSidebarState() {
+    var open = !!settings.sidebarOpen;
     var root = app.querySelector('[data-slot="sidebar"]');
     if (!root) return;
-    root.setAttribute('data-state', sidebarOpen ? 'expanded' : 'collapsed');
-    root.setAttribute('data-collapsible', sidebarOpen ? '' : settings.sidebarCollapsible);
+    root.setAttribute('data-state', open ? 'expanded' : 'collapsed');
+    root.setAttribute('data-collapsible', open ? '' : settings.sidebarCollapsible);
     root.setAttribute('data-variant', settings.sidebarVariant);
     var container = app.querySelector('[data-slot="sidebar-container"]');
     if (container)
-      container.setAttribute('data-collapsible', sidebarOpen ? '' : settings.sidebarCollapsible);
+      container.setAttribute('data-collapsible', open ? '' : settings.sidebarCollapsible);
     var sidebarEl = app.querySelector('[data-slot="sidebar"]');
-    if (sidebarEl) sidebarEl.setAttribute('data-open', String(sidebarOpen));
+    if (sidebarEl) sidebarEl.setAttribute('data-open', String(open));
   }
 
   function refreshSidebar() {
@@ -1108,7 +1099,7 @@
     var sidebarTrigger = target.closest ? target.closest('[data-sidebar-trigger]') : null;
     if (sidebarTrigger) {
       if (App.interactions.isMobile()) App.interactions.openMobileSidebar();
-      else setSidebarOpen(!sidebarOpen);
+      else setSidebarOpen(!settings.sidebarOpen);
       return;
     }
     // 子菜单展开/收起(文档、设置等含 children 的父菜单)

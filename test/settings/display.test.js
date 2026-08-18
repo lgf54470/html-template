@@ -25,6 +25,7 @@ after(async () => {
 
 const KEY = 'settings:display';
 const DISPLAY = {
+  sidebarOpen: false,
   sidebarVariant: 'floating',
   sidebarCollapsible: 'offcanvas',
   sidebarWidth: 272,

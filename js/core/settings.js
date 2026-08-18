@@ -292,6 +292,7 @@
     display: {
       capture: function (s) {
         return {
+          sidebarOpen: !!s.sidebarOpen,
           sidebarVariant: s.sidebarVariant,
           sidebarCollapsible: s.sidebarCollapsible,
           sidebarWidth: s.sidebarWidth,
@@ -300,6 +301,7 @@
       },
       apply: function (out, data) {
         data = data || {};
+        out.sidebarOpen = data.sidebarOpen === undefined ? true : !!data.sidebarOpen;
         out.sidebarVariant =
           SIDEBAR_VARIANTS.indexOf(data.sidebarVariant) !== -1 ? data.sidebarVariant : 'inset';
         out.sidebarCollapsible =
@@ -344,6 +346,7 @@
       theme: 'system',
       appearance: Object.assign({}, APPEARANCE_DEFAULTS),
       notifications: Object.assign({}, NOTIFICATIONS_DEFAULTS),
+      sidebarOpen: true,
       sidebarVariant: 'inset',
       sidebarCollapsible: 'icon',
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
@@ -549,6 +552,12 @@
     }
   }
 
+  /** 读取侧边栏展开状态(默认展开;纯静态方式也适用) */
+  function readSidebarOpen() {
+    var v = readStorage(K('sidebar-open'));
+    return v !== 'false';
+  }
+
   /** 读取当前工作空间 id(不在列表中则回退第一个) */
   function readActiveWorkspace(workspaces) {
     var stored = readStorage(K('active-workspace'));
@@ -706,6 +715,7 @@
       sidebarCollapsible: sidebarCollapsible,
       sidebarWidth: sidebarWidth,
       hiddenNav: hiddenNav,
+      sidebarOpen: readSidebarOpen(),
       workspaces: workspaces,
       activeWorkspace: readActiveWorkspace(workspaces),
       profiles: profiles,
@@ -810,6 +820,7 @@
       [K('sidebar-width'), String(s.sidebarWidth)],
     ];
     writeStorage(K('hidden-nav'), JSON.stringify(s.hiddenNav || []));
+    writeStorage(K('sidebar-open'), String(!!s.sidebarOpen));
     writeStorage(K('profile'), JSON.stringify(s.profile || PROFILE_DEFAULTS));
     writeStorage(K('account'), JSON.stringify(s.account || ACCOUNT_DEFAULTS));
     writeStorage(K('notifications'), JSON.stringify(s.notifications || NOTIFICATIONS_DEFAULTS));
@@ -862,6 +873,7 @@
       sidebarCollapsible: 'icon',
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
       hiddenNav: [],
+      sidebarOpen: true,
       workspaces: defaultWorkspaces(),
       activeWorkspace: DEFAULT_WORKSPACES[0].id,
       profiles: defaultProfiles(),

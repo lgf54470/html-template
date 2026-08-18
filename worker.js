@@ -5,55 +5,34 @@
  *   - 静态资源:由 wrangler.toml [assets] 在边缘网络直接托管
  *     (index.html / js / assets);未命中资源的请求(如 /api/*)
  *     才进入本 Worker,非 API 请求一律透传给 ASSETS 绑定
- *   - API:登录 / 校验 / 登出 / 改密 / 设置 KV,逻辑与 server/api.js 保持一致
- *   - 数据库:Cloudflare D1(binding = DB),适配器 server/db-d1.js
- *   - 密码校验:登录密码与 secret AUTH_PASSWORD 常量时间比较
- *     (不落库、无随机初始密码;与 server/auth.js 逻辑一致)
- *   - 敏感键加密:AES-256-GCM,存储格式与 server/crypto.js 一致(enc:v1:...)
+ *   - 数据库:Cloudflare D1(binding = DB),适配器 server/db/d1.js
+ *
+ * 纯逻辑复用 server/ 下的 CJS 模块(经 esbuild 打包,与 Node/Deno 同一份实现):
+ *   - SCHEMA            server/db/schema.js
+ *   - EXPIRY_MS         server/auth/expiry.js
+ *   - matchesPassword   server/auth/password.js
+ *   - sha256/findSession server/auth/session.js
+ *   - 敏感键判定         server/security/sensitive.js
+ *   - AES-256-GCM       server/security/core.js
+ * Worker 只保留传输层适配(原生 Response / env secret),不再重复实现上述逻辑。
  *
  * 环境变量(通过 `wrangler secret put` 设置,勿写入 wrangler.toml):
  *   AUTH_PASSWORD   登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
  *   ENCRYPTION_KEY  敏感数据加密密钥,64 位 hex(生产必设;缺失时报错)
  *
- * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server/api.js(或反之)。
  * 完整部署说明见 docs/deploy/cloudflare.md。
  * ============================================================ */
 
 // 注意:Cloudflare 要求 ESM 格式(nodejs_compat 下 CJS 会报
 // "no default export" 错误),因此本文件使用 import / export default。
 import crypto from 'node:crypto';
-import { init as initD1 } from './server/db-d1.js';
-
-/* ---------- 与 server/db.js 的 SCHEMA 保持一致 ---------- */
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS app_settings (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-CREATE TABLE IF NOT EXISTS auth_sessions (
-  token_hash TEXT PRIMARY KEY,  -- 会话令牌的 SHA-256 哈希,绝不存明文令牌
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  expires_at TEXT,
-  note       TEXT
-);
-`;
-
-const RESERVED_SETTINGS_PREFIX = 'settings:auth:';
-const SENSITIVE_WORDS = ['password', 'email', 'apikey', 'api_key', 'secret', 'token', 'credential', 'access_key'];
-
-/* ---------- 会话失效时长(ms);'browser'= 下一次浏览器打开 ---------- */
-const EXPIRY_MS = {
-  '3h': 3 * 3600e3,
-  '6h': 6 * 3600e3,
-  '9h': 9 * 3600e3,
-  '12h': 12 * 3600e3,
-  '24h': 24 * 3600e3,
-  '7d': 7 * 86400e3,
-  '14d': 14 * 86400e3,
-  '30d': 30 * 86400e3,
-  browser: 30 * 86400e3,
-};
+import { init as initD1 } from './server/db/d1.js';
+import { SCHEMA } from './server/db/schema.js';
+import { EXPIRY_MS } from './server/auth/expiry.js';
+import { matchesPassword } from './server/auth/password.js';
+import { sha256, findSession } from './server/auth/session.js';
+import { RESERVED_SETTINGS_PREFIX, isSensitiveKey } from './server/security/sensitive.js';
+import { encryptWithKey, decryptWithKey } from './server/security/core.js';
 
 /* ---------- 数据库(单例,每 isolate 一份) ---------- */
 let _db = null;
@@ -64,7 +43,7 @@ function getDb(env) {
 
 /* ---------- 首次启动:建表(每 isolate 一次;密码由 AUTH_PASSWORD secret 直接校验) ---------- */
 let _boot = null;
-function boot(db, env) {
+function boot(db) {
   if (!_boot) {
     _boot = db.initSchema(SCHEMA).catch((e) => {
       _boot = null; // 失败后允许下次请求重试
@@ -74,19 +53,16 @@ function boot(db, env) {
   return _boot;
 }
 
-/* ---------- 密码校验:与 secret AUTH_PASSWORD 常量时间比较(不落库、无随机值) ---------- */
+/* ---------- 密码校验:与 secret AUTH_PASSWORD 常量时间比较(纯比较在 server/auth/password.js) ---------- */
 function verifyEnvPassword(password, env) {
   const expected = env.AUTH_PASSWORD;
   if (!expected) {
     throw new Error('[auth] 未配置 AUTH_PASSWORD secret,请用 `wrangler secret put AUTH_PASSWORD` 设置后再登录');
   }
-  const a = Buffer.from(String(password));
-  const b = Buffer.from(String(expected));
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return matchesPassword(password, expected);
 }
 
-/* ---------- 敏感键加密(AES-256-GCM,格式与 server/crypto.js 一致) ---------- */
-const PREFIX = 'enc:v1:';
+/* ---------- 敏感键加密(AES-256-GCM 实现在 server/security/core.js;密钥来自 secret) ---------- */
 let _key = null;
 function key(env) {
   if (_key) return _key;
@@ -100,58 +76,20 @@ function key(env) {
   return _key;
 }
 
-function b64url(buf) {
-  return Buffer.from(buf).toString('base64url');
-}
-function fromB64url(s) {
-  return Buffer.from(s, 'base64url');
-}
-
-/** AES-256-GCM 加密 → enc:v1:<iv>:<tag>:<ct> */
 function encrypt(plaintext, env) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key(env), iv);
-  const ct = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
-  return PREFIX + b64url(iv) + ':' + b64url(cipher.getAuthTag()) + ':' + b64url(ct);
+  return encryptWithKey(key(env), plaintext);
 }
 
-/** 解密 enc:v1:…;格式非法 / 密钥不符返回 null */
 function decrypt(stored, env) {
-  if (typeof stored !== 'string' || stored.indexOf(PREFIX) !== 0) return null;
-  const parts = stored.slice(PREFIX.length).split(':');
-  if (parts.length !== 3) return null;
-  try {
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key(env), fromB64url(parts[0]));
-    decipher.setAuthTag(fromB64url(parts[1]));
-    return Buffer.concat([decipher.update(fromB64url(parts[2])), decipher.final()]).toString('utf8');
-  } catch (e) {
-    return null;
-  }
+  return decryptWithKey(key(env), stored);
 }
 
-/* ---------- 会话(数据库只存令牌哈希) ---------- */
-function sha256(value) {
-  return crypto.createHash('sha256').update(String(value)).digest('hex');
-}
-
-async function getSession(token, db) {
-  if (!token) return null;
-  const hash = sha256(token);
-  const row = await db.get('SELECT * FROM auth_sessions WHERE token_hash = ?', [hash]);
-  if (!row) return null;
-  if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) {
-    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [hash]);
-    return null;
-  }
-  return row;
-}
-
+/* ---------- 会话(数据库只存令牌哈希;查询逻辑在 server/auth/session.js) ---------- */
 async function authed(request, db) {
-  const session = await getSession(request.headers.get('x-auth-token'), db);
-  return session; // null 时由调用方返回 401
+  return findSession(db, request.headers.get('x-auth-token'));
 }
 
-/* ---------- HTTP 工具 ---------- */
+/* ---------- HTTP 工具(Worker 原生 Response) ---------- */
 function sendJson(status, obj) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -170,17 +108,10 @@ async function readJson(request) {
   }
 }
 
-/** 键名含敏感词,或整体为含敏感字段的配置块(如 settings:profile 含邮箱) */
-function isSensitiveKey(k) {
-  if (k === 'settings:profile') return true;
-  const lower = String(k).toLowerCase();
-  return SENSITIVE_WORDS.some(function (w) { return lower.indexOf(w) !== -1; });
-}
-
-/* ---------- API 路由(与 server/api.js createApiHandler 保持一致) ---------- */
+/* ---------- API 路由(与 server/api/index.js 的 createApiHandler 保持一致) ---------- */
 async function handleApi(request, env, pathname) {
   const db = getDb(env);
-  await boot(db, env); // 建表 + 初始化密码(幂等,仅首次真正执行)
+  await boot(db); // 建表(幂等,仅首次真正执行)
   const method = request.method;
   const parts = pathname.split('/').filter(Boolean);
 

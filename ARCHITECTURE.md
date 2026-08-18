@@ -50,16 +50,33 @@
 │       ├── logs/               # 日志(路由 /logs)
 │       ├── docs/               # 文档(含4个子模块)
 │       └── settings/           # 设置(含5个子模块:个人资料/账号/外观/通知/显示)
-├── server/                     # 服务端代码
-│   ├── api.js                  # 共享 API 处理器(供 dev-server/Vercel 函数共用)
-│   ├── auth.js                 # 密码校验(常量时间比较)
-│   ├── db.js                   # 数据库驱动工厂(统一 query/run 接口)
-│   ├── db-sqlite.js            # SQLite 驱动(node:sqlite 内置)
-│   ├── db-turso.js             # Turso/libSQL HTTP 驱动
-│   ├── db-d1.js                # Cloudflare D1 驱动(binding + REST)
-│   ├── crypto.js               # AES-256-GCM 加密(敏感数据落库前加密)
-│   ├── logger.js               # 服务器终端日志(分级彩色输出)
-│   ├── env.js                  # 零依赖 .env 加载器
+├── server/                     # 服务端代码(按域组织)
+│   ├── config/env.js           # 零依赖 .env 加载器
+│   ├── db/                     # 数据库(工厂 + schema + 驱动)
+│   │   ├── index.js            # 驱动工厂(统一 query/run 接口)
+│   │   ├── schema.js           # 建表语句(单一事实来源)
+│   │   ├── sqlite.js           # SQLite 驱动(node:sqlite 内置)
+│   │   ├── turso.js            # Turso/libSQL HTTP 驱动
+│   │   └── d1.js               # Cloudflare D1 驱动(binding + REST)
+│   ├── auth/                   # 鉴权
+│   │   ├── index.js            # Node 端密码校验(读 AUTH_PASSWORD)
+│   │   ├── password.js         # 常量时间密码比较(纯逻辑,与 Worker 共用)
+│   │   ├── session.js          # 会话令牌哈希与查询(纯逻辑)
+│   │   └── expiry.js           # 会话失效时长(纯常量)
+│   ├── security/               # 加密与敏感键判定
+│   │   ├── index.js            # Node 端 AES-256-GCM 加解密(密钥来源封装)
+│   │   ├── core.js             # AES-256-GCM 纯算法(与 Worker 共用)
+│   │   └── sensitive.js        # 敏感键判定 + 保留键前缀
+│   ├── http/                   # HTTP 工具
+│   │   ├── json.js             # sendJson / readBody(Node req/res 风格)
+│   │   ├── mime.js             # 静态资源 MIME 映射
+│   │   └── static.js           # 静态资源服务
+│   ├── api/                    # API 处理器(路由按域拆分)
+│   │   ├── index.js            # 路由注册表 + createApiHandler
+│   │   └── routes/
+│   │       ├── auth.js         # 登录 / 校验 / 登出
+│   │       └── settings.js     # 全局设置 KV
+│   ├── logging/logger.js       # 服务器终端日志(分级彩色输出)
 │   └── lib/                    # 第三方单文件库(无子依赖的纯 JS 库)
 ├── dev-server.js               # 本地 Node 服务器入口
 ├── worker.js                   # Cloudflare Worker 入口(ESM)
@@ -263,9 +280,9 @@ CREATE TABLE auth_sessions (
 
 | 驱动 | 文件 | 说明 |
 |------|------|------|
-| `sqlite` | `server/db-sqlite.js` | 本地 SQLite(node:sqlite 内置, Node ≥ 22.5) |
-| `turso` | `server/db-turso.js` | 远程 Turso/libSQL HTTP API |
-| `d1` | `server/db-d1.js` | Cloudflare D1(binding + REST) |
+| `sqlite` | `server/db/sqlite.js` | 本地 SQLite(node:sqlite 内置, Node ≥ 22.5) |
+| `turso` | `server/db/turso.js` | 远程 Turso/libSQL HTTP API |
+| `d1` | `server/db/d1.js` | Cloudflare D1(binding + REST) |
 
 统一接口:
 ```javascript
@@ -449,7 +466,7 @@ t('home.requestTitle', 5)     // → "请求 5 已完成" (支持 {n} 插值)
 ```
 全部请求 → deno/main.js (dynamic 模式)
   ├─ 静态资源: Deno.readFile() 读取部署包
-  ├─ API: createRequire() 复用 server/*.js (CommonJS)
+  ├─ API: createRequire() 复用 server/ 下 CJS 模块
   └─ db: DB_DRIVER=turso
 ```
 
@@ -535,7 +552,7 @@ window.__moduleI18n['mymod'] = {
 - 自动定位: 通过调用栈提取文件 + 函数 + 行号
 - 全局捕获: `window.onerror` / `unhandledrejection` 自动上报
 
-### 11.2 服务器端 (`server/logger.js`)
+### 11.2 服务器端 (`server/logging/logger.js`)
 
 ```
 08-18 09:27:52 INFO  [api]   POST /api/settings 200 12ms
@@ -570,15 +587,18 @@ index.html
 
 服务端:
   dev-server.js / worker.js / api/index.js / deno/main.js
-    └─ server/api.js    (共享 API 处理器)
-    └─ server/db.js     (驱动工厂)
-       ├─ db-sqlite.js  (本地 SQLite)
-       ├─ db-turso.js   (远程 Turso)
-       └─ db-d1.js      (Cloudflare D1)
-    └─ server/auth.js   (密码校验)
-    └─ server/crypto.js (AES-256-GCM 加密)
-    └─ server/logger.js (终端日志)
-    └─ server/env.js    (.env 加载)
+    ├─ server/api/             (共享 API 处理器 + 路由注册表)
+    │    ├─ routes/auth.js     (登录 / 校验 / 登出)
+    │    └─ routes/settings.js (全局设置 KV)
+    ├─ server/db/              (驱动工厂 + schema)
+    │    ├─ sqlite.js          (本地 SQLite)
+    │    ├─ turso.js           (远程 Turso)
+    │    └─ d1.js              (Cloudflare D1)
+    ├─ server/auth/            (密码校验 + 会话 + 失效时长)
+    ├─ server/security/        (AES-256-GCM + 敏感键判定)
+    ├─ server/http/            (JSON / MIME / 静态资源)
+    ├─ server/logging/         (终端日志)
+    └─ server/config/          (.env 加载)
 ```
 
 ---
@@ -638,14 +658,14 @@ index.html
 
 ### 15.1 新增数据库驱动
 
-1. 创建 `server/db-<driver>.js`
+1. 创建 `server/db/<driver>.js`
 2. 实现 `init(opts)` 返回 `{ query, get, run, initSchema }`
-3. 在 `server/db.js` 的 `DRIVERS` 对象中注册
+3. 在 `server/db/index.js` 的 `DRIVERS` 对象中注册
 
 ### 15.2 新增部署平台
 
 1. 创建入口文件(如 `platform/main.js`)
-2. 复用 `server/api.js` 的 `createApiHandler`
+2. 复用 `server/api/index.js` 的 `createApiHandler`
 3. 实现静态资源托管 + API 路由分发
 
 ### 15.3 新增业务模块

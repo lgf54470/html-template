@@ -6,7 +6,7 @@
 浏览器
   │
   ├─ / 与 /js /assets  → dev-server.js 直接读取镜像内静态文件返回
-  └─ /api/*            → 同一进程内的 API 处理器(server/api.js)
+  └─ /api/*            → 同一进程内的 API 处理器(server/api/)
                               │
                               └─ SQLite(sqlite.db,挂载于数据卷 /app/data)
 ```
@@ -97,7 +97,7 @@ docker run -d --name html-template --restart unless-stopped \
 ## 数据持久化与安全
 
 - **数据库**:sqlite 文件默认写入 `sqlite.db`(工作目录);compose / run 示例把 `SQLITE_PATH` 指向数据卷 `/app/data/sqlite.db`,**容器重建、升级镜像都不丢数据**。数据卷删除(`docker compose down -v` 或 `docker volume rm`)才会清空。
-- **加密密钥**:`ENCRYPTION_KEY` 未设置时,`server/crypto.js` 会自动生成密钥并写入镜像内 `server/.secret-key` —— 容器重建后该文件消失,已加密数据(邮箱等敏感键)**将无法解密**。因此生产环境**必须显式设置 `ENCRYPTION_KEY` 并妥善保管**;与 Cloudflare / Vercel / Deno 部署使用同一密钥时,数据可互通迁移。
+- **加密密钥**:`ENCRYPTION_KEY` 未设置时,`server/security/index.js` 会自动生成密钥并写入镜像内 `server/.secret-key` —— 容器重建后该文件消失,已加密数据(邮箱等敏感键)**将无法解密**。因此生产环境**必须显式设置 `ENCRYPTION_KEY` 并妥善保管**;与 Cloudflare / Vercel / Deno 部署使用同一密钥时,数据可互通迁移。
 - **会话与密码**:登录密码不落库(与 `AUTH_PASSWORD` 常量时间比较);会话令牌只存 SHA-256 哈希。
 - **镜像最小权限**:`USER appuser` 非 root 运行;如需在数据卷内建目录,确保宿主目录属主为 UID 1001 或容器内可写。
 

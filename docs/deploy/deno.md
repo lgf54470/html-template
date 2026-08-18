@@ -13,7 +13,7 @@
 
 > **平台说明(2026-07-20 起)**:旧平台 Deploy Classic(dash.deno.com)与其配套的 `deployctl` CLI **已下线**,本文全部基于新平台(console.deno.com,内置 `deno deploy` 子命令,要求 Deno ≥ 2.4.2)。新平台的 **dynamic(动态)模式没有独立静态层**,全部请求都进入入口,因此本模板由 `deno/main.js` 一个入口同时承担**静态资源**与 **API**(与本地 `dev-server.js` 的职责完全一致)。
 
-- **API 逻辑零重复**:`deno/main.js` 经 `node:module` 的 `createRequire` 加载 CommonJS 的 `server/api.js`(登录 / 校验 / 登出 / 设置 KV),与本地 `dev-server.js`、Vercel 函数 `api/index.js` **完全同一份实现**;数据库走 `server/db-turso.js` 驱动。
+- **API 逻辑零重复**:`deno/main.js` 经 `node:module` 的 `createRequire` 加载 CommonJS 的 `server/api/index.js`(登录 / 校验 / 登出 / 设置 KV),与本地 `dev-server.js`、Vercel 函数 `api/index.js` **完全同一份实现**;数据库走 `server/db/turso.js` 驱动。
 - **数据库**:Turso(远程 libSQL),`DB_DRIVER=turso` + `DATABASE_URL` + `DATABASE_AUTH_TOKEN`;首次请求自动建表。⚠ Deno 运行时没有 `node:sqlite`,**不可用 sqlite 驱动**(未设置 `DB_DRIVER` 时代码会自动默认 `turso`)。
 - **密码与加密**:登录密码与 `AUTH_PASSWORD` 环境变量直接做常量时间比较(不落库、无随机初始密码、不支持应用内改密);AES-256-GCM 敏感键加密,`ENCRYPTION_KEY` 与本地 / Vercel / Cloudflare 部署互通。
 
@@ -171,7 +171,7 @@ A:三套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 
 | 文件 | 作用 |
 |---|---|
-| `deno/main.js` | Deno Deploy 入口(dynamic 模式:静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api.js`) |
+| `deno/main.js` | Deno Deploy 入口(dynamic 模式:静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api/index.js`) |
 | `deno.json` | `deploy` 配置(dynamic + 入口 `deno/main.js`,源码优先于控制台;`deploy.org` / `deploy.app` 由 `deno deploy switch` 或首次 CLI 部署自动写入) |
 | `.github/workflows/deploy-deno.yml` | GitHub Actions 自动部署(方式二) |
 | `docs/deploy/deno.md` | 本文档 |

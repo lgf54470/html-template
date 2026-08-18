@@ -12,7 +12,7 @@
 ```
 
 - **静态资源**:Vercel 只发布 **Output Directory**(`dist/`)的内容,`dist` 由 `npm run build`(`scripts/vercel-build.js`)生成。
-- **API**:`api/index.js` 承接全部 `/api/*` 请求(`vercel.json` 里用 `rewrites` 把 `/api/:path*` 转发到该函数,见下文「关于路由」),复用 `server/api.js` 的处理器——与本地 `dev-server.js` **完全同一份逻辑**。
+- **API**:`api/index.js` 承接全部 `/api/*` 请求(`vercel.json` 里用 `rewrites` 把 `/api/:path*` 转发到该函数,见下文「关于路由」),复用 `server/api/index.js` 的处理器——与本地 `dev-server.js` **完全同一份逻辑**。
 - **数据库**:Turso(远程 libSQL),`DB_DRIVER=turso` + `DATABASE_URL` + `DATABASE_AUTH_TOKEN`;首次请求自动建表。
 - **密码与加密**:登录密码与 `AUTH_PASSWORD` 环境变量直接做常量时间比较(不落库、无随机初始密码、不支持应用内改密);AES-256-GCM 敏感键加密,`ENCRYPTION_KEY` 与其它环境互通。
 
@@ -121,7 +121,7 @@ A:两个原因叠加:(1) 根目录的 `server.js` 会被 Vercel 自动捕获为 
 A:确认 Output Directory 设为 `dist` 且 Build Command 为 `npm run build`;`dist` 里应有 `index.html`。
 
 **Q:登录提示密码错误?**
-A:密码始终取自 `AUTH_PASSWORD` 环境变量(常量时间比较),不落库、不生成随机密码。确认 Vercel 项目 Settings → Environment Variables 里 `AUTH_PASSWORD` 已配置且与输入的密码一致;修改后**重新部署**生效。若密码确认无误仍报错,先确认部署的是最新代码(旧版 `db-turso.js` 解析不了 Turso 新版 `/v2/pipeline` 响应,任何 SELECT 都读到空行,会导致登录永远失败——新版已兼容,见下一条 FAQ)。
+A:密码始终取自 `AUTH_PASSWORD` 环境变量(常量时间比较),不落库、不生成随机密码。确认 Vercel 项目 Settings → Environment Variables 里 `AUTH_PASSWORD` 已配置且与输入的密码一致;修改后**重新部署**生效。若密码确认无误仍报错,先确认部署的是最新代码(旧版 `server/db/turso.js` 解析不了 Turso 新版 `/v2/pipeline` 响应,任何 SELECT 都读到空行,会导致登录永远失败——新版已兼容,见下一条 FAQ)。
 
 **Q:登录失败,浏览器报 `POST /api/auth/login → 404`,但静态页面正常?**
 A:这是路由问题——**Vercel 的 `api/` 目录不支持括号 catch-all 文件名**(实测 `api/[[...path]].js` / `api/[...path].js` 都会被编译成单段匹配 `^/api/([^/]+)$`,`/api/auth/login` 这类双段路径永远 404)。本仓库已改用 **`api/index.js` + `vercel.json` rewrites**(`/api/:path*` → `/api/index`)的方案,函数内从 `?path=` 查询参数还原原始路径。请**拉取最新代码并重新部署**;仍 404 时,在 Vercel 部署页的 Functions 列表确认存在 `api/index.js`,并检查是否部署的是旧代码。
@@ -145,7 +145,7 @@ A:两套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 
 | 文件 | 作用 |
 |---|---|
-| `api/index.js` | Vercel 函数入口(全部 `/api/*`,经 rewrites 转发),复用 `server/api.js` |
+| `api/index.js` | Vercel 函数入口(全部 `/api/*`,经 rewrites 转发),复用 `server/api/index.js` |
 | `vercel.json` | `framework=null` + Build Command(`npm run build`)+ Output Directory(`dist`)+ rewrites(`/api/:path*` → `/api/index`) |
 | `package.json` | 声明 `build` / `start` 脚本与 Node 版本要求(Vercel 构建依赖) |
 | `scripts/vercel-build.js` | 零依赖构建脚本:把 `index.html` / `js` / `assets` 复制到 `dist/` |

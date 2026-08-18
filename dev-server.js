@@ -8,8 +8,13 @@
  *   SQLITE_PATH       本地 sqlite 文件路径(默认 sqlite.db)
  *   DB_DRIVER         sqlite(默认) / turso(DATABASE_URL + DATABASE_AUTH_TOKEN) / d1(见 docs/deploy/cloudflare.md)
  *
- * API 逻辑在 server/api.js(与 Vercel 函数 api/index.js 共用),
- * 密码哈希与初始化在 server/auth.js。
+ * 各层职责已拆分到 server/ 下:
+ *   server/config/env.js       .env 加载
+ *   server/db/                 数据库驱动工厂 + schema + 各驱动
+ *   server/auth/ + security/   鉴权与加密(与 worker.js 共用纯逻辑)
+ *   server/api/                共享 API 处理器(路由按域拆分)
+ *   server/http/               JSON / 静态资源服务
+ *   server/logging/logger.js   终端日志
  *
  * ⚠ 文件名不能是 server.js:Vercel 会把根目录的 server.{js,cjs,mjs,ts}
  *   自动捕获为 Node.js 自定义服务器入口,接管全部请求(见 docs/deploy/vercel.md)。
@@ -19,16 +24,15 @@
  * ============================================================ */
 'use strict';
 
-require('./server/env'); // 零依赖 .env 加载(须在任何 env 读取之前)
+require('./server/config/env'); // 零依赖 .env 加载(须在任何 env 读取之前)
 
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const { getDb, isLocalSqlite, localDbPath, SCHEMA } = require('./server/db');
-const { encrypt, decrypt } = require('./server/crypto');
+const { encrypt, decrypt } = require('./server/security');
 const { verifyPassword } = require('./server/auth');
 const { createApiHandler, sendJson } = require('./server/api');
-const log = require('./server/logger');
+const { serveStatic } = require('./server/http/static');
+const log = require('./server/logging/logger');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = process.cwd();
@@ -46,48 +50,6 @@ async function bootstrap() {
 
 /* ---------- API 处理器(与 Vercel 函数共用同一实现) ---------- */
 const handleApi = createApiHandler({ db, encrypt, decrypt, verifyPassword });
-
-/* ---------- 静态资源 ---------- */
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2',
-  '.woff': 'font/woff',
-  '.ttf': 'font/ttf',
-  '.md': 'text/markdown; charset=utf-8',
-  '.txt': 'text/plain; charset=utf-8',
-};
-
-function serveStatic(req, res, pathname) {
-  let rel = pathname === '/' ? '/index.html' : pathname;
-  let filePath = path.resolve(ROOT, '.' + rel);
-  if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
-    res.writeHead(403);
-    return res.end('Forbidden');
-  }
-  fs.stat(filePath, (err, st) => {
-    if (!err && st.isDirectory()) {
-      filePath = path.join(filePath, 'index.html');
-    }
-    fs.readFile(filePath, (err2, data) => {
-      if (err2) {
-        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        return res.end('Not Found');
-      }
-      res.writeHead(200, {
-        'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': 'no-store',
-      });
-      res.end(data);
-    });
-  });
-}
 
 /* ---------- 启动 ---------- */
 const server = http.createServer((req, res) => {
@@ -110,7 +72,7 @@ const server = http.createServer((req, res) => {
     done(res.statusCode || 200);
     return origEnd.apply(this, arguments);
   };
-  serveStatic(req, res, url.pathname);
+  serveStatic(req, res, url.pathname, ROOT);
 });
 
 function start() {

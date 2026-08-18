@@ -1,24 +1,25 @@
 /* ============================================================
- * db.js — 数据库驱动工厂(零第三方依赖)
+ * db/index.js — 数据库驱动工厂(零第三方依赖)
  * ------------------------------------------------------------
- * 统一驱动接口(两个方法):
+ * 统一驱动接口:
  *   query(sql, params)  -> 行数组(对象)
  *   run(sql, params)    -> { changes, lastInsertRowid }
  *
- * 通过环境变量选择驱动:
- *   DB_DRIVER=sqlite (默认)  本地 SQLite(node:sqlite 内置,路径 SQLITE_PATH,默认 sqlite.db)
- *   DB_DRIVER=turso          远程 Turso/libSQL HTTP API(DATABASE_URL + DATABASE_AUTH_TOKEN)
- *   DB_DRIVER=d1             Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,
- *                            需要 D1_ACCOUNT_ID / D1_DATABASE_ID / D1_API_TOKEN,见 docs/deploy/cloudflare.md)
+ * 通过环境变量 DB_DRIVER 选择驱动(适配器位于本目录):
+ *   sqlite  ./sqlite.js  本地 SQLite(node:sqlite 内置,路径 SQLITE_PATH,默认 sqlite.db)
+ *   turso   ./turso.js   远程 Turso/libSQL HTTP API(DATABASE_URL + DATABASE_AUTH_TOKEN)
+ *   d1      ./d1.js      Cloudflare D1(Worker 内原生 binding;本地走 D1 REST API,
+ *                         需要 D1_ACCOUNT_ID / D1_DATABASE_ID / D1_API_TOKEN)
  *
- * 适配器各自负责参数绑定与行数据形状的统一,业务代码只依赖本接口。
+ * 建表语句统一来自 ./schema.js;适配器各自负责参数绑定与行数据形状,
+ * 业务代码只依赖本接口。
  * ============================================================ */
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
+const { SCHEMA } = require('./schema');
 
-const DRIVERS = { sqlite: 'db-sqlite', turso: 'db-turso', d1: 'db-d1' };
+const DRIVERS = { sqlite: 'sqlite', turso: 'turso', d1: 'd1' };
 
 function loadAdapter() {
   const driver = (process.env.DB_DRIVER || 'sqlite').toLowerCase();
@@ -34,21 +35,6 @@ function loadAdapter() {
   }
   return mod;
 }
-
-/** 建表(与驱动无关的通用 schema;驱动可在 init 中先建库) */
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS app_settings (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-CREATE TABLE IF NOT EXISTS auth_sessions (
-  token_hash TEXT PRIMARY KEY,  -- 会话令牌的 SHA-256 哈希,绝不存明文令牌
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  expires_at TEXT,
-  note       TEXT
-);
-`;
 
 let db = null;
 
@@ -67,7 +53,7 @@ function localDbPath() {
     : null;
 }
 
-/** 是否使用本地 sqlite(用于首启密码落盘提示) */
+/** 是否使用本地 sqlite(用于首启提示) */
 function isLocalSqlite() {
   return (process.env.DB_DRIVER || 'sqlite').toLowerCase() === 'sqlite';
 }

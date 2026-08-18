@@ -24,7 +24,7 @@ python -m http.server 8000
 AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
 ```
 
-所有环境变量(`PORT` / `AUTH_PASSWORD` / `DB_DRIVER` / `SQLITE_PATH` / `DATABASE_URL` / `DATABASE_AUTH_TOKEN`)也支持写入项目根目录的 `.env`(零依赖加载器 `server/env.js`,进程环境变量优先;模板见 `.env.example`,`.env` 已 gitignore)。
+所有环境变量(`PORT` / `AUTH_PASSWORD` / `DB_DRIVER` / `SQLITE_PATH` / `DATABASE_URL` / `DATABASE_AUTH_TOKEN`)也支持写入项目根目录的 `.env`(零依赖加载器 `server/config/env.js`,进程环境变量优先;模板见 `.env.example`,`.env` 已 gitignore)。
 
 ## 服务器模式与全局鉴权(x-auth-password)
 
@@ -166,7 +166,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
    - 判定为敏感键的规则:键名含 `password / email / apikey / api_key / secret / token / credential / access_key` 之一,或整体为含敏感字段的配置块(`settings:profile` 含邮箱)。
    - `settings:auth:*` 保留键(历史遗留,如 `settings:auth:password`)另有防线:通用 KV 接口读写均拒绝、GET 不返回。
 
-**模块数据表同样适用**:任何模块表(如笔记 `notes_data`)的敏感列(邮箱/apikey/token/密钥)必须用同样方案加密落库,禁止明文;密钥管理统一走 `server/crypto.js`。
+**模块数据表同样适用**:任何模块表(如笔记 `notes_data`)的敏感列(邮箱/apikey/token/密钥)必须用同样方案加密落库,禁止明文;密钥管理统一走 `server/security/`。
 
 ## 数据库设计
 

@@ -285,7 +285,7 @@ A:完全可以。本地 `node dev-server.js`(sqlite)与 Cloudflare(Worker + D1)�
 |---|---|
 | `wrangler.toml` | Worker 配置:入口、静态资源绑定、D1 binding |
 | `worker.js` | Worker 入口:静态资源兜底 + `/api/*` 鉴权 API |
-| `server/db-d1.js` | D1 适配器:Worker 内原生 binding / 本地 REST 两种模式 |
+| `server/db/d1.js` | D1 适配器:Worker 内原生 binding / 本地 REST 两种模式 |
 | `.assetsignore` | 静态资源排除清单(本地文件、文档、CI 不上传) |
 | `.github/workflows/deploy-cloudflare.yml` | GitHub Actions 自动部署 |
 | `.dev.vars.example` | `wrangler dev` 本地调试环境变量模板 |

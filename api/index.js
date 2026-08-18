@@ -23,10 +23,10 @@
 if (!process.env.DB_DRIVER) process.env.DB_DRIVER = 'turso';
 
 const { getDb, SCHEMA } = require('../server/db');
-const { encrypt, decrypt } = require('../server/crypto');
+const { encrypt, decrypt } = require('../server/security');
 const { verifyPassword } = require('../server/auth');
 const { createApiHandler, sendJson } = require('../server/api');
-const log = require('../server/logger');
+const log = require('../server/logging/logger');
 
 /* 数据库单例:每个 Lambda 实例一份(DB_DRIVER 必须是 turso,否则启动报错) */
 const db = getDb();

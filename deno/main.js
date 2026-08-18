@@ -4,12 +4,12 @@
  * 与根目录 dev-server.js 职责一一对应,按 Deno Deploy 运行时适配:
  *   - 静态资源:Deno Deploy 的 dynamic 模式没有独立的静态层,全部请求
  *     都进入本入口,由本文件直接读取部署包内的 index.html / js / assets 返回
- *   - API:登录 / 校验 / 登出 / 设置 KV,逻辑复用 server/api.js —— 经
+ *   - API:登录 / 校验 / 登出 / 设置 KV,逻辑复用 server/api/index.js —— 经
  *     node:module 的 createRequire 加载 CommonJS(与 dev-server.js /
  *     api/index.js 完全同一份实现,不重复第三处逻辑)
- *   - 数据库:Turso(HTTP v2 pipeline),驱动 server/db-turso.js
- *   - 密码校验:登录密码与 secret AUTH_PASSWORD 常量时间比较(server/auth.js)
- *   - 敏感键加密:AES-256-GCM,存储格式与 server/crypto.js 一致(enc:v1:...)
+ *   - 数据库:Turso(HTTP v2 pipeline),驱动 server/db/turso.js
+ *   - 密码校验:登录密码与 secret AUTH_PASSWORD 常量时间比较(server/auth/index.js)
+ *   - 敏感键加密:AES-256-GCM,存储格式与 server/security/index.js 一致(enc:v1:...)
  *
  * 环境变量(在 Deno Deploy 控制台 App → Environment variables 配置,
  * 或用 `deno deploy env add <名称> <值> [--secret]` 设置,见 docs/deploy/deno.md):
@@ -30,10 +30,11 @@ if (!Deno.env.get('DB_DRIVER')) Deno.env.set('DB_DRIVER', 'turso');
 
 /* ---------- 复用共享 CommonJS 实现(与 dev-server.js / api/index.js 同一份逻辑) ---------- */
 const require = createRequire(import.meta.url);
-const { getDb, SCHEMA } = require('../server/db.js');
-const { encrypt, decrypt } = require('../server/crypto.js');
-const { verifyPassword } = require('../server/auth.js');
-const { createApiHandler } = require('../server/api.js');
+const { getDb, SCHEMA } = require('../server/db/index.js');
+const { encrypt, decrypt } = require('../server/security/index.js');
+const { verifyPassword } = require('../server/auth/index.js');
+const { createApiHandler } = require('../server/api/index.js');
+const { MIME } = require('../server/http/mime.js');
 
 /* ---------- 静态资源根目录:部署包内的仓库根目录(deno/ 的上一级) ---------- */
 const ROOT = resolve(import.meta.dirname, '..');
@@ -122,22 +123,7 @@ function makeNodeRes() {
   return res;
 }
 
-/* ---------- 静态资源(与 dev-server.js 的 serveStatic 行为一致) ---------- */
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2',
-  '.woff': 'font/woff',
-  '.ttf': 'font/ttf',
-  '.md': 'text/markdown; charset=utf-8',
-  '.txt': 'text/plain; charset=utf-8',
-};
+/* ---------- 静态资源(与 dev-server.js 的 serveStatic 行为一致;MIME 复用 server/http/mime.js) ---------- */
 
 async function serveStatic(pathname) {
   const rel = pathname === '/' ? '/index.html' : pathname;

@@ -270,6 +270,9 @@
     var h = window.location.hash || '';
     if (h.charAt(0) === '#') h = h.slice(1);
     if (h === '' || h === '/' || h === '#') return '/';
+    // 支持查询参数深链(如 #/apihub?r=GET%20/api/settings):路由匹配仅看路径段
+    var q = h.indexOf('?');
+    if (q !== -1) h = h.slice(0, q);
     return h;
   }
 

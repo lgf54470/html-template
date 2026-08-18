@@ -76,21 +76,34 @@ function authRoutes({ db, verifyPassword }) {
   }
 
   return [
-    { method: 'POST', path: '/api/auth/login', public: true, handler: login },
+    {
+      method: 'POST',
+      path: '/api/auth/login',
+      public: true,
+      desc: '使用全局密码登录,换取会话令牌 x-auth-token',
+      handler: login,
+    },
     {
       method: 'GET',
       path: '/api/auth/verify',
+      desc: '校验当前会话令牌是否有效,返回剩余有效时长',
+      // session 可能为空(公开 / 全局密码 / API Key 鉴权),容忍处理
       handler(req, res, ctx) {
-        return sendJson(res, 200, { ok: true, expiry: ctx.session.note });
+        return sendJson(res, 200, {
+          ok: true,
+          expiry: ctx.session ? ctx.session.note : null,
+        });
       },
     },
     {
       method: 'POST',
       path: '/api/auth/logout',
+      desc: '注销当前会话令牌(按请求头 x-auth-token 定位)',
       async handler(req, res) {
-        await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [
-          sha256(req.headers['x-auth-token']),
-        ]);
+        const token = req.headers['x-auth-token'];
+        if (typeof token === 'string' && token) {
+          await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(token)]);
+        }
         return sendJson(res, 200, { ok: true });
       },
     },

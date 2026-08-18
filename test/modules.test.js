@@ -113,7 +113,7 @@ test('boot.js: MODULE_DIRS 已切换到新模块并移除占位模块', async ()
   assert.equal(r.status, 200);
   assert.match(
     r.text,
-    /MODULE_DIRS = \['dashboard', 'tasks', 'apps', 'chats', 'docs', 'settings'\]/
+    /MODULE_DIRS = \['dashboard', 'tasks', 'apps', 'chats', 'docs', 'apihub', 'settings'\]/
   );
   assert.doesNotMatch(r.text, /'channels'|'tokens'|'logs'/);
 });

@@ -14,7 +14,10 @@
  *   - sha256/findSession server/auth/session.js
  *   - 敏感键判定         server/security/sensitive.js
  *   - AES-256-GCM       server/security/core.js
+ *   - API Hub 策略       server/hub/index.js(公开开关 / 鉴权方式 / 自定义路由)
+ *
  * Worker 只保留传输层适配(原生 Response / env secret),不再重复实现上述逻辑。
+ * 鉴权门禁与 Node 端一致:默认需会话令牌;API Hub 可配置公开 / 自定义鉴权。
  *
  * 环境变量(通过 `wrangler secret put` 设置,勿写入 wrangler.toml):
  *   AUTH_PASSWORD   登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
@@ -36,6 +39,7 @@ import { GLOBAL_WORKSPACE_ID, workspaceIdForKey } from './server/db/scope.js';
 import { encryptWithKey, decryptWithKey } from './server/security/core.js';
 import { createThrottle } from './server/auth/throttle.js';
 import { SECURITY_HEADERS } from './server/http/headers.js';
+import { createHub } from './server/hub/index.js';
 
 /* ---------- 登录限流(仅统计密码错误次数;与 Node 路由共用 server/auth/throttle.js) ---------- */
 const loginThrottle = createThrottle();
@@ -102,11 +106,6 @@ function decrypt(stored, env) {
   return decryptWithKey(key(env), stored);
 }
 
-/* ---------- 会话(数据库只存令牌哈希;查询逻辑在 server/auth/session.js) ---------- */
-async function authed(request, db) {
-  return findSession(db, request.headers.get('x-auth-token'));
-}
-
 /* ---------- HTTP 工具(Worker 原生 Response) ---------- */
 function sendJson(status, obj) {
   return new Response(JSON.stringify(obj), {
@@ -129,15 +128,40 @@ async function readJson(request) {
   }
 }
 
+/** 取静态资源白名单允许的 API 路由元信息(与 server/api/index.js 路由表对应) */
+function matchStaticRoute(method, pathname) {
+  const key = method + ' ' + pathname;
+  const table = [
+    { key: 'POST /api/auth/login', kind: 'login', public: true },
+    { key: 'GET /api/auth/verify', kind: 'verify' },
+    { key: 'POST /api/auth/logout', kind: 'logout' },
+    { key: 'GET /api/settings', kind: 'getSettings' },
+    { key: 'PUT /api/settings', kind: 'putSettings' },
+    { key: 'DELETE /api/settings', kind: 'deleteSettings' },
+    { key: 'GET /api/hub/state', kind: 'hubState', mgmt: true },
+    { key: 'PUT /api/hub/config', kind: 'hubConfig', mgmt: true },
+  ];
+  for (const r of table) {
+    if (r.key === key) return r;
+  }
+  return null;
+}
+
+function normalizePath(pathname) {
+  if (pathname.length > 1) pathname = pathname.replace(/\/+$/, '');
+  return pathname || '/';
+}
+
 /* ---------- API 路由(与 server/api/index.js 的 createApiHandler 保持一致) ---------- */
 async function handleApi(request, env, pathname) {
   const db = getDb(env);
   await boot(db); // 建表(幂等,仅首次真正执行)
   const method = request.method;
-  const parts = pathname.split('/').filter(Boolean);
+  pathname = normalizePath(pathname);
+  const key = method + ' ' + pathname;
 
-  // POST /api/auth/login
-  if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'login') {
+  // POST /api/auth/login(内置公开路由,始终无需令牌)
+  if (method === 'POST' && pathname === '/api/auth/login') {
     const body = await readJson(request);
     const password = typeof body.password === 'string' ? body.password : '';
     const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
@@ -168,25 +192,111 @@ async function handleApi(request, env, pathname) {
     return sendJson(200, { token, expiresAt, expiry });
   }
 
-  const session = await authed(request, db);
-  if (!session) return sendJson(401, { error: 'unauthorized', message: '登录已失效,请重新登录' });
+  /* ---------- API Hub:配置存取 + 公开/鉴权策略门禁(与 Node 端一致) ---------- */
+  const hub = createHub({
+    db,
+    encrypt: (v) => encrypt(v, env),
+    decrypt: (v) => decrypt(v, env),
+    verifyPassword: (p) => verifyEnvPassword(p, env),
+    matchesPassword,
+  });
+  const state = await hub.loadAll();
+  const staticMeta = matchStaticRoute(method, pathname);
+  const custom = staticMeta
+    ? null
+    : state.config.customRoutes.find((c) => c.method + ' ' + c.path === key) || null;
+
+  if (!staticMeta && !custom) return sendJson(404, { error: 'not_found' });
+
+  // 管理接口强制会话鉴权;其余按 Hub 策略(公开开关 + 鉴权方式)
+  let policy;
+  if (staticMeta && staticMeta.mgmt) {
+    policy = { public: false, auth: 'session', isHubMgmt: true };
+  } else if (staticMeta && staticMeta.public) {
+    policy = { public: true, auth: 'none', isHubMgmt: false };
+  } else {
+    policy = hub.policyFor(key, custom, state.config);
+  }
+
+  const auth = await hub.authorize(
+    request,
+    key,
+    { auth: policy.auth, customId: custom ? custom.id : null },
+    state
+  );
+  if (!auth.ok) return sendJson(auth.status, { error: auth.error, message: auth.message });
+  const session = auth.session;
+
+  // 自定义路由执行(echo / static)
+  if (custom) {
+    return hub.handleCustom(custom, request, null, (res, status, obj) => sendJson(status, obj));
+  }
+
+  // GET /api/hub/state — 路由发现(内置 + 自定义,不含管理接口)+ 配置 + 密钥
+  if (staticMeta.kind === 'hubState') {
+    const staticRoutes = [];
+    for (const r of [
+      'POST /api/auth/login',
+      'GET /api/auth/verify',
+      'POST /api/auth/logout',
+      'GET /api/settings',
+      'PUT /api/settings',
+      'DELETE /api/settings',
+    ]) {
+      const m = matchStaticRoute(...r.split(' '));
+      const [, p] = r.split(' ');
+      staticRoutes.push({
+        method: m.key.split(' ')[0],
+        path: p,
+        builtIn: true,
+        public: !!m.public,
+        desc: '',
+      });
+    }
+    const customRoutes = state.config.customRoutes.map((c) => ({
+      id: c.id,
+      method: c.method,
+      path: c.path,
+      builtIn: false,
+      name: c.name,
+      desc: c.desc,
+      public: c.public,
+    }));
+    return sendJson(200, {
+      routes: staticRoutes.concat(customRoutes),
+      config: state.config,
+      secrets: state.secrets,
+    });
+  }
+
+  // PUT /api/hub/config — 保存配置与密钥
+  if (staticMeta.kind === 'hubConfig') {
+    const body = await readJson(request);
+    try {
+      const saved = await hub.saveAll(body || {});
+      return sendJson(200, { ok: true, config: saved.config, secrets: saved.secrets });
+    } catch (e) {
+      return sendJson(400, { error: 'bad_config', message: String((e && e.message) || e) });
+    }
+  }
 
   // GET /api/auth/verify
-  if (method === 'GET' && parts[1] === 'auth' && parts[2] === 'verify') {
-    return sendJson(200, { ok: true, expiry: session.note });
+  if (staticMeta.kind === 'verify') {
+    return sendJson(200, { ok: true, expiry: session ? session.note : null });
   }
 
   // POST /api/auth/logout
-  if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
-    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [
-      sha256(request.headers.get('x-auth-token')),
-    ]);
+  if (staticMeta.kind === 'logout') {
+    const token = request.headers.get('x-auth-token');
+    if (token) {
+      await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(token)]);
+    }
     return sendJson(200, { ok: true });
   }
 
   // GET /api/settings(保留键 settings:auth:* 不返回;敏感键解密后返回;
   // 返回全局注册表 + 指定/当前工作空间的设置)
-  if (method === 'GET' && parts[1] === 'settings') {
+  if (staticMeta.kind === 'getSettings') {
     const url = new URL(request.url);
     const requestedWs = url.searchParams.get('workspace') || '';
     let activeWs = requestedWs;
@@ -210,7 +320,7 @@ async function handleApi(request, env, pathname) {
   }
 
   // PUT /api/settings(按键归属作用域落库:全局键 → global,其余 → 当前工作空间)
-  if (method === 'PUT' && parts[1] === 'settings') {
+  if (staticMeta.kind === 'putSettings') {
     const body = await readJson(request);
     const entries = body && typeof body.settings === 'object' ? body.settings : null;
     if (!entries) return sendJson(400, { error: 'bad_body', message: '需要 { settings: {...} }' });
@@ -247,7 +357,7 @@ async function handleApi(request, env, pathname) {
   }
 
   // DELETE /api/settings(按当前/指定工作空间定位;全局键仍落在 global)
-  if (method === 'DELETE' && parts[1] === 'settings') {
+  if (staticMeta.kind === 'deleteSettings') {
     const body = await readJson(request);
     const keys = Array.isArray(body && body.keys) ? body.keys : [];
     const url = new URL(request.url);

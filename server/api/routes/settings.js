@@ -120,9 +120,24 @@ function settingsRoutes({ db, encrypt, decrypt }) {
   }
 
   return [
-    { method: 'GET', path: '/api/settings', handler: getSettings },
-    { method: 'PUT', path: '/api/settings', handler: putSettings },
-    { method: 'DELETE', path: '/api/settings', handler: deleteSettings },
+    {
+      method: 'GET',
+      path: '/api/settings',
+      desc: '读取全部应用设置 KV(按工作空间隔离,敏感键解密返回)',
+      handler: getSettings,
+    },
+    {
+      method: 'PUT',
+      path: '/api/settings',
+      desc: '批量写入设置 KV({ settings: { key: value } },敏感键加密落库)',
+      handler: putSettings,
+    },
+    {
+      method: 'DELETE',
+      path: '/api/settings',
+      desc: '批量删除设置 KV({ keys: [ ... ] })',
+      handler: deleteSettings,
+    },
   ];
 }
 

@@ -7,12 +7,12 @@
  *     才进入本 Worker,非 API 请求一律透传给 ASSETS 绑定
  *   - API:登录 / 校验 / 登出 / 改密 / 设置 KV,逻辑与 server/api.js 保持一致
  *   - 数据库:Cloudflare D1(binding = DB),适配器 server/db-d1.js
- *   - 密码哈希:PBKDF2-SHA256(WebCrypto,不占 CPU 配额;
- *     同时兼容本地 dev-server.js 生成的 scrypt 哈希)
+ *   - 密码校验:登录密码与 secret AUTH_PASSWORD 常量时间比较
+ *     (不落库、无随机初始密码;与 server/auth.js 逻辑一致)
  *   - 敏感键加密:AES-256-GCM,存储格式与 server/crypto.js 一致(enc:v1:...)
  *
  * 环境变量(通过 `wrangler secret put` 设置,勿写入 wrangler.toml):
- *   AUTH_PASSWORD   首次启动初始化管理员密码(生产必设;密码已在库中则忽略)
+ *   AUTH_PASSWORD   登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
  *   ENCRYPTION_KEY  敏感数据加密密钥,64 位 hex(生产必设;缺失时报错)
  *
  * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server/api.js(或反之)。
@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 );
 `;
 
-const AUTH_KEY = 'settings:auth:password';
 const RESERVED_SETTINGS_PREFIX = 'settings:auth:';
 const SENSITIVE_WORDS = ['password', 'email', 'apikey', 'api_key', 'secret', 'token', 'credential', 'access_key'];
 
@@ -63,14 +62,11 @@ function getDb(env) {
   return _db;
 }
 
-/* ---------- 首次启动:建表 + 初始化管理员密码(每 isolate 一次) ---------- */
+/* ---------- 首次启动:建表(每 isolate 一次;密码由 AUTH_PASSWORD secret 直接校验) ---------- */
 let _boot = null;
 function boot(db, env) {
   if (!_boot) {
-    _boot = (async () => {
-      await db.initSchema(SCHEMA);
-      await ensureAuthPassword(db, env);
-    })().catch((e) => {
+    _boot = db.initSchema(SCHEMA).catch((e) => {
       _boot = null; // 失败后允许下次请求重试
       throw e;
     });
@@ -78,76 +74,15 @@ function boot(db, env) {
   return _boot;
 }
 
-async function ensureAuthPassword(db, env) {
-  const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
-  if (row && row.value) return false; // 已存在密码(含用户改密后),忽略 AUTH_PASSWORD
-  const initial = env.AUTH_PASSWORD || randomPassword();
-  await db.run(
-    "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')",
-    [AUTH_KEY, await hashPassword(initial)],
-  );
-  if (!env.AUTH_PASSWORD) {
-    console.warn('[auth] 未设置 AUTH_PASSWORD,已生成随机初始密码: ' + initial +
-      ';生产环境请用 `wrangler secret put AUTH_PASSWORD` 预置(可用 `wrangler tail` 查看日志)');
+/* ---------- 密码校验:与 secret AUTH_PASSWORD 常量时间比较(不落库、无随机值) ---------- */
+function verifyEnvPassword(password, env) {
+  const expected = env.AUTH_PASSWORD;
+  if (!expected) {
+    throw new Error('[auth] 未配置 AUTH_PASSWORD secret,请用 `wrangler secret put AUTH_PASSWORD` 设置后再登录');
   }
-  return true;
-}
-
-function randomPassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#%';
-  let s = '';
-  for (let i = 0; i < 14; i++) s += chars[crypto.randomInt(chars.length)];
-  return s;
-}
-
-/* ---------- 密码哈希:PBKDF2-SHA256(WebCrypto,不占 CPU 配额) ---------- */
-function subtle() {
-  return (globalThis.crypto && globalThis.crypto.subtle) || crypto.webcrypto.subtle;
-}
-
-async function pbkdf2(password, saltHex, iterations, keyLen) {
-  const keyMaterial = await subtle().importKey(
-    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'],
-  );
-  const bits = await subtle().deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: Buffer.from(saltHex, 'hex'), iterations },
-    keyMaterial, keyLen * 8,
-  );
-  return Buffer.from(bits).toString('hex');
-}
-
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const iterations = 100000;
-  const hash = await pbkdf2(password, salt, iterations, 32);
-  return 'pbkdf2$' + iterations + '$' + salt + '$' + hash;
-}
-
-function timingSafeEqualHex(a, b) {
-  const x = Buffer.from(String(a), 'hex');
-  const y = Buffer.from(String(b), 'hex');
-  return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
-}
-
-async function verifyPassword(password, stored) {
-  if (!stored) return false;
-  const parts = String(stored).split('$');
-  if (parts[0] === 'pbkdf2' && parts.length === 4) {
-    const hash = await pbkdf2(password, parts[2], Number(parts[1]) || 100000, 32);
-    return timingSafeEqualHex(hash, parts[3]);
-  }
-  if (parts[0] === 'scrypt' && parts.length === 6) {
-    // 兼容本地 dev-server.js 生成的 scrypt 哈希(异步版,不阻塞 Worker 主线程)
-    const [, N, r, p, salt, expected] = parts;
-    const hash = await new Promise((resolve, reject) => {
-      crypto.scrypt(password, salt, 64, { N: Number(N), r: Number(r), p: Number(p) }, (err, key) => {
-        if (err) reject(err);
-        else resolve(key.toString('hex'));
-      });
-    });
-    return timingSafeEqualHex(hash, expected);
-  }
-  return false;
+  const a = Buffer.from(String(password));
+  const b = Buffer.from(String(expected));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 /* ---------- 敏感键加密(AES-256-GCM,格式与 server/crypto.js 一致) ---------- */
@@ -256,8 +191,13 @@ async function handleApi(request, env, pathname) {
     const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
     const ttl = EXPIRY_MS[expiry];
     if (!ttl) return sendJson(400, { error: 'bad_expiry', message: '不支持的失效选项' });
-    const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
-    if (!(await verifyPassword(password, row && row.value))) {
+    let ok;
+    try {
+      ok = verifyEnvPassword(password, env);
+    } catch (e) {
+      return sendJson(500, { error: 'no_auth_password', message: String((e && e.message) || e) });
+    }
+    if (!ok) {
       return sendJson(401, { error: 'bad_password', message: '密码错误' });
     }
     const token = crypto.randomBytes(24).toString('base64url');
@@ -277,23 +217,6 @@ async function handleApi(request, env, pathname) {
   // POST /api/auth/logout
   if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
     await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(request.headers.get('x-auth-token'))]);
-    return sendJson(200, { ok: true });
-  }
-
-  // POST /api/auth/password(改密后吊销全部既有会话)
-  if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'password') {
-    const body = await readJson(request);
-    const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
-    if (!(await verifyPassword(String(body.currentPassword || ''), row && row.value))) {
-      return sendJson(401, { error: 'bad_password', message: '当前密码错误' });
-    }
-    const np = String(body.newPassword || '');
-    if (np.length < 6) return sendJson(400, { error: 'weak_password', message: '新密码至少 6 位' });
-    await db.run(
-      "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')",
-      [AUTH_KEY, await hashPassword(np)],
-    );
-    await db.run('DELETE FROM auth_sessions');
     return sendJson(200, { ok: true });
   }
 

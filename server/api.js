@@ -2,17 +2,19 @@
  * api.js — 共享 API 处理器(Node http req/res 风格,零第三方依赖)
  * ------------------------------------------------------------
  * 供 dev-server.js(本地 http 服务器)与 Vercel 函数
- * (api/[[...path]].js)共用,保证两处逻辑完全一致。
+ * (api/index.js)共用,保证两处逻辑完全一致。
  * 用法:
  *   const { createApiHandler, sendJson } = require('./server/api');
- *   const handleApi = createApiHandler({ db, encrypt, decrypt, hashPassword, verifyPassword });
+ *   const handleApi = createApiHandler({ db, encrypt, decrypt, verifyPassword });
  *   await handleApi(req, res, pathname);
+ *
+ * 密码校验:登录密码与部署平台环境变量 AUTH_PASSWORD 直接做常量时间比较
+ * (见 server/auth.js),不落库、无随机初始密码、不支持改密。
  *
  * API(除 /api/auth/login 外均需请求头 x-auth-token):
  *   POST   /api/auth/login     { password, expiry }  -> { token, expiresAt }
  *   GET    /api/auth/verify                            -> { ok: true }
  *   POST   /api/auth/logout                            登出(删除会话)
- *   POST   /api/auth/password  { currentPassword, newPassword } 修改密码
  *   GET    /api/settings                               全部 app_settings(KV)
  *   PUT    /api/settings       { settings: { key: value } }  批量写入
  *   DELETE /api/settings       { keys: [ ... ] }       删除
@@ -97,7 +99,7 @@ async function authed(db, req, res) {
 
 /* ---------- API 处理器工厂 ---------- */
 function createApiHandler(ctx) {
-  const { db, encrypt, decrypt, hashPassword, verifyPassword } = ctx;
+  const { db, encrypt, decrypt, verifyPassword } = ctx;
 
   return async function handleApi(req, res, pathname) {
     const method = req.method;
@@ -111,8 +113,13 @@ function createApiHandler(ctx) {
       const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
       const ttl = EXPIRY_MS[expiry];
       if (!ttl) return sendJson(res, 400, { error: 'bad_expiry', message: '不支持的失效选项' });
-      const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [ctx.authKey]);
-      if (!(await verifyPassword(password, row && row.value))) {
+      let ok;
+      try {
+        ok = verifyPassword(password); // 与 AUTH_PASSWORD 环境变量常量时间比较
+      } catch (e) {
+        return sendJson(res, 500, { error: 'no_auth_password', message: String((e && e.message) || e) });
+      }
+      if (!ok) {
         return sendJson(res, 401, { error: 'bad_password', message: '密码错误' });
       }
       const token = crypto.randomBytes(24).toString('base64url');
@@ -133,25 +140,6 @@ function createApiHandler(ctx) {
     // POST /api/auth/logout
     if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
       await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(req.headers['x-auth-token'])]);
-      return sendJson(res, 200, { ok: true });
-    }
-
-    // POST /api/auth/password
-    if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'password') {
-      let body;
-      try { body = await readBody(req); } catch (e) { return sendJson(res, 400, { error: 'bad_json' }); }
-      const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [ctx.authKey]);
-      if (!(await verifyPassword(String(body.currentPassword || ''), row && row.value))) {
-        return sendJson(res, 401, { error: 'bad_password', message: '当前密码错误' });
-      }
-      const np = String(body.newPassword || '');
-      if (np.length < 6) return sendJson(res, 400, { error: 'weak_password', message: '新密码至少 6 位' });
-      await db.run(
-        'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
-        [ctx.authKey, hashPassword(np)],
-      );
-      // 修改密码后吊销全部既有会话
-      await db.run('DELETE FROM auth_sessions');
       return sendJson(res, 200, { ok: true });
     }
 

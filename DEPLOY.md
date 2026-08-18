@@ -11,9 +11,9 @@
 ```
 
 - **静态资源**:由 `wrangler.toml` 的 `[assets]` 绑定托管,全球边缘网络分发,不经过 Worker。
-- **API**:`worker.js` 处理 `/api/*`(登录、会话校验、登出、改密、设置读写),逻辑与本地 `dev-server.js` 一致。
+- **API**:`worker.js` 处理 `/api/*`(登录、会话校验、登出、设置读写),逻辑与本地 `dev-server.js` 一致。
 - **数据库**:Cloudflare D1(SQLite 兼容,免费额度充足);建表在首个请求时自动完成,无需手动执行 SQL。
-- **密码与加密**:Worker 内密码哈希用 PBKDF2-SHA256(WebCrypto,不占 CPU 配额),同时兼容本地 `scrypt` 哈希;敏感键值(邮箱等)仍为 AES-256-GCM 加密落库,格式与本地互通。
+- **密码与加密**:登录密码与 `AUTH_PASSWORD` secret 直接做常量时间比较(不落库、无随机初始密码、不支持应用内改密);敏感键值(邮箱等)仍为 AES-256-GCM 加密落库,格式与本地互通。
 
 ## 三种部署方式一览
 
@@ -72,7 +72,7 @@ Worker 运行在无文件系统环境,**首次部署前必须设置**:
 
 | Secret | 作用 | 说明 |
 |---|---|---|
-| `AUTH_PASSWORD` | 首次登录管理员密码 | 密码已存在于数据库时会被忽略(见[第 5 节](#5-首次登录与修改密码));未设置会生成随机密码,只能从日志里找 |
+| `AUTH_PASSWORD` | 登录密码(**必设**) | 登录时直接与 secret 比较;未设置时登录返回明确报错,绝不生成随机密码 |
 | `ENCRYPTION_KEY` | 敏感数据加密密钥 | 0.3 生成的 64 位 hex |
 
 设置方式(任选其一,与部署方式对应):
@@ -143,7 +143,7 @@ Workers 支持直接连接 GitHub / GitLab 仓库,推送即自动构建部署,�
 ```bash
 npx wrangler@latest login                        # 浏览器授权
 npx wrangler@latest d1 create html-template-db        # 并把 database_id 填入 wrangler.toml(0.2)
-npx wrangler@latest secret put AUTH_PASSWORD     # 输入首次登录密码
+npx wrangler@latest secret put AUTH_PASSWORD     # 输入登录密码(与线上保持一致)
 npx wrangler@latest secret put ENCRYPTION_KEY    # 输入 64 位 hex(0.3)
 npx wrangler@latest deploy
 ```
@@ -158,7 +158,7 @@ npx wrangler@latest dev            # 本地模拟 Worker + 静态资源 + D1
 ```
 
 - 本地 D1 数据存放在 `.wrangler/state`,与线上隔离。
-- 数据库建表在首个请求时自动完成;首个请求可能稍慢(建表 + 初始化密码)。
+- 数据库建表在首个请求时自动完成;首个请求可能稍慢(建表)。
 - 想要重置本地数据库:删除 `.wrangler/state` 后重启 `wrangler dev`。
 
 ### 3.3 常用命令速查
@@ -181,23 +181,15 @@ npx wrangler dev                                            # 本地调试
 1. 打开部署 URL → 出现**登录页**(说明静态资源正常)。
 2. 用 `AUTH_PASSWORD` 登录 → 进入仪表盘(说明 Worker + D1 正常)。
 3. 修改任意设置(如主题)→ 刷新页面设置保留(说明设置已写入 D1)。
-4. 在 **设置 → 账号** 修改密码(推荐,见下)。
+4. (可选)想改密码:更新 `AUTH_PASSWORD` secret 后重新部署即可(见[第 5 节](#5-登录与修改密码))。
 
 ---
 
-## 5. 首次登录与修改密码
+## 5. 登录与修改密码
 
 1. 打开部署 URL,输入 `AUTH_PASSWORD` 登录。
-2. 立即到 **设置 → 账号** 修改密码(改密后旧密码与全部会话立即失效)。
-3. `AUTH_PASSWORD` 仅在**密码不存在时**用于初始化;改密后再次修改 `AUTH_PASSWORD` secret **不会**改变密码。
-
-**忘记密码 / 需要重置**:删除密码记录后再设置新的 `AUTH_PASSWORD`:
-
-```bash
-npx wrangler d1 execute html-template-db --remote --command "DELETE FROM app_settings WHERE key='settings:auth:password'"
-npx wrangler secret put AUTH_PASSWORD    # 输入新密码
-# 下一个请求会自动用新 AUTH_PASSWORD 重新初始化
-```
+2. 密码由该 secret 统一管理,**应用内不支持修改**:改密 = 更新 `AUTH_PASSWORD` secret 后重新部署(旧的已签发会话会在过期 / 登出后自然失效)。
+3. 未设置 `AUTH_PASSWORD` 时,登录接口返回明确报错(不会生成随机密码)。
 
 ---
 
@@ -214,11 +206,11 @@ DB_DRIVER=d1
 D1_ACCOUNT_ID=<账号 ID>
 D1_DATABASE_ID=<D1 数据库 ID>
 D1_API_TOKEN=<API Token,权限:D1 Read / D1 Write>
-AUTH_PASSWORD=<与线上相同的初始密码>
+AUTH_PASSWORD=<与线上相同的登录密码>
 ENCRYPTION_KEY=<与线上相同的密钥>
 ```
 
-启动本地服务器,首次启动即通过 D1 REST API 自动建表并写入初始密码:
+启动本地服务器,首次启动即通过 D1 REST API 自动建表:
 
 ```bash
 node dev-server.js
@@ -238,8 +230,8 @@ npx wrangler d1 execute html-template-db --remote --file=dump.sql
 注意事项:
 
 - **加密数据必须使用相同的 `ENCRYPTION_KEY`**,否则迁移后邮箱等敏感字段无法解密。
-- 密码哈希可互通:Worker 可校验本地 `scrypt` 哈希(旧密码继续可用),新改的密码会以 PBKDF2 格式入库。
-- 迁移后建议立即用旧密码登录一次,再在 **设置 → 账号** 改密刷新哈希。
+- 登录密码由 `AUTH_PASSWORD` 统一校验,本地与线上配置同一个值即可,不涉及密码哈希迁移。
+- 迁移后建议用 `AUTH_PASSWORD` 登录一次验证读写正常。
 
 ---
 
@@ -264,8 +256,8 @@ npx wrangler pages deploy dist --project-name=html-template-static
 **Q:打开 URL 显示 404 / 样式加载不出来?**
 A:检查 `.assetsignore` 是否误排除 `index.html` / `js` / `assets`;确认用的是仓库根目录部署(不要只上传 `server/`)。
 
-**Q:登录提示密码错误 / 不知道初始密码?**
-A:确认已设置 `AUTH_PASSWORD` secret(`wrangler secret list` 查看);若未设置,Worker 生成了随机密码,用 `npx wrangler tail` 查看日志里的「初始密码」。若密码已存在,`AUTH_PASSWORD` 会被忽略——按[第 5 节](#5-首次登录与修改密码)重置。
+**Q:登录提示密码错误 / 登录接口报「未配置 AUTH_PASSWORD」?**
+A:密码始终取自 `AUTH_PASSWORD` secret(`wrangler secret list` 查看);未设置时登录会返回明确报错(不会生成随机密码)。改密 = 更新 secret 后重新部署,见[第 5 节](#5-登录与修改密码)。
 
 **Q:部署报错 `binding "DB" not found` 或 `invalid database_id`?**
 A:`wrangler.toml` 的 `database_id` 未填或填错。执行 `npx wrangler d1 create html-template-db`(或控制台 D1 页)获取正确 ID 后重新部署。
@@ -274,10 +266,10 @@ A:`wrangler.toml` 的 `database_id` 未填或填错。执行 `npx wrangler d1 cr
 A:`ENCRYPTION_KEY` 与写入时不一致,或从未设置。密钥必须固定、与写入时一致,并妥善备份。
 
 **Q:修改 `AUTH_PASSWORD` secret 后密码没变?**
-A:预期行为——`AUTH_PASSWORD` 只在密码不存在时初始化。重置步骤见[第 5 节](#5-首次登录与修改密码)。
+A:登录密码始终取自 `AUTH_PASSWORD` secret:更新后**重新部署**即生效;旧会话会在过期 / 登出后失效(见[第 5 节](#5-登录与修改密码))。
 
 **Q:免费套餐会不会触发 CPU 限制?**
-A:登录用 WebCrypto PBKDF2,不占 CPU 配额;静态资源由边缘网络直接返回,不经过 Worker;日常 API 都是轻量查询,免费额度足够。
+A:登录仅做常量时间字符串比较,几乎不占 CPU;静态资源由边缘网络直接返回,不经过 Worker;日常 API 都是轻量查询,免费额度足够。
 
 **Q:控制台 Git 集成时提示「部署命令不能留空」,填什么?**
 A:填 `npx wrangler deploy`(界面默认值);构建命令留空即可(本项目零构建)。详见[第 2 节](#2-cloudflare-控制台-git-集成免-ci)。

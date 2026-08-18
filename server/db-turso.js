@@ -12,10 +12,16 @@
 'use strict';
 
 function init(opts) {
-  const baseUrl = (process.env.DATABASE_URL || '').replace(/\/+$/, '');
+  let baseUrl = (process.env.DATABASE_URL || '').trim().replace(/\/+$/, '');
   const token = process.env.DATABASE_AUTH_TOKEN || '';
   if (!baseUrl) {
     throw new Error('[db-turso] 缺少 DATABASE_URL(如 https://<db>-<org>.turso.io)');
+  }
+  // Turso 控制台常给 libsql:// 形式(仅驱动原生支持),Node fetch 只认 http(s),
+  // 这里把 libsql:// 归一化为 https://,避免 fetch 抛 "fetch failed"。
+  // (http:// 保留原样,便于本地 libsql dev server 调试。)
+  if (baseUrl.startsWith('libsql://')) {
+    baseUrl = 'https://' + baseUrl.slice('libsql://'.length);
   }
   const endpoint = baseUrl + '/v2/pipeline';
 
@@ -27,14 +33,27 @@ function init(opts) {
     });
   }
 
+  /** 兼容两种响应形状:
+   *  旧版: { type:'execute', response: { cols, rows: [[v,..],..] } }(裸值)
+   *  新版(Turso 云端当前): { type:'ok', response: { type:'execute', result: { cols, rows: [[{type,value},..],..] } } }
+   */
+  function unwrapValue(v) {
+    if (v && typeof v === 'object' && 'value' in v) {
+      // 新版协议 integer/real 的 value 是字符串,转回数字与旧版行为保持一致
+      if (v.type === 'integer' || v.type === 'real') return Number(v.value);
+      return v.value;
+    }
+    return v;
+  }
+
   function rowsFrom(result) {
-    // { type: 'execute', response: { cols: [{name,decltype}], rows: [[v,..],..] } }
-    const resp = result && result.response;
+    let resp = result && result.response;
+    if (resp && resp.result) resp = resp.result; // 新版形状
     if (!resp || !Array.isArray(resp.cols)) return [];
     return resp.rows.map(function (row) {
       const obj = {};
       resp.cols.forEach(function (col, i) {
-        const v = row[i];
+        const v = unwrapValue(row[i]);
         obj[col.name] = v === null ? null : v;
       });
       return obj;
@@ -42,14 +61,20 @@ function init(opts) {
   }
 
   async function pipeline(requests) {
-    const r = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token,
-      },
-      body: JSON.stringify({ requests }),
-    });
+    let r;
+    try {
+      r = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
+        },
+        body: JSON.stringify({ requests }),
+      });
+    } catch (e) {
+      // 常见原因:DATABASE_URL 配错 / 网络不通 / libsql:// 未归一化(此处已自动转换)
+      throw new Error('[db-turso] 无法连接 ' + endpoint + ':' + String((e && e.message) || e));
+    }
     if (!r.ok) {
       const text = await r.text();
       throw new Error('[db-turso] HTTP ' + r.status + ': ' + text.slice(0, 300));
@@ -82,10 +107,11 @@ function init(opts) {
       const results = await pipeline([
         { type: 'execute', stmt: { sql, args: bindArgs(params) } },
       ]);
-      const resp = results[0] && results[0].response;
+      let resp = results[0] && results[0].response;
+      if (resp && resp.result) resp = resp.result; // 新版形状
       return {
-        changes: (resp && Number(resp.rows_affected || 0)) || 0,
-        lastInsertRowid: (resp && Number(resp.last_insert_rowid || 0)) || 0,
+        changes: Number((resp && (resp.rows_affected ?? resp.affected_row_count)) || 0) || 0,
+        lastInsertRowid: Number((resp && (resp.last_insert_rowid ?? 0)) || 0) || 0,
       };
     },
 

@@ -4,16 +4,16 @@
  * 运行:node dev-server.js [端口]
  * 环境变量:
  *   PORT              端口(默认 3000)
- *   AUTH_PASSWORD     首次启动时用于初始化管理员密码(不设则自动生成并打印)
+ *   AUTH_PASSWORD     登录密码(必设;与平台环境变量直接校验,无随机初始密码)
  *   SQLITE_PATH       本地 sqlite 文件路径(默认 sqlite.db)
  *   DB_DRIVER         sqlite(默认) / turso(DATABASE_URL + DATABASE_AUTH_TOKEN) / d1(见 DEPLOY.md)
  *
- * API 逻辑在 server/api.js(与 Vercel 函数 api/[[...path]].js 共用),
+ * API 逻辑在 server/api.js(与 Vercel 函数 api/index.js 共用),
  * 密码哈希与初始化在 server/auth.js。
  *
  * ⚠ 文件名不能是 server.js:Vercel 会把根目录的 server.{js,cjs,mjs,ts}
  *   自动捕获为 Node.js 自定义服务器入口,接管全部请求(见 DEPLOY-VERCEL.md)。
- *   Cloudflare 部署用 worker.js,Vercel 部署用 api/[[...path]].js,本文件只供本地/自托管。
+ *   Cloudflare 部署用 worker.js,Vercel 部署用 api/index.js,本文件只供本地/自托管。
  *
  * 数据库表与命名规范见 README「数据库设计」。
  * ============================================================ */
@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDb, isLocalSqlite, localDbPath, SCHEMA } = require('./server/db');
 const { encrypt, decrypt } = require('./server/crypto');
-const { AUTH_KEY, hashPassword, verifyPassword, ensureAuthPassword } = require('./server/auth');
+const { verifyPassword } = require('./server/auth');
 const { createApiHandler, sendJson } = require('./server/api');
 const log = require('./server/logger');
 
@@ -38,15 +38,14 @@ const db = getDb();
 
 async function bootstrap() {
   if (db.initSchema && typeof db.initSchema === 'function') {
-    // 远程驱动:异步建表后再初始化密码
+    // 远程驱动:异步建表
     await db.initSchema(SCHEMA);
   }
-  await ensureAuthPassword(db);
   return db;
 }
 
 /* ---------- API 处理器(与 Vercel 函数共用同一实现) ---------- */
-const handleApi = createApiHandler({ db, authKey: AUTH_KEY, encrypt, decrypt, hashPassword, verifyPassword });
+const handleApi = createApiHandler({ db, encrypt, decrypt, verifyPassword });
 
 /* ---------- 静态资源 ---------- */
 const MIME = {

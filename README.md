@@ -21,8 +21,7 @@
 python -m http.server 8000
 
 # 方式三:完整模式 —— node dev-server.js(静态托管 + 全局 x-auth-password 鉴权 + 数据库持久化)
-node dev-server.js        # 默认 http://127.0.0.1:3000,数据库 sqlite.db(首次启动自动生成并打印管理员密码)
-AUTH_PASSWORD=admin123 node dev-server.js   # 可用环境变量预置初始密码
+AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
 ```
 
 所有环境变量(`PORT` / `AUTH_PASSWORD` / `DB_DRIVER` / `SQLITE_PATH` / `DATABASE_URL` / `DATABASE_AUTH_TOKEN`)也支持写入项目根目录的 `.env`(零依赖加载器 `server/env.js`,进程环境变量优先;模板见 `.env.example`,`.env` 已 gitignore)。
@@ -33,8 +32,8 @@ AUTH_PASSWORD=admin123 node dev-server.js   # 可用环境变量预置初始密�
 
 - **失效选项(2×4 网格)**:3 / 6 / 9 / 12 / 24 小时,7 / 14 / 30 天;最底部单独一行的 **「下一次浏览器打开」**(单独占满一行)。
 - **令牌存储**:时长选项 → `localStorage`(持久);「下一次浏览器打开」→ `sessionStorage`(关浏览器即失效)。服务端会话同时存在于 `auth_sessions` 表并带有过期时间,双端校验。
-- **密码**:首次启动自动生成并打印,或由 `AUTH_PASSWORD` 预置;scrypt 加盐哈希后存于 `settings:auth:password`(不经过通用 KV 接口,读写均受保护)。
-- **修改密码**:`POST /api/auth/password` 校验当前密码后更新,并**吊销全部既有会话**。
+- **密码**:登录密码与 `AUTH_PASSWORD` 环境变量直接做常量时间比较(**不落库、无随机初始密码**);未配置该变量时登录返回明确报错。
+- **改密**:密码由部署平台环境变量 `AUTH_PASSWORD` 统一管理,应用内不支持修改——请到平台更新环境变量后重新部署。
 - **登出**:顶栏/侧边栏用户菜单的登出按钮 → 删除服务端会话并清除本地令牌,回到登录页;任何接口返回 401 也会自动回到登录页。
 - **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`)。
 
@@ -164,7 +163,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 2. **敏感键值加密**:写库前对敏感键用 **AES-256-GCM** 加密(存储格式 `enc:v1:<iv>:<tag>:<密文>`,12 字节随机 IV + 16 字节认证标签,每次加密 IV 随机),读取时由服务端解密后返回给已登录客户端。
    - 加密密钥:`ENCRYPTION_KEY` 环境变量(64 位 hex);本地开发未设置时首次启动自动生成并保存到 `server/.secret-key`(已 gitignore)。**生产环境务必显式设置,丢失/更换将无法解密既有数据**。
    - 判定为敏感键的规则:键名含 `password / email / apikey / api_key / secret / token / credential / access_key` 之一,或整体为含敏感字段的配置块(`settings:profile` 含邮箱)。
-   - `settings:auth:*` 保留键(如 `settings:auth:password` 的 scrypt 哈希)另有防线:通用 KV 接口读写均拒绝、GET 不返回。
+   - `settings:auth:*` 保留键(历史遗留,如 `settings:auth:password`)另有防线:通用 KV 接口读写均拒绝、GET 不返回。
 
 **模块数据表同样适用**:任何模块表(如笔记 `notes_data`)的敏感列(邮箱/apikey/token/密钥)必须用同样方案加密落库,禁止明文;密钥管理统一走 `server/crypto.js`。
 
@@ -191,7 +190,7 @@ CREATE TABLE app_settings (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
--- 会话表:登录成功后写入,登出/过期/改密时删除
+-- 会话表:登录成功后写入,登出/过期时删除
 -- 只存令牌 SHA-256 哈希,绝不存明文令牌
 CREATE TABLE auth_sessions (
   token_hash TEXT PRIMARY KEY,          -- sha256(令牌),由请求头 x-auth-token 携带并哈希匹配
@@ -204,7 +203,7 @@ CREATE TABLE auth_sessions (
 ### 键值命名规范(app_settings)
 
 - **全局配置**:`settings:<域>` —— 如 `settings:appearance`(主题/风格/字体/圆角等)、`settings:display`(侧边栏宽度/变体/隐藏菜单)、`settings:profile`(预留:用户资料)。值统一为 JSON 字符串。
-- **鉴权保留键**:`settings:auth:*` —— 如 `settings:auth:password`(scrypt 哈希)。**禁止**通过通用 KV 接口读写:PUT/DELETE 返回 403,GET 不返回,只能走专用鉴权 API。
+- **鉴权保留键**:`settings:auth:*`(历史遗留,如 `settings:auth:password`;登录密码已改为与 `AUTH_PASSWORD` 环境变量直接校验,不再写入数据库)。**禁止**通过通用 KV 接口读写:PUT/DELETE 返回 403,GET 不返回。
 - **模块数据表**:`<模块名>_<用途>` —— 如笔记模块 `notes_tags`、`notes_data`;数据表与全局设置表分离,模块表不混入 `app_settings`。
 
 ### API 一览
@@ -214,7 +213,6 @@ CREATE TABLE auth_sessions (
 | POST | `/api/auth/login` | `{ password, expiry }` → `{ token, expiresAt, expiry }`(无需鉴权) |
 | GET | `/api/auth/verify` | 校验会话有效性 |
 | POST | `/api/auth/logout` | 删除当前会话 |
-| POST | `/api/auth/password` | `{ currentPassword, newPassword }` 修改密码并吊销全部会话 |
 | GET | `/api/settings` | 返回全部 `app_settings`(不含 `settings:auth:*`;敏感键解密后返回)| 
 | PUT | `/api/settings` | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库)| 
 | DELETE | `/api/settings` | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`) |
@@ -226,7 +224,7 @@ CREATE TABLE auth_sessions (
 模板是纯静态 + 可移植 Node 服务,可整体部署。两套完整方案均已就绪:
 
 - **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,**详见 [`DEPLOY.md`](./DEPLOY.md)**。
-- **Vercel + Turso**:`api/[[...path]].js`(无服务器函数,复用 `server/api.js` 处理器)+ `vercel.json` + `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md)**。
+- **Vercel + Turso**:`api/index.js`(无服务器函数,`vercel.json` 用 rewrites 把 `/api/*` 转发给它,复用 `server/api.js` 处理器)+ `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md)**。
 - **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API(见 DEPLOY.md)。
 - **常规服务器 / 本地开发**:直接 `node dev-server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
 

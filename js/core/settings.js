@@ -29,6 +29,39 @@
     'violet',
     'yellow',
   ];
+
+  // 工作空间强调色:zinc + 主题面板的 17 种强调色(与主题设置面板一致)
+  var WORKSPACE_COLORS = ['zinc'].concat(CHART_COLORS);
+  // 工作空间预设图标(均为 icons-data.js 中已内置的 lucide 图标)
+  var WORKSPACE_ICONS = [
+    'house',
+    'briefcase',
+    'book-open',
+    'heart',
+    'gamepad-2',
+    'plane',
+    'folder',
+    'star',
+    'globe',
+    'layers',
+    'sparkles',
+    'users',
+    'building-2',
+    'shopping-bag',
+    'graduation-cap',
+    'coffee',
+    'trophy',
+    'rocket',
+  ];
+  // 默认工作空间(首次启动无本地数据时使用)
+  var DEFAULT_WORKSPACES = [
+    { id: 'ws-default', name: '默认', icon: 'house', color: 'zinc' },
+    { id: 'ws-work', name: '工作', icon: 'briefcase', color: 'blue' },
+    { id: 'ws-study', name: '学习', icon: 'book-open', color: 'violet' },
+    { id: 'ws-life', name: '生活', icon: 'heart', color: 'rose' },
+    { id: 'ws-fun', name: '娱乐', icon: 'gamepad-2', color: 'emerald' },
+    { id: 'ws-travel', name: '旅游', icon: 'plane', color: 'sky' },
+  ];
   var FONTS = [
     {
       value: 'inter',
@@ -106,6 +139,68 @@
     } catch (e) {
       return Object.assign({}, defaults);
     }
+  }
+
+  /** 工作空间默认值拷贝(避免外部修改共享引用) */
+  function defaultWorkspaces() {
+    return DEFAULT_WORKSPACES.map(function (w) {
+      return Object.assign({}, w);
+    });
+  }
+
+  /** 读取工作空间列表(白名单校验:非法项丢弃,空列表回退默认) */
+  function readWorkspaces() {
+    var stored = readStorage(K('workspaces'));
+    if (!stored) return defaultWorkspaces();
+    try {
+      var arr = JSON.parse(stored);
+      if (!Array.isArray(arr) || !arr.length) return defaultWorkspaces();
+      var out = arr
+        .filter(function (w) {
+          return (
+            w &&
+            typeof w === 'object' &&
+            typeof w.id === 'string' &&
+            w.id &&
+            typeof w.name === 'string' &&
+            w.name
+          );
+        })
+        .map(function (w) {
+          return {
+            id: String(w.id),
+            name: String(w.name),
+            icon: WORKSPACE_ICONS.indexOf(w.icon) !== -1 ? w.icon : 'house',
+            color: WORKSPACE_COLORS.indexOf(w.color) !== -1 ? w.color : 'zinc',
+          };
+        });
+      return out.length ? out : defaultWorkspaces();
+    } catch (e) {
+      return defaultWorkspaces();
+    }
+  }
+
+  /** 读取当前工作空间 id(不在列表中则回退第一个) */
+  function readActiveWorkspace(workspaces) {
+    var stored = readStorage(K('active-workspace'));
+    if (
+      stored &&
+      workspaces.some(function (w) {
+        return w.id === stored;
+      })
+    ) {
+      return stored;
+    }
+    return workspaces[0].id;
+  }
+
+  /** 按 id 查找工作空间(找不到回退第一个) */
+  function findWorkspace(list, id) {
+    var arr = list && list.length ? list : DEFAULT_WORKSPACES;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].id === id) return arr[i];
+    }
+    return arr[0];
   }
 
   /** 外观 radio-group 选项(设置面板与 Settings → 外观页共用) */
@@ -230,6 +325,7 @@
         /* 脏数据回退空数组 */
       }
     }
+    var workspaces = readWorkspaces();
     return {
       locale: locale,
       theme: theme,
@@ -238,6 +334,8 @@
       sidebarCollapsible: sidebarCollapsible,
       sidebarWidth: sidebarWidth,
       hiddenNav: hiddenNav,
+      workspaces: workspaces,
+      activeWorkspace: readActiveWorkspace(workspaces),
       profile: readJsonObject('profile', PROFILE_DEFAULTS, ['links']),
       account: readJsonObject('account', ACCOUNT_DEFAULTS),
       notifications: readJsonObject('notifications', NOTIFICATIONS_DEFAULTS),
@@ -341,6 +439,11 @@
     writeStorage(K('profile'), JSON.stringify(s.profile || PROFILE_DEFAULTS));
     writeStorage(K('account'), JSON.stringify(s.account || ACCOUNT_DEFAULTS));
     writeStorage(K('notifications'), JSON.stringify(s.notifications || NOTIFICATIONS_DEFAULTS));
+    writeStorage(
+      K('workspaces'),
+      JSON.stringify(s.workspaces && s.workspaces.length ? s.workspaces : DEFAULT_WORKSPACES)
+    );
+    writeStorage(K('active-workspace'), s.activeWorkspace || DEFAULT_WORKSPACES[0].id);
     writes.forEach(function (w) {
       if (w[1]) writeStorage(w[0], w[1]);
     });
@@ -367,6 +470,8 @@
       K('profile'),
       K('account'),
       K('notifications'),
+      K('workspaces'),
+      K('active-workspace'),
     ].forEach(removeStorage);
     return {
       locale: App.i18n.DEFAULT_LOCALE,
@@ -376,6 +481,8 @@
       sidebarCollapsible: 'icon',
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
       hiddenNav: [],
+      workspaces: defaultWorkspaces(),
+      activeWorkspace: DEFAULT_WORKSPACES[0].id,
       profile: Object.assign({}, PROFILE_DEFAULTS),
       account: Object.assign({}, ACCOUNT_DEFAULTS),
       notifications: Object.assign({}, NOTIFICATIONS_DEFAULTS),
@@ -387,6 +494,9 @@
     STYLES: STYLES,
     BASE_COLORS: BASE_COLORS,
     CHART_COLORS: CHART_COLORS,
+    WORKSPACE_COLORS: WORKSPACE_COLORS,
+    WORKSPACE_ICONS: WORKSPACE_ICONS,
+    DEFAULT_WORKSPACES: DEFAULT_WORKSPACES,
     FONTS: FONTS,
     RADII: RADII,
     SIDEBAR_DEFAULT_WIDTH: SIDEBAR_DEFAULT_WIDTH,
@@ -408,5 +518,7 @@
     isDarkMode: isDarkMode,
     readStorage: readStorage,
     writeStorage: writeStorage,
+    defaultWorkspaces: defaultWorkspaces,
+    findWorkspace: findWorkspace,
   };
 })();

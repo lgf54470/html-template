@@ -12,6 +12,7 @@
 - **三语言 i18n**(zh-CN / zh-TW / en),文案随模块内聚
 - **主题设置面板**:主题模式、侧边栏样式、布局、基础色/强调色、8 套风格、字体、圆角、菜单颜色/外观、重置
 - **可拖拽调宽 / 可折叠侧边栏**、毛玻璃顶栏、单一内容滚动区、移动端抽屉
+- **工作空间**:侧边栏顶部工作空间切换(默认/工作/学习/生活/娱乐/旅游),可新增并自定义图标与强调色;业务数据按工作空间隔离
 
 ## 快速开始
 
@@ -35,9 +36,20 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
 - **密码**:登录密码与 `AUTH_PASSWORD` 环境变量直接做常量时间比较(**不落库、无随机初始密码**);未配置该变量时登录返回明确报错。
 - **改密**:密码由部署平台环境变量 `AUTH_PASSWORD` 统一管理,应用内不支持修改——请到平台更新环境变量后重新部署。
 - **登出**:顶栏/侧边栏用户菜单的登出按钮 → 删除服务端会话并清除本地令牌,回到登录页;任何接口返回 401 也会自动回到登录页。
-- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`)。
+- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度/工作空间…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`、工作空间 → `settings:workspaces` / `settings:activeWorkspace`)。
 
 > 纯静态方式(双击 `index.html`)不经过鉴权,登录页会提示需要服务器 —— 这是预期行为:鉴权与持久化依赖 `dev-server.js`。
+
+## 工作空间
+
+侧边栏顶部的弹出菜单即**工作空间切换器**(原「One API」团队菜单已改为工作空间):
+
+- **默认工作空间**:默认 / 工作 / 学习 / 生活 / 娱乐 / 旅游,首次启动自动创建。
+- **切换**:点击工作空间名即可切换;当前工作空间 id 存于 `html-template-active-workspace` 并同步到 `settings:activeWorkspace`。
+- **新增**:点「新增工作空间」打开弹窗,填写名称、从预设图标中选择图标、从主题面板的 18 种强调色(zinc + 17 种 chart 色)中选择颜色。
+- **持久化**:工作空间列表存于 `html-template-workspaces` 并同步到 `settings:workspaces`(JSON 数组)。
+
+**工作空间隔离**:`app_settings` 按 `workspace_id` 分片 —— `workspace_id='global'` 只存 `settings:workspaces` / `settings:activeWorkspace` 两个全局键,其余 `settings:*` 与业务数据都落在当前工作空间;`auth_sessions` 是登录会话基础设施,保持全局。切换工作空间后加载不同数据,互相隔开、互不影响(见「数据库设计」)。
 
 ## 目录结构
 
@@ -62,6 +74,7 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
     │   ├── ui.js             # 共享 UI 组件(button/badge/card/radio-group/placeholder/404)
     │   ├── shell.js          # App Shell 渲染(侧边栏/顶栏/设置面板)
     │   ├── app.js            # 应用内核:模块注册表 + Hash 路由 + 事件委托 + 设置双向同步
+    │   ├── workspace.js      # 工作空间交互:切换 + 新增弹窗(名称/图标/强调色)
     │   └── interactions.js   # 交互层:拖拽调宽 + 移动端抽屉(自包含,依赖 App 公开 API)
     └── modules/              # 业务模块:一级菜单 = 一个目录
         ├── dashboard/        # 仪表盘(路由 /)
@@ -191,14 +204,16 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 ### 表结构
 
 ```sql
--- 全局设置:键值对表,存放全局配置(含鉴权专用键)
+-- 设置:键值对表,按工作空间分片(workspace_id + key 复合主键)
 CREATE TABLE app_settings (
-  key        TEXT PRIMARY KEY,          -- 命名规范见下
-  value      TEXT NOT NULL,             -- 值统一为文本(JSON 字符串或普通字符串)
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  workspace_id TEXT NOT NULL,          -- 'global' 仅存工作空间注册表 / 当前指针,其余为具体工作空间 id
+  key          TEXT NOT NULL,          -- 命名规范见下
+  value        TEXT NOT NULL,          -- 值统一为文本(JSON 字符串或普通字符串)
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (workspace_id, key)
 );
 
--- 会话表:登录成功后写入,登出/过期时删除
+-- 会话表:登录成功后写入,登出/过期时删除(登录会话基础设施,与工作空间无关)
 -- 只存令牌 SHA-256 哈希,绝不存明文令牌
 CREATE TABLE auth_sessions (
   token_hash TEXT PRIMARY KEY,          -- sha256(令牌),由请求头 x-auth-token 携带并哈希匹配
@@ -210,20 +225,21 @@ CREATE TABLE auth_sessions (
 
 ### 键值命名规范(app_settings)
 
-- **全局配置**:`settings:<域>` —— 如 `settings:appearance`(主题/风格/字体/圆角等)、`settings:display`(侧边栏宽度/变体/隐藏菜单)、`settings:profile`(预留:用户资料)。值统一为 JSON 字符串。
+- **设置键**:`settings:<域>` —— 如 `settings:appearance`(主题/风格/字体/圆角等)、`settings:display`(侧边栏宽度/变体/隐藏菜单)、`settings:profile`(用户资料)。除 `settings:workspaces`(工作空间列表)与 `settings:activeWorkspace`(当前工作空间 id)两个全局键外,均落在当前工作空间;值统一为 JSON 字符串。
 - **鉴权保留键**:`settings:auth:*`(历史遗留,如 `settings:auth:password`;登录密码已改为与 `AUTH_PASSWORD` 环境变量直接校验,不再写入数据库)。**禁止**通过通用 KV 接口读写:PUT/DELETE 返回 403,GET 不返回。
 - **模块数据表**:`<模块名>_<用途>` —— 如笔记模块 `notes_tags`、`notes_data`;数据表与全局设置表分离,模块表不混入 `app_settings`。
+- **工作空间隔离**:`app_settings` 本身按 `workspace_id` 分片(`global` 作用域仅存 `settings:workspaces` / `settings:activeWorkspace`);`auth_sessions` 是登录会话基础设施,保持全局;所有业务数据表必须包含 `workspace_id` 列,写入时带上当前工作空间 id、查询时按 `WHERE workspace_id = ?` 过滤,不同工作空间的数据互相隔开、互不影响。
 
 ### API 一览
 
-| 方法   | 路径               | 说明                                                                             |
-| ------ | ------------------ | -------------------------------------------------------------------------------- |
-| POST   | `/api/auth/login`  | `{ password, expiry }` → `{ token, expiresAt, expiry }`(无需鉴权)                |
-| GET    | `/api/auth/verify` | 校验会话有效性                                                                   |
-| POST   | `/api/auth/logout` | 删除当前会话                                                                     |
-| GET    | `/api/settings`    | 返回全部 `app_settings`(不含 `settings:auth:*`;敏感键解密后返回)                 |
-| PUT    | `/api/settings`    | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库) |
-| DELETE | `/api/settings`    | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`)                                   |
+| 方法   | 路径               | 说明                                                                                                   |
+| ------ | ------------------ | ------------------------------------------------------------------------------------------------------ |
+| POST   | `/api/auth/login`  | `{ password, expiry }` → `{ token, expiresAt, expiry }`(无需鉴权)                                      |
+| GET    | `/api/auth/verify` | 校验会话有效性                                                                                         |
+| POST   | `/api/auth/logout` | 删除当前会话                                                                                           |
+| GET    | `/api/settings`    | 返回全局注册表 + 当前工作空间设置(可用 `?workspace=<id>` 指定;不含 `settings:auth:*`;敏感键解密后返回) |
+| PUT    | `/api/settings`    | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库)                       |
+| DELETE | `/api/settings`    | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`)                                                         |
 
 除登录外,所有 `/api/*` 均要求请求头 `x-auth-token`。
 

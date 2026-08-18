@@ -8,6 +8,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const { APP_SETTINGS_MIGRATION_SQL, hasWorkspaceColumn } = require('./schema');
+const { GLOBAL_WORKSPACE_ID } = require('./scope');
 
 /** 参数绑定兼容 node:sqlite:仅接受 null/string/number/BigInt */
 function normalizeParams(params) {
@@ -38,6 +40,7 @@ function init(opts) {
   db.exec('PRAGMA journal_mode = WAL;');
   if (opts.schema) db.exec(opts.schema);
   migrateAuthSessions(db);
+  migrateAppSettingsSync(db);
 
   return {
     name: 'sqlite',
@@ -85,6 +88,17 @@ function migrateAuthSessions(db) {
       '  note TEXT' +
       ')'
   );
+}
+
+/** 旧版 app_settings(key 单主键)→ 新版(workspace_id + key 复合主键)迁移 */
+function migrateAppSettingsSync(db) {
+  const cols = db.prepare('PRAGMA table_info(app_settings)').all();
+  if (!cols.length) return; // 表不存在:SCHEMA 已按新结构建表
+  if (hasWorkspaceColumn(cols)) return; // 已是新结构
+  APP_SETTINGS_MIGRATION_SQL.forEach(function (sql) {
+    if (sql.indexOf('?') !== -1) db.prepare(sql).run(GLOBAL_WORKSPACE_ID);
+    else db.exec(sql);
+  });
 }
 
 module.exports = { init };

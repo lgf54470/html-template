@@ -8,14 +8,34 @@
 (function () {
   'use strict';
 
-  var TEAMS = ['One API', 'One API Pro', 'One API Cloud'];
-
   var ui = function () {
     return App.ui;
   };
   var icon = function () {
     return App.icon;
   };
+
+  /** 转义用户可控文本(工作空间名称) */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** 工作空间图标(按工作空间强调色着底) */
+  function workspaceIcon(ws, boxClass) {
+    return (
+      '<span class="' +
+      boxClass +
+      ' flex shrink-0 items-center justify-center swatch-' +
+      ws.color +
+      '" style="color:#fff">' +
+      icon().iconSvg(ws.icon, { class: 'size-4' }) +
+      '</span>'
+    );
+  }
 
   // ---------- Sidebar ----------
   function sidebarHtml(navItems, settings, t, pathname, openSubmenus) {
@@ -97,25 +117,33 @@
       })
       .join('');
 
-    var teamItems = TEAMS.map(function (team) {
-      return (
-        '<button type="button" role="menuitem" data-team="' +
-        team +
-        '" class="' +
-        ui().dropdownItemClass('gap-2 p-2') +
-        '">' +
-        '<div class="flex size-6 items-center justify-center rounded-sm border bg-muted/30">' +
-        icon().iconSvg('brain-circuit', { class: 'size-3.5' }) +
-        '</div>' +
-        '<span class="min-w-0 flex-1 truncate">' +
-        team +
-        '</span>' +
-        '<span class="ml-auto flex items-center">' +
-        icon().iconSvg('circle-check', { class: 'size-4 text-primary' }) +
-        '</span>' +
-        '</button>'
-      );
-    }).join('');
+    var workspaces =
+      settings.workspaces && settings.workspaces.length
+        ? settings.workspaces
+        : App.settings.DEFAULT_WORKSPACES;
+    var activeWorkspace = App.settings.findWorkspace(workspaces, settings.activeWorkspace);
+    var workspaceItems = workspaces
+      .map(function (ws) {
+        var isActive = ws.id === activeWorkspace.id;
+        return (
+          '<button type="button" role="menuitem" data-workspace="' +
+          ws.id +
+          '" class="' +
+          ui().dropdownItemClass('gap-2 p-2') +
+          '">' +
+          workspaceIcon(ws, 'size-6 rounded-md') +
+          '<span class="min-w-0 flex-1 truncate text-left">' +
+          esc(ws.name) +
+          '</span>' +
+          (isActive
+            ? '<span class="ml-auto flex items-center">' +
+              icon().iconSvg('circle-check', { class: 'size-4 text-primary' }) +
+              '</span>'
+            : '') +
+          '</button>'
+        );
+      })
+      .join('');
 
     var userItems =
       '<div class="' +
@@ -197,13 +225,13 @@
       ) +
       '" aria-haspopup="menu">' +
       '<span class="flex w-full items-center gap-2">' +
-      '<span class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">' +
-      icon().iconSvg('brain-circuit', { class: 'size-4' }) +
+      workspaceIcon(activeWorkspace, 'size-8 rounded-lg') +
+      '<span class="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
+      '<span class="truncate text-left font-semibold" data-selected-workspace>' +
+      esc(activeWorkspace.name) +
       '</span>' +
-      '<span class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
-      '<span class="truncate font-semibold" data-selected-team>One API</span>' +
-      '<span class="truncate text-xs">' +
-      t('sidebar.freePlan') +
+      '<span class="truncate text-left text-xs text-muted-foreground">' +
+      t('sidebar.workspaces') +
       '</span>' +
       '</span>' +
       '<span class="ml-auto group-data-[collapsible=icon]:hidden">' +
@@ -214,18 +242,18 @@
       ui().dropdownContentClass('w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg') +
       '" data-side="right" role="menu">' +
       '<div class="px-2 py-1.5 text-xs text-muted-foreground">' +
-      t('sidebar.teams') +
+      t('sidebar.workspaces') +
       '</div>' +
-      teamItems +
+      workspaceItems +
       ui().dropdownSeparator() +
-      '<button type="button" role="menuitem" class="' +
+      '<button type="button" role="menuitem" data-add-workspace class="' +
       ui().dropdownItemClass('gap-2 p-2') +
       '">' +
       '<div class="flex size-6 items-center justify-center rounded-sm border bg-muted/30">' +
       icon().iconSvg('plus', { class: 'size-3.5' }) +
       '</div>' +
       '<span>' +
-      t('sidebar.createTeam') +
+      t('sidebar.createWorkspace') +
       '</span>' +
       '</button></div></div></li></ul></div>' +
       '<div data-slot="sidebar-content" data-sidebar="content" class="no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden">' +
@@ -606,7 +634,6 @@
 
   window.App = window.App || {};
   App.shell = {
-    TEAMS: TEAMS,
     sidebarHtml: sidebarHtml,
     headerHtml: headerHtml,
     renderShell: renderShell,

@@ -235,14 +235,16 @@ document.addEventListener('click', function (e) {
 ### 4.3 数据库设计
 
 ```sql
--- 全局设置(键值对)
+-- 设置(键值对,按工作空间分片:workspace_id + key 复合主键)
 CREATE TABLE app_settings (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  workspace_id TEXT NOT NULL,
+  key          TEXT NOT NULL,
+  value        TEXT NOT NULL,
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (workspace_id, key)
 );
 
--- 会话表(只存令牌哈希)
+-- 会话表(只存令牌哈希;登录会话基础设施,与工作空间无关)
 CREATE TABLE auth_sessions (
   token_hash TEXT PRIMARY KEY,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -258,7 +260,34 @@ CREATE TABLE auth_sessions (
 - `settings:profile` — 个人资料
 - `settings:account` — 账号设置
 - `settings:notifications` — 通知设置
+- `settings:workspaces` — 工作空间列表(JSON 数组:`{ id, name, icon, color }`)
+- `settings:activeWorkspace` — 当前工作空间 id
 - `settings:auth:*` — 保留键(禁止读写)
+
+**工作空间隔离:**
+
+`app_settings` 本身按 `workspace_id` 分片(见 `server/db/scope.js`):
+
+- `workspace_id = 'global'` 只存两个全局键 —— `settings:workspaces`(工作空间注册表)与 `settings:activeWorkspace`(当前指针),供前端枚举 / 切换工作空间;
+- 其余所有 `settings:*` 键都落在当前工作空间,切换后加载不同数据,互相隔离、互不影响;
+- 旧版单主键表会自动迁移到新结构,历史数据迁入 `global` 作用域保留不丢失。
+
+`auth_sessions` 是登录会话基础设施,与工作空间无关,保持全局。其余新增的**业务数据表**一律带 `workspace_id` 列:
+
+```sql
+-- 模块数据表示例:任何业务表都必须带 workspace_id 列
+CREATE TABLE notes_data (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL,   -- 所属工作空间,写入时取当前工作空间 id
+  title        TEXT NOT NULL,
+  body         TEXT,
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX idx_notes_workspace ON notes_data (workspace_id);
+```
+
+- 业务数据**写入**时强制带上当前 `workspace_id`;**查询**时一律 `WHERE workspace_id = ?` 过滤。
+- 切换工作空间 = 前端切换 `settings:activeWorkspace`,旧工作空间数据先落库,随后按新 id 重新加载;不同工作空间的数据互相隔开、互不影响。
 
 ### 4.4 敏感数据加密
 
@@ -322,6 +351,8 @@ db.initSchema(schema); // 建表(幂等)
 | `html-template-profile`             | 个人资料(JSON)                                |
 | `html-template-account`             | 账号设置(JSON)                                |
 | `html-template-notifications`       | 通知设置(JSON)                                |
+| `html-template-workspaces`          | 工作空间列表(JSON 数组)                       |
+| `html-template-active-workspace`    | 当前工作空间 id                               |
 
 ### 5.2 白名单校验
 
@@ -696,6 +727,8 @@ index.html
 2. 编写 `manifest.js` + `module.js`
 3. 在 `js/core/boot.js` 的 `MODULE_DIRS` 中登记
 4. 无需改动任何核心文件
+
+模块若需要数据库持久化,数据表必须包含 `workspace_id` 列(见 4.3「工作空间隔离」),读写均按当前工作空间过滤。
 
 ### 15.4 引入第三方库
 

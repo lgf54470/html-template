@@ -11,6 +11,8 @@
  * ============================================================ */
 'use strict';
 
+const { migrateAppSettings } = require('./schema');
+
 function init(_opts) {
   let baseUrl = (process.env.DATABASE_URL || '').trim().replace(/\/+$/, '');
   const token = process.env.DATABASE_AUTH_TOKEN || '';
@@ -111,7 +113,7 @@ function init(_opts) {
       };
     },
 
-    /** 建表(远程驱动初始化时执行) */
+    /** 建表(远程驱动初始化时执行;随后补齐工作空间迁移) */
     async initSchema(schema) {
       const statements = schema
         .split(';')
@@ -120,6 +122,7 @@ function init(_opts) {
       for (const sql of statements) {
         await this.run(sql + ';');
       }
+      await migrateAppSettings(this);
     },
   };
 }

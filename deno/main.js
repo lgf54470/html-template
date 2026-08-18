@@ -79,6 +79,8 @@ function makeNodeReq(request) {
   const req = {
     method: request.method,
     headers,
+    // server/api 的 settings 路由需从 URL 解析 ?workspace= 查询参数
+    url: request.url,
     on(ev, cb) {
       if (Array.isArray(listeners[ev])) listeners[ev].push(cb);
       return req;

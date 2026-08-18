@@ -120,12 +120,15 @@ async function startServer() {
     });
   }
 
-  /** 直接读底层 SQLite 原始值,用于断言敏感值落库加密、非明文 */
-  function readDbValue(key) {
+  /** 直接读底层 SQLite 原始值(按 workspace_id 定位,默认 global),
+   *  用于断言敏感值落库加密、非明文。 */
+  function readDbValue(key, workspaceId) {
     const { DatabaseSync } = require('node:sqlite');
     const db = new DatabaseSync(dbPath);
     try {
-      const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
+      const row = db
+        .prepare('SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?')
+        .get(workspaceId || 'global', key);
       return row ? row.value : undefined;
     } finally {
       db.close();

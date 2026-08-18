@@ -307,6 +307,8 @@
         'sidebarCollapsible',
         'sidebarWidth',
         'hiddenNav',
+        'workspaces',
+        'activeWorkspace',
       ])
     )
       refreshSidebar();
@@ -374,6 +376,8 @@
       'settings:profile': JSON.stringify(settings.profile || {}),
       'settings:account': JSON.stringify(settings.account || {}),
       'settings:notifications': JSON.stringify(settings.notifications || {}),
+      'settings:workspaces': JSON.stringify(settings.workspaces || []),
+      'settings:activeWorkspace': String(settings.activeWorkspace || ''),
     };
   }
 
@@ -405,7 +409,6 @@
     } catch (e) {
       display = null;
     }
-    if (!appearance && !display) return null;
     var K = App.settings.K;
     var set = App.settings.writeStorage;
     if (appearance && typeof appearance === 'object') {
@@ -452,6 +455,17 @@
         /* 脏数据忽略,保持本地值 */
       }
     });
+    if (typeof raw['settings:workspaces'] === 'string' && raw['settings:workspaces']) {
+      try {
+        var ws = JSON.parse(raw['settings:workspaces']);
+        if (Array.isArray(ws) && ws.length) set(K('workspaces'), JSON.stringify(ws));
+      } catch (e) {
+        /* 脏数据忽略,保持本地值 */
+      }
+    }
+    if (typeof raw['settings:activeWorkspace'] === 'string' && raw['settings:activeWorkspace']) {
+      set(K('active-workspace'), raw['settings:activeWorkspace']);
+    }
     return App.settings.readSettings();
   }
 
@@ -467,6 +481,8 @@
       profile: s.profile,
       account: s.account,
       notifications: s.notifications,
+      workspaces: s.workspaces,
+      activeWorkspace: s.activeWorkspace,
     });
   }
 
@@ -489,6 +505,84 @@
       .catch(function (e) {
         if (e && e.status !== 401) App.logger.warn('core', '从数据库同步设置失败', e);
       });
+  }
+
+  /* ---------- 工作空间切换(缓存优先 + 后台加载目标工作空间) ---------- */
+  /** 全局键:工作空间注册表 + 当前指针(唯一跨工作空间共享的服务端设置) */
+  function globalSettingsPayload() {
+    return {
+      'settings:workspaces': JSON.stringify(settings.workspaces || []),
+      'settings:activeWorkspace': String(settings.activeWorkspace || ''),
+    };
+  }
+
+  /** 只写全局注册表,不携带任何工作空间数据,避免切换时污染新工作空间 */
+  function pushGlobalSettingsToServer() {
+    if (!App.auth || !App.auth.token()) return;
+    App.api.put('/api/settings', { settings: globalSettingsPayload() }).catch(function (e) {
+      if (e && e.status !== 401) App.logger.warn('core', '全局工作空间设置同步失败', e);
+    });
+  }
+
+  /** 立即把当前(旧)工作空间数据落库(跳过防抖),确保切换前不丢改动、不串库 */
+  function flushSettingsSync() {
+    if (serverSyncTimer) {
+      clearTimeout(serverSyncTimer);
+      serverSyncTimer = null;
+    }
+    if (!App.auth || !App.auth.token()) return;
+    App.api.put('/api/settings', { settings: serverSettingsPayload() }).catch(function (e) {
+      if (e && e.status !== 401) App.logger.warn('core', '工作空间设置落库失败', e);
+    });
+  }
+
+  /** 重置工作空间字段为默认,保留注册表 / 当前指针 / 本地语言 */
+  function applyWorkspaceSwitch(registry, id) {
+    var locale = settings.locale;
+    var fresh = App.settings.resetAllSettings();
+    fresh.workspaces = registry;
+    fresh.activeWorkspace = id;
+    fresh.locale = locale;
+    settings = fresh;
+    App.settings.applySettings(settings);
+    App.settings.persistSettings(settings);
+    document.documentElement.lang = settings.locale;
+  }
+
+  /** 从服务端加载目标工作空间数据并渲染(空工作空间回退默认) */
+  function loadWorkspaceSettings(id) {
+    App.api
+      .get('/api/settings?workspace=' + encodeURIComponent(id))
+      .then(function (raw) {
+        var merged = mergeServerSettings(raw);
+        if (merged) settings = merged;
+        else settings.activeWorkspace = id;
+        App.settings.applySettings(settings);
+        document.documentElement.lang = settings.locale;
+        renderApp();
+      })
+      .catch(function (e) {
+        if (e && e.status !== 401) App.logger.warn('core', '加载工作空间设置失败', e);
+        renderApp();
+      });
+  }
+
+  /** 切换到指定工作空间:旧数据落库 → 重置 → 写全局指针 → 加载新数据 */
+  function switchWorkspace(id) {
+    if (!id || id === settings.activeWorkspace) return;
+    flushSettingsSync();
+    applyWorkspaceSwitch(settings.workspaces, id);
+    pushGlobalSettingsToServer();
+    loadWorkspaceSettings(id);
+  }
+
+  /** 新增工作空间并切入:先入注册表(全局),再加载(新空间为空,回退默认) */
+  function addWorkspace(ws) {
+    if (!ws || !ws.id || !ws.name) return;
+    flushSettingsSync();
+    applyWorkspaceSwitch((settings.workspaces || []).concat([ws]), ws.id);
+    pushGlobalSettingsToServer();
+    loadWorkspaceSettings(ws.id);
   }
 
   function setTheme(theme) {
@@ -790,14 +884,6 @@
       toggleDropdown(ddTrigger);
       return;
     }
-    // 团队选择
-    var teamBtn = target.closest ? target.closest('[data-team]') : null;
-    if (teamBtn) {
-      var label = app.querySelector('[data-selected-team]');
-      if (label) label.textContent = teamBtn.dataset.team || '';
-      closeDropdowns();
-      return;
-    }
     // 设置面板
     if (target.closest && target.closest('[data-sheet-trigger]')) {
       openSheet();
@@ -933,4 +1019,6 @@
     };
   };
   App.start = start;
+  App.switchWorkspace = switchWorkspace;
+  App.addWorkspace = addWorkspace;
 })();

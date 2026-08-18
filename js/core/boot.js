@@ -26,6 +26,7 @@
     'ui',
     'shell',
     'app',
+    'workspace',
     'interactions',
   ];
 

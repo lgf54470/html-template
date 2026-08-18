@@ -32,6 +32,7 @@ import { EXPIRY_MS } from './server/auth/expiry.js';
 import { matchesPassword } from './server/auth/password.js';
 import { sha256, findSession } from './server/auth/session.js';
 import { RESERVED_SETTINGS_PREFIX, isSensitiveKey } from './server/security/sensitive.js';
+import { GLOBAL_WORKSPACE_ID, workspaceIdForKey } from './server/db/scope.js';
 import { encryptWithKey, decryptWithKey } from './server/security/core.js';
 import { createThrottle } from './server/auth/throttle.js';
 import { SECURITY_HEADERS } from './server/http/headers.js';
@@ -183,9 +184,23 @@ async function handleApi(request, env, pathname) {
     return sendJson(200, { ok: true });
   }
 
-  // GET /api/settings(保留键 settings:auth:* 不返回;敏感键解密后返回)
+  // GET /api/settings(保留键 settings:auth:* 不返回;敏感键解密后返回;
+  // 返回全局注册表 + 指定/当前工作空间的设置)
   if (method === 'GET' && parts[1] === 'settings') {
-    const rows = await db.query('SELECT key, value FROM app_settings ORDER BY key');
+    const url = new URL(request.url);
+    const requestedWs = url.searchParams.get('workspace') || '';
+    let activeWs = requestedWs;
+    if (!activeWs) {
+      const row = await db.get(
+        "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
+        [GLOBAL_WORKSPACE_ID]
+      );
+      activeWs = (row && row.value) || GLOBAL_WORKSPACE_ID;
+    }
+    const rows = await db.query(
+      'SELECT workspace_id, key, value FROM app_settings WHERE workspace_id IN (?, ?) ORDER BY key',
+      [GLOBAL_WORKSPACE_ID, activeWs]
+    );
     const out = {};
     for (const r of rows) {
       if (r.key.indexOf(RESERVED_SETTINGS_PREFIX) === 0) continue;
@@ -194,7 +209,7 @@ async function handleApi(request, env, pathname) {
     return sendJson(200, out);
   }
 
-  // PUT /api/settings
+  // PUT /api/settings(按键归属作用域落库:全局键 → global,其余 → 当前工作空间)
   if (method === 'PUT' && parts[1] === 'settings') {
     const body = await readJson(request);
     const entries = body && typeof body.settings === 'object' ? body.settings : null;
@@ -205,28 +220,49 @@ async function handleApi(request, env, pathname) {
         return sendJson(403, { error: 'reserved_key', message: k + ' 为保留键,请走专用鉴权接口' });
       }
     }
+    const declared =
+      typeof entries['settings:activeWorkspace'] === 'string' && entries['settings:activeWorkspace']
+        ? entries['settings:activeWorkspace']
+        : '';
+    let activeWs = declared;
+    if (!activeWs) {
+      const row = await db.get(
+        "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
+        [GLOBAL_WORKSPACE_ID]
+      );
+      activeWs = (row && row.value) || GLOBAL_WORKSPACE_ID;
+    }
     const now = new Date().toISOString();
     for (const k of keys) {
+      const wsId = workspaceIdForKey(k, activeWs);
       let v = typeof entries[k] === 'string' ? entries[k] : JSON.stringify(entries[k]);
       // 敏感键:落库前加密,数据库不以明文存放
       if (isSensitiveKey(k)) v = encrypt(v, env);
       await db.run(
-        'INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
-        [k, v, now]
+        'INSERT INTO app_settings (workspace_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(workspace_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+        [wsId, k, v, now]
       );
     }
     return sendJson(200, { ok: true, written: keys.length });
   }
 
-  // DELETE /api/settings
+  // DELETE /api/settings(按当前工作空间定位;全局键仍落在 global)
   if (method === 'DELETE' && parts[1] === 'settings') {
     const body = await readJson(request);
     const keys = Array.isArray(body && body.keys) ? body.keys : [];
+    const row = await db.get(
+      "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
+      [GLOBAL_WORKSPACE_ID]
+    );
+    const activeWs = (row && row.value) || GLOBAL_WORKSPACE_ID;
     for (const k of keys) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {
         return sendJson(403, { error: 'reserved_key', message: k + ' 为保留键' });
       }
-      await db.run('DELETE FROM app_settings WHERE key = ?', [k]);
+      await db.run('DELETE FROM app_settings WHERE workspace_id = ? AND key = ?', [
+        workspaceIdForKey(k, activeWs),
+        k,
+      ]);
     }
     return sendJson(200, { ok: true, removed: keys.length });
   }

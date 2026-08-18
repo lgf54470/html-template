@@ -20,6 +20,8 @@
  * ============================================================ */
 'use strict';
 
+const { migrateAppSettings } = require('./schema');
+
 /** 参数绑定兼容两种模式:null/string/number/boolean(bigint 转 number) */
 function normalizeParams(params) {
   return (params || []).map(function (p) {
@@ -76,6 +78,7 @@ function initBinding(opts) {
         .map((s) => s.trim())
         .filter(Boolean);
       for (const sql of statements) await this.run(sql + ';');
+      await migrateAppSettings(this);
     },
   };
 }
@@ -145,6 +148,7 @@ function initRest() {
     /** 建表(REST API 的 sql 支持分号分隔的多条语句,按批次执行) */
     async initSchema(schema) {
       await post(schema, []);
+      await migrateAppSettings(this);
     },
   };
 }

@@ -5,7 +5,11 @@
   "description": "纯 HTML/JS/CSS 管理后台模板(静态 + Node 服务;零运行时依赖)",
   "scripts": {
     "build": "node scripts/vercel-build.js",
-    "start": "node dev-server.js"
+    "start": "node dev-server.js",
+    "deploy": "wrangler deploy",
+    "deploy:vercel": "vercel --prod",
+    "deploy:deno": "deno deploy --prod",
+    "deploy:docker": "docker compose up -d --build"
   },
   "engines": {
     "node": ">=18"

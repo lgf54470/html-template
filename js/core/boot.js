@@ -24,6 +24,7 @@
     'api',
     'auth',
     'ui',
+    'avatar',
     'shell',
     'app',
     'workspace',

@@ -174,15 +174,24 @@
       })
       .join('');
 
+    var profile = settings.profile || {};
+    var displayName = profile.username || 'Admin';
+    var displayEmail = profile.email || 'admin@example.com';
     var userItems =
       '<div class="' +
       ui().dropdownLabelClass('p-0 font-normal') +
       '">' +
       '<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">' +
-      '<span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">A</span>' +
+      '<span data-user-avatar class="shrink-0">' +
+      App.ui.avatarHtml(profile, 'size-8') +
+      '</span>' +
       '<div class="grid flex-1 text-left text-sm leading-tight">' +
-      '<span class="truncate font-semibold">Admin</span>' +
-      '<span class="truncate text-xs">admin@example.com</span>' +
+      '<span class="truncate font-semibold" data-user-name>' +
+      esc(displayName) +
+      '</span>' +
+      '<span class="truncate text-xs" data-user-email>' +
+      esc(displayEmail) +
+      '</span>' +
       '</div></div>' +
       ui().dropdownSeparator() +
       '<button type="button" role="menuitem" class="' +
@@ -307,10 +316,16 @@
       ) +
       '" aria-haspopup="menu">' +
       '<span class="flex w-full items-center gap-2">' +
-      '<span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">A</span>' +
+      '<span data-user-avatar class="shrink-0">' +
+      App.ui.avatarHtml(profile, 'size-8') +
+      '</span>' +
       '<span class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
-      '<span class="truncate font-semibold">Admin</span>' +
-      '<span class="truncate text-xs">admin@example.com</span>' +
+      '<span class="truncate font-semibold" data-user-name>' +
+      esc(displayName) +
+      '</span>' +
+      '<span class="truncate text-xs" data-user-email>' +
+      esc(displayEmail) +
+      '</span>' +
       '</span>' +
       '<span class="ml-auto group-data-[collapsible=icon]:hidden">' +
       icon().iconSvg('chevrons-up-down', { class: 'size-4' }) +

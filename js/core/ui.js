@@ -123,6 +123,71 @@
     return '<div role="separator" data-slot="dropdown-menu-separator" class="-mx-1 my-1 h-px bg-border"></div>';
   }
 
+  // ---------- Avatar(个人资料头像:首字母/图标/Emoji/上传图片) ----------
+  function escAttr(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function escHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  /** 渲染用户头像:image → 图片;emoji → 底色圆;icon → 图标圆;其余 → 用户名/邮箱首字母 */
+  function avatarHtml(profile, sizeClass, large) {
+    var avatar = profile && profile.avatar;
+    var type = avatar && avatar.type;
+    var value = avatar && typeof avatar.value === 'string' ? avatar.value : '';
+    var base =
+      'flex shrink-0 items-center justify-center overflow-hidden rounded-full ' +
+      (sizeClass || 'size-8');
+    if (type === 'image' && value.indexOf('data:image/') === 0) {
+      return (
+        '<span class="' +
+        base +
+        ' bg-muted"><img src="' +
+        escAttr(value) +
+        '" alt="" style="width:100%;height:100%;object-fit:cover" /></span>'
+      );
+    }
+    if (type === 'emoji' && value) {
+      return (
+        '<span class="' +
+        base +
+        ' bg-primary/10" style="font-size:' +
+        (large ? '2.5rem' : '1.25rem') +
+        '">' +
+        escHtml(value) +
+        '</span>'
+      );
+    }
+    if (type === 'icon') {
+      var iconName = App.settings.AVATAR_ICONS.indexOf(value) !== -1 ? value : 'user';
+      return (
+        '<span class="' +
+        base +
+        ' bg-primary text-primary-foreground">' +
+        App.icon.iconSvg(iconName, { class: large ? 'size-8' : 'size-4' }) +
+        '</span>'
+      );
+    }
+    var source = (profile && (profile.username || profile.email)) || 'A';
+    var letter = (source.trim().charAt(0) || 'A').toUpperCase();
+    return (
+      '<span class="' +
+      base +
+      ' bg-primary text-sm font-semibold text-primary-foreground"' +
+      (large ? ' style="font-size:1.75rem"' : '') +
+      '>' +
+      escHtml(letter) +
+      '</span>'
+    );
+  }
+
   // ---------- 通用页面渲染 ----------
   /** 子页面占位卡(渠道/令牌/日志/系统等模块共用) */
   function placeholderCard(t, icon, title, desc) {
@@ -325,6 +390,7 @@
     dropdownItemClass: dropdownItemClass,
     dropdownLabelClass: dropdownLabelClass,
     dropdownSeparator: dropdownSeparator,
+    avatarHtml: avatarHtml,
     placeholderCard: placeholderCard,
     notFound: notFound,
     radio: {

@@ -149,7 +149,69 @@
   };
 
   /** 设置子页数据默认值(同步到数据库 settings:profile / settings:account / settings:notifications) */
-  var PROFILE_DEFAULTS = { username: '', email: '', bio: '', links: ['', ''] };
+  // 头像:type ∈ initial(用户名首字母)/ icon(预设图标)/ emoji / image(上传后裁剪为 256×256 方形 dataURL)
+  var AVATAR_TYPES = ['initial', 'icon', 'emoji', 'image'];
+  var AVATAR_ICONS = [
+    'user',
+    'rocket',
+    'star',
+    'heart',
+    'sparkles',
+    'globe',
+    'plane',
+    'coffee',
+    'trophy',
+    'brain-circuit',
+    'key-round',
+    'layers',
+    'gamepad-2',
+    'palette',
+    'sun',
+    'moon',
+    'briefcase',
+    'graduation-cap',
+  ];
+  var AVATAR_EMOJIS = [
+    '😀',
+    '😎',
+    '🤖',
+    '🚀',
+    '🌟',
+    '🎯',
+    '💡',
+    '🎨',
+    '☕',
+    '🐱',
+    '🐶',
+    '🌸',
+    '🍀',
+    '⚡',
+    '🔥',
+    '👑',
+    '🎮',
+    '📚',
+    '🎵',
+    '🏆',
+  ];
+  // 头像数据串长度上限(256×256 JPEG 约 20-40KB,此处留足余量防 localStorage/数据库膨胀)
+  var AVATAR_MAX_IMAGE_LENGTH = 400000;
+
+  var PROFILE_DEFAULTS = {
+    username: '',
+    email: '',
+    bio: '',
+    links: ['', ''],
+    avatar: { type: 'initial', value: '' },
+  };
+
+  /** 头像字段白名单校验(类型枚举 + 值类型/长度上限),脏数据回退默认 */
+  function sanitizeAvatar(avatar) {
+    var a = avatar && typeof avatar === 'object' ? avatar : {};
+    var type = AVATAR_TYPES.indexOf(a.type) !== -1 ? a.type : 'initial';
+    var value = typeof a.value === 'string' ? a.value.slice(0, AVATAR_MAX_IMAGE_LENGTH) : '';
+    if (type === 'icon' && AVATAR_ICONS.indexOf(value) === -1) value = 'user';
+    return { type: type, value: value };
+  }
   var ACCOUNT_DEFAULTS = { name: '', dob: '', language: '' };
   var NOTIFICATIONS_DEFAULTS = {
     type: 'all',
@@ -425,6 +487,8 @@
       }
     }
     var workspaces = readWorkspaces();
+    var profile = readJsonObject('profile', PROFILE_DEFAULTS, ['links']);
+    profile.avatar = sanitizeAvatar(profile.avatar);
     return {
       locale: locale,
       theme: theme,
@@ -435,7 +499,7 @@
       hiddenNav: hiddenNav,
       workspaces: workspaces,
       activeWorkspace: readActiveWorkspace(workspaces),
-      profile: readJsonObject('profile', PROFILE_DEFAULTS, ['links']),
+      profile: profile,
       account: readJsonObject('account', ACCOUNT_DEFAULTS),
       notifications: readJsonObject('notifications', NOTIFICATIONS_DEFAULTS),
     };
@@ -582,7 +646,13 @@
       hiddenNav: [],
       workspaces: defaultWorkspaces(),
       activeWorkspace: DEFAULT_WORKSPACES[0].id,
-      profile: Object.assign({}, PROFILE_DEFAULTS),
+      profile: {
+        username: '',
+        email: '',
+        bio: '',
+        links: ['', ''],
+        avatar: { type: 'initial', value: '' },
+      },
       account: Object.assign({}, ACCOUNT_DEFAULTS),
       notifications: Object.assign({}, NOTIFICATIONS_DEFAULTS),
     };
@@ -604,6 +674,10 @@
     STORAGE_PREFIX: STORAGE_PREFIX,
     K: K,
     APPEARANCE_DEFAULTS: APPEARANCE_DEFAULTS,
+    AVATAR_TYPES: AVATAR_TYPES,
+    AVATAR_ICONS: AVATAR_ICONS,
+    AVATAR_EMOJIS: AVATAR_EMOJIS,
+    sanitizeAvatar: sanitizeAvatar,
     PROFILE_DEFAULTS: PROFILE_DEFAULTS,
     ACCOUNT_DEFAULTS: ACCOUNT_DEFAULTS,
     NOTIFICATIONS_DEFAULTS: NOTIFICATIONS_DEFAULTS,

@@ -300,6 +300,7 @@
     // 仅在相关设置变化时刷新顶栏/侧边栏:profile/account/notifications 等
     // 表单击键不重建侧边栏,避免高频输入触发不必要的整树 DOM 重建。
     if (patchTouches(patch, ['theme'])) syncHeaderThemeButtons();
+    if (patchTouches(patch, ['profile'])) syncUserMenu();
     if (
       patchTouches(patch, [
         'locale',
@@ -1052,6 +1053,23 @@
       var pressed = btn.dataset.themeBtn === settings.theme;
       btn.setAttribute('aria-pressed', String(pressed));
       btn.classList.toggle('is-checked', pressed); // 胶囊式 radio group:选中项反白填充
+    });
+  }
+
+  /** 个人资料变化时原位更新侧边栏用户菜单(头像/用户名/邮箱),避免整树重建 */
+  function syncUserMenu() {
+    var profile = settings.profile || {};
+    var avatarHtml = App.ui.avatarHtml(profile, 'size-8');
+    var name = profile.username || 'Admin';
+    var email = profile.email || 'admin@example.com';
+    app.querySelectorAll('[data-user-avatar]').forEach(function (el) {
+      el.innerHTML = avatarHtml;
+    });
+    app.querySelectorAll('[data-user-name]').forEach(function (el) {
+      el.textContent = name;
+    });
+    app.querySelectorAll('[data-user-email]').forEach(function (el) {
+      el.textContent = email;
     });
   }
 

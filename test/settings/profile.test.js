@@ -31,6 +31,8 @@ const PROFILE = {
   email: EMAIL,
   bio: 'hello <script>alert(1)</script>',
   links: ['https://example.com', ''],
+  // 头像:image 类型存 256×256 裁剪压缩后的 dataURL(200KB 限制在浏览器端)
+  avatar: { type: 'image', value: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==' },
 };
 
 test('无 token 读写个人资料被拒绝(401)', async () => {

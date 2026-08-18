@@ -11,7 +11,22 @@
 const crypto = require('crypto');
 const { EXPIRY_MS } = require('../../auth/expiry');
 const { sha256 } = require('../../auth/session');
+const { createThrottle } = require('../../auth/throttle');
 const { sendJson, readBody } = require('../../http/json');
+
+/* 登录暴力破解限流:只统计密码错误次数,成功登录后清空 */
+const loginThrottle = createThrottle();
+
+/**
+ * 取客户端 IP:优先 socket.remoteAddress(自托管 Node/Docker 下不可伪造),
+ * 回退 x-forwarded-for(serverless 适配器无 socket 时)。
+ */
+function clientIp(req) {
+  if (req.socket && req.socket.remoteAddress) return req.socket.remoteAddress;
+  const fwd = req.headers && req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd) return fwd.split(',')[0].trim();
+  return 'unknown';
+}
 
 function authRoutes({ db, verifyPassword }) {
   async function login(req, res) {
@@ -22,6 +37,11 @@ function authRoutes({ db, verifyPassword }) {
     const ttl = EXPIRY_MS[expiry];
     if (!ttl) return sendJson(res, 400, { error: 'bad_expiry', message: '不支持的失效选项' });
 
+    const ip = clientIp(req);
+    if (loginThrottle.isBlocked(ip)) {
+      return sendJson(res, 429, { error: 'too_many_attempts', message: '登录尝试过于频繁,请稍后再试' });
+    }
+
     let ok;
     try {
       ok = verifyPassword(password); // 与 AUTH_PASSWORD 环境变量常量时间比较
@@ -29,8 +49,10 @@ function authRoutes({ db, verifyPassword }) {
       return sendJson(res, 500, { error: 'no_auth_password', message: String((e && e.message) || e) });
     }
     if (!ok) {
+      loginThrottle.recordFailure(ip);
       return sendJson(res, 401, { error: 'bad_password', message: '密码错误' });
     }
+    loginThrottle.clear(ip);
 
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();

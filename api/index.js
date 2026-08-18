@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     log.error('api', 'Vercel 函数处理异常: ' + pathname, e);
     if (!res.headersSent) {
-      sendJson(res, 500, { error: 'internal', message: String((e && e.message) || e) });
+      sendJson(res, 500, { error: 'internal', message: '服务器内部错误' });
     } else {
       res.end();
     }

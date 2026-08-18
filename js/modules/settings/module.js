@@ -38,7 +38,7 @@
     var emailOptions = [p.email, 'm@example.com', 'm@google.com', 'm@support.com']
       .filter(function (v, i, arr) { return v && arr.indexOf(v) === i; })
       .map(function (v) {
-        return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v === p.email ? ' selected' : '') + '>' + v + '</option>';
+        return '<option value="' + escAttr(v) + '"' + (v === p.email ? ' selected' : '') + '>' + escHtml(v) + '</option>';
       }).join('');
     var links = Array.isArray(p.links) && p.links.length ? p.links : ['', ''];
     var body =

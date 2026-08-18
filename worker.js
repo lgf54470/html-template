@@ -33,6 +33,19 @@ import { matchesPassword } from './server/auth/password.js';
 import { sha256, findSession } from './server/auth/session.js';
 import { RESERVED_SETTINGS_PREFIX, isSensitiveKey } from './server/security/sensitive.js';
 import { encryptWithKey, decryptWithKey } from './server/security/core.js';
+import { createThrottle } from './server/auth/throttle.js';
+import { SECURITY_HEADERS } from './server/http/headers.js';
+
+/* ---------- 登录限流(仅统计密码错误次数;与 Node 路由共用 server/auth/throttle.js) ---------- */
+const loginThrottle = createThrottle();
+
+function clientIp(request) {
+  const cf = request.headers.get('cf-connecting-ip');
+  if (cf) return cf;
+  const fwd = request.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return 'unknown';
+}
 
 /* ---------- 数据库(单例,每 isolate 一份) ---------- */
 let _db = null;
@@ -93,10 +106,10 @@ async function authed(request, db) {
 function sendJson(status, obj) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: {
+    headers: Object.assign({
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
-    },
+    }, SECURITY_HEADERS),
   });
 }
 
@@ -122,6 +135,10 @@ async function handleApi(request, env, pathname) {
     const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
     const ttl = EXPIRY_MS[expiry];
     if (!ttl) return sendJson(400, { error: 'bad_expiry', message: '不支持的失效选项' });
+    const ip = clientIp(request);
+    if (loginThrottle.isBlocked(ip)) {
+      return sendJson(429, { error: 'too_many_attempts', message: '登录尝试过于频繁,请稍后再试' });
+    }
     let ok;
     try {
       ok = verifyEnvPassword(password, env);
@@ -129,8 +146,10 @@ async function handleApi(request, env, pathname) {
       return sendJson(500, { error: 'no_auth_password', message: String((e && e.message) || e) });
     }
     if (!ok) {
+      loginThrottle.recordFailure(ip);
       return sendJson(401, { error: 'bad_password', message: '密码错误' });
     }
+    loginThrottle.clear(ip);
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();
     await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
@@ -218,7 +237,7 @@ export default {
       return await env.ASSETS.fetch(request);
     } catch (e) {
       console.error('[worker] 处理请求失败: ' + url.pathname + ' ' + ((e && e.stack) || e));
-      return sendJson(500, { error: 'internal', message: String((e && e.message) || e) });
+      return sendJson(500, { error: 'internal', message: '服务器内部错误' });
     }
   },
 };

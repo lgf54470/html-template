@@ -35,6 +35,8 @@ const { encrypt, decrypt } = require('../server/security/index.js');
 const { verifyPassword } = require('../server/auth/index.js');
 const { createApiHandler } = require('../server/api/index.js');
 const { MIME } = require('../server/http/mime.js');
+const { isPublicAsset } = require('../server/http/allowed.js');
+const { SECURITY_HEADERS } = require('../server/http/headers.js');
 
 /* ---------- 静态资源根目录:部署包内的仓库根目录(deno/ 的上一级) ---------- */
 const ROOT = resolve(import.meta.dirname, '..');
@@ -126,11 +128,21 @@ function makeNodeRes() {
 /* ---------- 静态资源(与 dev-server.js 的 serveStatic 行为一致;MIME 复用 server/http/mime.js) ---------- */
 
 async function serveStatic(pathname) {
+  // 安全:仅放行公开资源白名单,阻断 server/、.env*、sqlite.db、部署配置等
+  if (!isPublicAsset(pathname)) {
+    return new Response('Not Found', {
+      status: 404,
+      headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
+    });
+  }
   const rel = pathname === '/' ? '/index.html' : pathname;
   let filePath = resolve(ROOT, '.' + rel);
   // 防目录穿越:解析后的路径必须仍在 ROOT 内
   if (filePath !== ROOT && !filePath.startsWith(ROOT + sep)) {
-    return new Response('Forbidden', { status: 403 });
+    return new Response('Forbidden', {
+      status: 403,
+      headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
+    });
   }
   let data = null;
   try {
@@ -142,16 +154,16 @@ async function serveStatic(pathname) {
     } catch {
       return new Response('Not Found', {
         status: 404,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
       });
     }
   }
   return new Response(data, {
     status: 200,
-    headers: {
+    headers: Object.assign({
       'Content-Type': MIME[extname(filePath).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-store',
-    },
+    }, SECURITY_HEADERS),
   });
 }
 
@@ -176,7 +188,7 @@ async function handleRequest(request) {
           'Content-Type': 'application/json; charset=utf-8',
           'Cache-Control': 'no-store',
         });
-        res.end(JSON.stringify({ error: 'internal', message: String((e && e.message) || e) }));
+        res.end(JSON.stringify({ error: 'internal', message: '服务器内部错误' }));
       }
     }
     return res.toResponse();

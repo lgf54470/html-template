@@ -62,7 +62,7 @@ const server = http.createServer((req, res) => {
       .then(() => done(res.statusCode || 200))
       .catch((e) => {
         log.error('api', '接口处理异常: ' + url.pathname, e);
-        sendJson(res, 500, { error: 'internal', message: String((e && e.message) || e) });
+        sendJson(res, 500, { error: 'internal', message: '服务器内部错误' });
         done(500);
       });
     return;

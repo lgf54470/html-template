@@ -438,6 +438,16 @@ t('home.requestTitle', 5)     // → "请求 5 已完成" (支持 {n} 插值)
 | 3h/6h/9h/12h/24h/7d/14d/30d | localStorage | 持久存储,关浏览器仍有效 |
 | 下一次浏览器打开 | sessionStorage | 关浏览器即失效 |
 
+### 8.4 静态资源白名单与响应加固
+
+| 防线 | 措施 |
+|------|------|
+| 静态白名单 | 仅放行 `index.html` / `js/` / `assets/`(`server/http/allowed.js`),阻断 `server/`、`.env*`、`sqlite.db`、部署配置等 |
+| 登录限流 | 密码错误按 IP 计数,默认 1 分钟 8 次后返回 429(`server/auth/throttle.js`) |
+| 安全响应头 | `X-Content-Type-Options: nosniff` / `X-Frame-Options: DENY` / `Referrer-Policy: no-referrer`(`server/http/headers.js`) |
+| 错误信息 | 500 只返回通用文案,不向前端泄露内部错误详情 |
+| 输出转义 | 个人资料邮箱等用户可控字段渲染时做 HTML 属性/文本双重转义 |
+
 ---
 
 ## 9. 部署架构

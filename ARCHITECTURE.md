@@ -42,6 +42,7 @@
 │   │   ├── shell.js            # App Shell 渲染(侧边栏/顶栏/设置面板)
 │   │   ├── app.js              # 应用内核(模块注册表 + Hash 路由 + 事件委托 + 双向同步)
 │   │   └── interactions.js     # 交互层(拖拽调宽 + 移动端抽屉)
+│   ├── lib/                    # 第三方单文件库(无子依赖的纯 JS 库)
 │   └── modules/                # 业务模块(6个)
 │       ├── dashboard/          # 仪表盘(路由 /)
 │       ├── channels/           # 渠道(路由 /channels)
@@ -58,7 +59,8 @@
 │   ├── db-d1.js                # Cloudflare D1 驱动(binding + REST)
 │   ├── crypto.js               # AES-256-GCM 加密(敏感数据落库前加密)
 │   ├── logger.js               # 服务器终端日志(分级彩色输出)
-│   └── env.js                  # 零依赖 .env 加载器
+│   ├── env.js                  # 零依赖 .env 加载器
+│   └── lib/                    # 第三方单文件库(无子依赖的纯 JS 库)
 ├── dev-server.js               # 本地 Node 服务器入口
 ├── worker.js                   # Cloudflare Worker 入口(ESM)
 ├── api/index.js                # Vercel 无服务器函数入口
@@ -652,6 +654,30 @@ index.html
 2. 编写 `manifest.js` + `module.js`
 3. 在 `js/core/boot.js` 的 `MODULE_DIRS` 中登记
 4. 无需改动任何核心文件
+
+### 15.4 引入第三方库
+
+项目默认零外部依赖,但支持引入**单文件、无子依赖**的第三方 JS 库:
+
+| 库类型 | 放置位置 | 说明 |
+|--------|----------|------|
+| 前端单文件库 | `js/lib/xxx.js` | 纯浏览器端使用 |
+| 后端单文件库 | `server/lib/xxx.js` | Node.js 服务端使用 |
+| 有 npm 依赖的库 | `package.json` + `node_modules/` | 走标准包管理 |
+
+**使用方式:**
+
+```javascript
+// 前端:在模块中懒加载
+loadScript('js/lib/some-library.min.js').then(function () {
+  // 库已加载,可以使用
+});
+
+// 后端:在 server 文件中 require
+const lib = require('./lib/some-library');
+```
+
+**注意:** 如果库本身依赖其他 npm 包,请使用 `package.json` 管理,不要放入 `lib/` 目录。
 
 ---
 

@@ -49,6 +49,7 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
 │   ├── css/app.css           # 设计系统(内置编译产物:全部风格 + 调色板 + 字体声明)
 │   └── fonts/                # 本地字体(Inter / Manrope woff2)
 └── js/
+    ├── lib/                  # 第三方单文件库(无子依赖的纯 JS 库)
     ├── core/                 # 核心运行时(不依赖任何模块)
     │   ├── boot.js           # 引导:按序加载核心 + 模块清单 + App.start()
     │   ├── logger.js         # 浏览器日志:分级着色 + 自动定位 文件#函数:行号 + 全局异常捕获
@@ -267,3 +268,15 @@ CREATE TABLE auth_sessions (
 ## 设计系统说明
 
 `assets/css/app.css` 是原模板 Tailwind 构建产物的内置副本(352KB,含 8 套组件风格、调色板、深浅主题与本地字体声明)。模块内如需额外样式,写在模块自己的 `module.css` 并加入清单的 `css` 字段;如需改动设计系统,替换该文件或在其后追加覆盖规则(`index.html` 中追加 `<link>` 即可)。
+
+## 第三方库
+
+项目默认零外部依赖,但支持引入**单文件、无子依赖**的第三方 JS 库:
+
+| 库类型 | 放置位置 |
+|--------|----------|
+| 前端单文件库 | `js/lib/xxx.js` |
+| 后端单文件库 | `server/lib/xxx.js` |
+| 有 npm 依赖的库 | `package.json` + `node_modules/` |
+
+使用 `loadScript('js/lib/xxx.js')` 懒加载前端库;后端直接 `require('./lib/xxx')`。如果库依赖其他 npm 包,请使用 `package.json` 管理。

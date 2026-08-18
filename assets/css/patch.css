@@ -1,0 +1,71 @@
+/* ============================================================
+ * patch.css — 移植页面所需的 Tailwind 工具类补丁
+ * ------------------------------------------------------------
+ * app.css 是原模板 Tailwind 构建产物的内置副本,仅包含构建时的
+ * 工具类;dashboard / tasks / apps 等移植页面额外依赖的工具类
+ * 在此补齐(格式与 Tailwind v4 产物一致:calc(var(--spacing)*N)、
+ * 媒体查询 width>=…)。在 index.html 中于 app.css 之后引入。
+ * ============================================================ */
+
+/* ---------- 布局 / 间距 / 尺寸 ---------- */
+.max-w-6xl{max-width:72rem}
+.max-w-7xl{max-width:80rem}
+.items-end{align-items:flex-end}
+.flex\!{display:flex!important}
+.flex-wrap{flex-wrap:wrap}
+.flex-col-reverse{flex-direction:column-reverse}
+.capitalize{text-transform:capitalize}
+.text-right{text-align:right}
+.font-mono{font-family:var(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)}
+.mb-1{margin-bottom:calc(var(--spacing) * 1)}
+.mb-2{margin-bottom:calc(var(--spacing) * 2)}
+.mb-4{margin-bottom:calc(var(--spacing) * 4)}
+.mx-1{margin-inline:calc(var(--spacing) * 1)}
+.mx-2{margin-inline:calc(var(--spacing) * 2)}
+.me-2{margin-inline-end:calc(var(--spacing) * 2)}
+.h-2\.5{height:calc(var(--spacing) * 2.5)}
+.h-4{height:calc(var(--spacing) * 4)}
+.h-24{height:calc(var(--spacing) * 24)}
+.w-px{width:1px}
+.w-36{width:calc(var(--spacing) * 36)}
+.w-40{width:calc(var(--spacing) * 40)}
+.w-48{width:calc(var(--spacing) * 48)}
+.w-56{width:calc(var(--spacing) * 56)}
+.min-w-40{min-width:calc(var(--spacing) * 40)}
+.leading-none{line-height:1}
+.overflow-x-auto{overflow-x:auto}
+.ps-1{padding-inline-start:calc(var(--spacing) * 1)}
+.ps-2{padding-inline-start:calc(var(--spacing) * 2)}
+.pb-2{padding-bottom:calc(var(--spacing) * 2)}
+.px-1\.5{padding-inline:calc(var(--spacing) * 1.5)}
+.px-6{padding-inline:calc(var(--spacing) * 6)}
+.pt-6{padding-top:calc(var(--spacing) * 6)}
+.py-6{padding-block:calc(var(--spacing) * 6)}
+.gap-x-2{column-gap:calc(var(--spacing) * 2)}
+.gap-y-2{row-gap:calc(var(--spacing) * 2)}
+.tabular-nums{font-variant-numeric:tabular-nums}
+.bg-muted-foreground{background-color:var(--muted-foreground)}
+.col-span-1{grid-column:span 1/span 1}
+:where(.space-x-1>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * 1) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-x-reverse)))}
+:where(.space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * 2) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-x-reverse)))}
+:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-y-reverse)))}
+:where(.space-y-2>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)))}
+:where(.space-y-4>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))}
+:where(.space-y-8>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 8) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 8) * calc(1 - var(--tw-space-y-reverse)))}
+
+/* ---------- 响应式(sm=40rem / lg=64rem) ---------- */
+@media (width>=40rem){
+  .sm\:block{display:block}
+  .sm\:inline{display:inline}
+  .sm\:flex-row{flex-direction:row}
+  .sm\:items-center{align-items:center}
+  .sm\:gap-6{gap:calc(var(--spacing) * 6)}
+  :where(.sm\:space-x-1>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * 1) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-x-reverse)))}
+  :where(.sm\:space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * 2) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-x-reverse)))}
+}
+@media (width>=64rem){
+  .lg\:inline-block{display:inline-block}
+  .lg\:grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .lg\:col-span-4{grid-column:span 4/span 4}
+  .lg\:col-span-3{grid-column:span 3/span 3}
+}

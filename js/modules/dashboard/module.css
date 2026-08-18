@@ -1,7 +1,8 @@
 /* ============================================================
  * dashboard 模块私有样式(懒加载)
- * 复刻 shadcn-admin Dashboard 页:标签页(类 shadcn Tabs)与
- * 自绘 SVG 图表配色(跟随设计系统变量)。
+ * 复刻 shadcn-admin Dashboard 页:标签页(类 shadcn Tabs)。
+ * 图表由 Chart.js(js/lib/chart.umd.js)渲染,配色取自设计系统
+ * CSS 变量,无需额外样式。
  * ============================================================ */
 
 /* ---------- 标签页(类 shadcn Tabs) ---------- */
@@ -32,49 +33,4 @@
 .db-tab.is-disabled {
   pointer-events: none;
   opacity: 0.5;
-}
-
-/* ---------- 自绘 SVG 图表 ---------- */
-.db-bar {
-  fill: var(--primary);
-  transition: opacity 0.15s ease;
-}
-.db-bar:hover {
-  opacity: 0.8;
-}
-.db-axis {
-  font-size: 11px;
-  fill: var(--muted-foreground);
-}
-.db-gridline {
-  stroke: var(--border);
-  stroke-width: 1;
-}
-.db-line-primary {
-  stroke: var(--primary);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-.db-line-muted {
-  stroke: var(--muted-foreground);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-.db-grad-stop-primary {
-  stop-color: var(--primary);
-  stop-opacity: 0.35;
-}
-.db-grad-stop-primary-end {
-  stop-color: var(--primary);
-  stop-opacity: 0.02;
-}
-.db-grad-stop-muted {
-  stop-color: var(--muted-foreground);
-  stop-opacity: 0.25;
-}
-.db-grad-stop-muted-end {
-  stop-color: var(--muted-foreground);
-  stop-opacity: 0.02;
 }

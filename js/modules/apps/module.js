@@ -147,8 +147,9 @@
     var t = ctx.t;
     var list = filteredApps();
 
-    var html = '<div class="ap-page" data-app-region>';
-    '<div class="ap-head">' +
+    var html =
+      '<div class="ap-page" data-app-region>' +
+      '<div class="ap-head">' +
       '<h1>' +
       t('apps.title') +
       '</h1>' +

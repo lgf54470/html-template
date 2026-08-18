@@ -1,8 +1,9 @@
 /* ============================================================
  * dashboard 模块 — 实现(懒加载,首次访问 #/ 时才下载)
  * 复刻参考项目 shadcn-admin 的 Dashboard 页:统计卡 + 标签页 +
- * 自绘 SVG 柱状/面积图 + 最近销售 + 分析(流量/来源/设备)。
- * 只依赖核心层 App.ui / App.icon;图表零依赖自绘。
+ * Chart.js 柱状/面积图 + 最近销售 + 分析(流量/来源/设备)。
+ * 只依赖核心层 App.ui / App.icon;图表用 js/lib/chart.umd.js
+ * (单文件 Chart.js v4.4.7,index.html 入口同步加载)。
  * ============================================================ */
 (function () {
   'use strict';
@@ -82,188 +83,197 @@
     { name: 'Tablet', value: 4 },
   ];
 
-  /* ---------- 自绘 SVG 图表 ---------- */
-  function barChartHtml(t) {
-    var max = Math.max.apply(
-      null,
-      BAR_DATA.map(function (d) {
-        return d.total;
-      })
-    );
-    var w = 560;
-    var h = 240;
-    var pad = 10;
-    var innerW = w - 64;
-    var innerH = h - 44;
-    var slot = innerW / BAR_DATA.length;
-    var barW = Math.max(8, slot * 0.55);
-    var bars = BAR_DATA.map(function (d, i) {
-      var bh = Math.max(2, (d.total / max) * innerH);
-      var x = pad + 56 + i * slot + (slot - barW) / 2;
-      var y = h - 36 - bh;
-      return (
-        '<rect x="' +
-        x +
-        '" y="' +
-        y +
-        '" width="' +
-        barW +
-        '" height="' +
-        bh +
-        '" rx="4" class="db-bar" data-total="' +
-        d.total +
-        '">' +
-        '<title>' +
-        d.name +
-        ': $' +
-        d.total.toLocaleString('en-US') +
-        '</title></rect>'
-      );
-    }).join('');
-    var labels = BAR_DATA.map(function (d, i) {
-      var x = pad + 56 + i * slot + slot / 2;
-      return (
-        '<text x="' +
-        x +
-        '" y="' +
-        (h - 14) +
-        '" text-anchor="middle" class="db-axis">' +
-        d.name +
-        '</text>'
-      );
-    }).join('');
+  /* ---------- Chart.js 图表(js/lib/chart.umd.js,入口同步加载) ---------- */
+  /** 固定高度容器 + canvas 占位;图表在渲染完成后经 app:afterRender 初始化 */
+  function chartBoxHtml(height, kind, ariaLabel) {
     return (
-      '<svg viewBox="0 0 ' +
-      w +
-      ' ' +
-      h +
-      '" class="w-full" role="img" aria-label="' +
-      t('dashboard.chart.barAria') +
-      '">' +
-      '<g class="db-axis">' +
-      '<line x1="' +
-      pad +
-      '" y1="' +
-      pad +
-      '" x2="' +
-      pad +
-      '" y2="' +
-      (h - 36) +
-      '" class="db-gridline"></line>' +
-      '<line x1="' +
-      pad +
-      '" y1="' +
-      (h - 36) +
-      '" x2="' +
-      w +
-      '" y2="' +
-      (h - 36) +
-      '" class="db-gridline"></line>' +
-      '</g>' +
-      bars +
-      labels +
-      '</svg>'
+      '<div style="position:relative;height:' +
+      height +
+      'px">' +
+      '<canvas data-db-chart="' +
+      kind +
+      '" role="img" aria-label="' +
+      ariaLabel +
+      '"></canvas>' +
+      '</div>'
     );
   }
 
+  function barChartHtml(t) {
+    return chartBoxHtml(350, 'overview-bar', t('dashboard.chart.barAria'));
+  }
+
   function areaChartHtml(t) {
-    var w = 560;
-    var h = 260;
-    var padX = 50;
-    var padTop = 14;
-    var padBottom = 30;
-    var innerW = w - padX;
-    var innerH = h - padTop - padBottom;
-    var maxV = Math.max.apply(
-      null,
-      AREA_DATA.map(function (d) {
-        return Math.max(d.clicks, d.uniques);
-      })
-    );
-    function pts(key) {
-      return AREA_DATA.map(function (d, i) {
-        var x = padX + (i / (AREA_DATA.length - 1)) * innerW;
-        var y = padTop + innerH - (d[key] / maxV) * innerH;
-        return x.toFixed(1) + ',' + y.toFixed(1);
-      }).join(' ');
+    return chartBoxHtml(300, 'analytics-area', t('dashboard.chart.areaAria'));
+  }
+
+  /** 读取设计系统 CSS 变量(主题/强调色变化后重新读取,图表配色随之刷新) */
+  function cssVar(name) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (v || '').trim();
+  }
+
+  function chartColors() {
+    return {
+      primary: cssVar('--primary') || '#18181b',
+      muted: cssVar('--muted-foreground') || '#71717a',
+      border: cssVar('--border') || '#e4e4e7',
+      popover: cssVar('--popover') || '#ffffff',
+      foreground: cssVar('--foreground') || '#18181b',
+    };
+  }
+
+  /** 类 shadcn 的 Tooltip(跟随 popover/边框/前景设计变量) */
+  function tooltipConfig(colors) {
+    return {
+      backgroundColor: colors.popover,
+      titleColor: colors.foreground,
+      bodyColor: colors.muted,
+      borderColor: colors.border,
+      borderWidth: 1,
+      cornerRadius: 8,
+      padding: 8,
+      boxPadding: 4,
+      displayColors: false,
+      titleFont: { size: 12, weight: '600' },
+      bodyFont: { size: 12 },
+    };
+  }
+
+  /** Overview 柱状图(与参考 recharts BarChart 对齐:无网格、y 轴 $ 前缀、圆角柱) */
+  function barChartConfig() {
+    var colors = chartColors();
+    return {
+      type: 'bar',
+      data: {
+        labels: BAR_DATA.map(function (d) {
+          return d.name;
+        }),
+        datasets: [
+          {
+            label: 'Total',
+            data: BAR_DATA.map(function (d) {
+              return d.total;
+            }),
+            backgroundColor: colors.primary,
+            borderRadius: 4,
+            borderSkipped: false,
+            maxBarThickness: 42,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        plugins: { legend: { display: false }, tooltip: tooltipConfig(colors) },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: colors.muted, font: { size: 12 } },
+          },
+          y: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              color: colors.muted,
+              font: { size: 12 },
+              callback: function (v) {
+                return '$' + v;
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  /** Analytics 面积图(与参考 recharts AreaChart 对齐:渐变填充、平滑曲线、无点) */
+  function areaChartConfig() {
+    var colors = chartColors();
+    function dataset(key, label, color) {
+      return {
+        label: label,
+        data: AREA_DATA.map(function (d) {
+          return d[key];
+        }),
+        borderColor: color,
+        backgroundColor: function (context) {
+          var chart = context.chart;
+          if (!chart.chartArea) return color;
+          var g = chart.ctx.createLinearGradient(0, chart.chartArea.top, 0, chart.chartArea.bottom);
+          g.addColorStop(0, color);
+          g.addColorStop(1, 'transparent');
+          return g;
+        },
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+      };
     }
-    function poly(key) {
-      var x0 = padX;
-      var x1 = padX + innerW;
-      var y0 = padTop + innerH;
-      return (
-        pts(key) +
-        ' ' +
-        x1.toFixed(1) +
-        ',' +
-        y0.toFixed(1) +
-        ' ' +
-        x0.toFixed(1) +
-        ',' +
-        y0.toFixed(1)
-      );
-    }
-    var labels = AREA_DATA.map(function (d, i) {
-      var x = padX + (i / (AREA_DATA.length - 1)) * innerW;
-      return (
-        '<text x="' +
-        x.toFixed(1) +
-        '" y="' +
-        (h - 10) +
-        '" text-anchor="middle" class="db-axis">' +
-        d.name +
-        '</text>'
-      );
-    }).join('');
-    return (
-      '<svg viewBox="0 0 ' +
-      w +
-      ' ' +
-      h +
-      '" class="w-full" role="img" aria-label="' +
-      t('dashboard.chart.areaAria') +
-      '">' +
-      '<defs>' +
-      '<linearGradient id="db-grad-clicks" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" class="db-grad-stop-primary"></stop><stop offset="100%" class="db-grad-stop-primary-end"></stop>' +
-      '</linearGradient>' +
-      '<linearGradient id="db-grad-uniques" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" class="db-grad-stop-muted"></stop><stop offset="100%" class="db-grad-stop-muted-end"></stop>' +
-      '</linearGradient>' +
-      '</defs>' +
-      '<line x1="' +
-      padX +
-      '" y1="' +
-      padTop +
-      '" x2="' +
-      padX +
-      '" y2="' +
-      (h - padBottom) +
-      '" class="db-gridline"></line>' +
-      '<line x1="' +
-      padX +
-      '" y1="' +
-      (h - padBottom) +
-      '" x2="' +
-      w +
-      '" y2="' +
-      (h - padBottom) +
-      '" class="db-gridline"></line>' +
-      '<polygon points="' +
-      poly('clicks') +
-      '" fill="url(#db-grad-clicks)"></polygon>' +
-      '<polyline points="' +
-      pts('clicks') +
-      '" fill="none" class="db-line-primary"></polyline>' +
-      '<polygon points="' +
-      poly('uniques') +
-      '" fill="url(#db-grad-uniques)"></polygon>' +
-      '<polyline points="' +
-      pts('uniques') +
-      '" fill="none" class="db-line-muted"></polyline>' +
-      labels +
-      '</svg>'
+    return {
+      type: 'line',
+      data: {
+        labels: AREA_DATA.map(function (d) {
+          return d.name;
+        }),
+        datasets: [
+          dataset('clicks', 'Clicks', colors.primary),
+          dataset('uniques', 'Uniques', colors.muted),
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        plugins: { legend: { display: false }, tooltip: tooltipConfig(colors) },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: colors.muted, font: { size: 12 } },
+          },
+          y: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: colors.muted, font: { size: 12 } },
+          },
+        },
+      },
+    };
+  }
+
+  /**
+   * 初始化 / 刷新图表。force=true 时销毁重建(路由重渲染、主题变化后重新
+   * 读取设计变量);false 时只补建缺失图表并对可见图表 resize(切到
+   * Analytics 标签时 analytics-area 首次可见,Chart.js 经 ResizeObserver
+   * 自动适配宽度)。
+   */
+  function initCharts(force) {
+    if (!window.Chart) return;
+    Array.prototype.forEach.call(
+      document.querySelectorAll('canvas[data-db-chart]'),
+      function (cv) {
+        var existing = window.Chart.getChart(cv);
+        if (existing && !force) {
+          if (cv.offsetParent !== null) existing.resize();
+          return;
+        }
+        if (existing) existing.destroy();
+        var kind = cv.getAttribute('data-db-chart');
+        var cfg = kind === 'overview-bar' ? barChartConfig() : areaChartConfig();
+        new window.Chart(cv, cfg);
+      }
     );
+  }
+
+  /** 图表默认字体跟随设计系统正文字体 */
+  function applyChartFont() {
+    if (!window.Chart) return;
+    var f = cssVar('--font-sans-base');
+    if (f) window.Chart.defaults.font.family = f;
   }
 
   /* ---------- 卡片与列表 ---------- */
@@ -570,12 +580,26 @@
       document.querySelectorAll('[data-db-panel]').forEach(function (panel) {
         panel.classList.toggle('hidden', panel.getAttribute('data-db-panel') !== id);
       });
+      initCharts(false); // 首次切到 Analytics 时补建面积图;已可见图表仅 resize
       return;
     }
     if (target.closest('[data-db-download]')) {
       App.ui.toast('Dashboard exported to CSV.', 'default');
       return;
     }
+  });
+
+  /* ---------- 图表生命周期:路由渲染完成后初始化,主题/外观变化后重建 ---------- */
+  document.addEventListener('app:afterRender', function (e) {
+    var path = e.detail && e.detail.path;
+    if (path !== '/' && path !== '') return;
+    applyChartFont();
+    initCharts(true);
+  });
+  document.addEventListener('app:themechange', function () {
+    if (App.currentPath && App.currentPath() !== '/') return;
+    applyChartFont();
+    initCharts(true);
   });
 
   App.defineModule({ id: 'dashboard', render: render });

@@ -326,6 +326,9 @@
     // 仅在相关设置变化时刷新顶栏/侧边栏:profile/account/notifications 等
     // 表单击键不重建侧边栏,避免高频输入触发不必要的整树 DOM 重建。
     if (patchTouches(patch, ['theme'])) syncHeaderThemeButtons();
+    // 主题/外观变化后通知模块重建图表配色(如 dashboard 的 Chart.js)
+    if (patchTouches(patch, ['theme', 'appearance']))
+      document.dispatchEvent(new CustomEvent('app:themechange'));
     if (patchTouches(patch, ['profile'])) syncUserMenu();
     if (
       patchTouches(patch, [
@@ -942,6 +945,8 @@
       .then(function (result) {
         if (token !== navToken) return; // 已有更新的导航,丢弃过期结果
         if (contentArea) contentArea.innerHTML = result.html;
+        // 内容挂载完成通知:模块(如 dashboard 图表)据此初始化 DOM 后逻辑
+        document.dispatchEvent(new CustomEvent('app:afterRender', { detail: { path: path } }));
         if (viewport) viewport.scrollTop = 0;
         var hit = findRoute(path);
         var opened = false;

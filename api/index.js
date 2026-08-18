@@ -11,7 +11,7 @@
  * Vercel 转发时会自动把原始路径放进 ?path= 查询参数(如 /api/index?path=auth/login),
  * 见下方 resolveApiPath();若请求直接命中(无 rewrite)也能按原 URL 工作。
  *
- * Vercel 项目配置(见 DEPLOY-VERCEL.md):
+ * Vercel 项目配置(见 docs/deploy/vercel.md):
  *   - vercel.json 已内置 framework=null / buildCommand / outputDirectory / rewrites,
  *     控制台无需额外配置,三种部署方式(控制台 Git 导入 / vercel CLI / GitHub Actions)行为一致。
  *   - 环境变量:DATABASE_URL / DATABASE_AUTH_TOKEN / AUTH_PASSWORD / ENCRYPTION_KEY

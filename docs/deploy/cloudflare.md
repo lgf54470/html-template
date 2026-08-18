@@ -1,4 +1,4 @@
-# 部署到 Cloudflare(DEPLOY.md)
+# 部署到 Cloudflare(docs/deploy/cloudflare.md)
 
 本文介绍如何把本模板完整部署到 Cloudflare。模板是**纯静态前端 + 可移植 Node 服务**,在 Cloudflare 上采用 **Workers + 静态资源(Assets)+ D1** 的架构:
 
@@ -289,7 +289,7 @@ A:完全可以。本地 `node dev-server.js`(sqlite)与 Cloudflare(Worker + D1)�
 | `.assetsignore` | 静态资源排除清单(本地文件、文档、CI 不上传) |
 | `.github/workflows/deploy-cloudflare.yml` | GitHub Actions 自动部署 |
 | `.dev.vars.example` | `wrangler dev` 本地调试环境变量模板 |
-| `DEPLOY.md` | 本文档 |
+| `docs/deploy/cloudflare.md` | 本文档 |
 
 ## 10. 安全提示
 

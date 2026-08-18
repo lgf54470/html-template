@@ -12,14 +12,14 @@
  *   - 敏感键加密:AES-256-GCM,存储格式与 server/crypto.js 一致(enc:v1:...)
  *
  * 环境变量(在 Deno Deploy 控制台 App → Environment variables 配置,
- * 或用 `deno deploy env add <名称> <值> [--secret]` 设置,见 DEPLOY-DENO.md):
+ * 或用 `deno deploy env add <名称> <值> [--secret]` 设置,见 docs/deploy/deno.md):
  *   DB_DRIVER=turso   驱动(未设置时本文件默认 turso —— Deno 运行时无 node:sqlite)
  *   DATABASE_URL / DATABASE_AUTH_TOKEN  Turso 连接信息
  *   AUTH_PASSWORD      登录密码(必设;缺失时登录直接报错,绝不生成随机密码)
  *   ENCRYPTION_KEY     敏感数据加密密钥,64 位 hex(生产必设;缺失时报错)
  *
  * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server/api.js(或反之)。
- * 完整部署说明见 DEPLOY-DENO.md。
+ * 完整部署说明见 docs/deploy/deno.md。
  * ============================================================ */
 
 import { createRequire } from 'node:module';

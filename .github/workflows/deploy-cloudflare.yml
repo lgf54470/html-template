@@ -4,7 +4,7 @@
 #   CLOUDFLARE_ACCOUNT_ID Cloudflare 账号 ID(控制台首页右侧)
 #   AUTH_PASSWORD         首次登录管理员密码(每次部署同步为 Worker secret)
 #   ENCRYPTION_KEY        64 位 hex 加密密钥(每次部署同步为 Worker secret;openssl rand -hex 32 生成)
-# 还需先在 wrangler.toml 中填好 D1 的 database_id(见 DEPLOY.md)
+# 还需先在 wrangler.toml 中填好 D1 的 database_id(见 docs/deploy/cloudflare.md)
 name: Deploy to Cloudflare Workers
 
 on:

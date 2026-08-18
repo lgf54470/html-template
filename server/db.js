@@ -9,7 +9,7 @@
  *   DB_DRIVER=sqlite (默认)  本地 SQLite(node:sqlite 内置,路径 SQLITE_PATH,默认 sqlite.db)
  *   DB_DRIVER=turso          远程 Turso/libSQL HTTP API(DATABASE_URL + DATABASE_AUTH_TOKEN)
  *   DB_DRIVER=d1             Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,
- *                            需要 D1_ACCOUNT_ID / D1_DATABASE_ID / D1_API_TOKEN,见 DEPLOY.md)
+ *                            需要 D1_ACCOUNT_ID / D1_DATABASE_ID / D1_API_TOKEN,见 docs/deploy/cloudflare.md)
  *
  * 适配器各自负责参数绑定与行数据形状的统一,业务代码只依赖本接口。
  * ============================================================ */

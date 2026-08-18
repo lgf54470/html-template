@@ -6,13 +6,13 @@
  *   PORT              端口(默认 3000)
  *   AUTH_PASSWORD     登录密码(必设;与平台环境变量直接校验,无随机初始密码)
  *   SQLITE_PATH       本地 sqlite 文件路径(默认 sqlite.db)
- *   DB_DRIVER         sqlite(默认) / turso(DATABASE_URL + DATABASE_AUTH_TOKEN) / d1(见 DEPLOY.md)
+ *   DB_DRIVER         sqlite(默认) / turso(DATABASE_URL + DATABASE_AUTH_TOKEN) / d1(见 docs/deploy/cloudflare.md)
  *
  * API 逻辑在 server/api.js(与 Vercel 函数 api/index.js 共用),
  * 密码哈希与初始化在 server/auth.js。
  *
  * ⚠ 文件名不能是 server.js:Vercel 会把根目录的 server.{js,cjs,mjs,ts}
- *   自动捕获为 Node.js 自定义服务器入口,接管全部请求(见 DEPLOY-VERCEL.md)。
+ *   自动捕获为 Node.js 自定义服务器入口,接管全部请求(见 docs/deploy/vercel.md)。
  *   Cloudflare 部署用 worker.js,Vercel 部署用 api/index.js,本文件只供本地/自托管。
  *
  * 数据库表与命名规范见 README「数据库设计」。

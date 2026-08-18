@@ -16,7 +16,7 @@
  *   ENCRYPTION_KEY  敏感数据加密密钥,64 位 hex(生产必设;缺失时报错)
  *
  * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server/api.js(或反之)。
- * 完整部署说明见 DEPLOY.md。
+ * 完整部署说明见 docs/deploy/cloudflare.md。
  * ============================================================ */
 
 // 注意:Cloudflare 要求 ESM 格式(nodejs_compat 下 CJS 会报

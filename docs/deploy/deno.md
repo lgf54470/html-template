@@ -1,4 +1,4 @@
-# 部署到 Deno Deploy(DEPLOY-DENO.md)
+# 部署到 Deno Deploy(docs/deploy/deno.md)
 
 本文介绍如何把本模板部署到 **Deno Deploy**,数据库使用 **Turso**(远程 libSQL)。架构:
 
@@ -163,7 +163,7 @@ A:`ENCRYPTION_KEY` 与写入时不一致(或未设置)。密钥必须固定、�
 A:应用必须先存在。首次请用方式一(控制台 Git 导入)或方式三(`deno deploy create`)创建应用,并把 `DENO_DEPLOY_APP` 设为该应用名。
 
 **Q:与 Vercel / Cloudflare 部署的关系?**
-A:三套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` 互通。Vercel 见 [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md),Cloudflare 见 [`DEPLOY.md`](./DEPLOY.md)。
+A:三套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` 互通。Vercel 见 [`vercel.md`](./vercel.md),Cloudflare 见 [`cloudflare.md`](./cloudflare.md)。
 
 ## 文件清单
 
@@ -172,4 +172,4 @@ A:三套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 | `deno/main.js` | Deno Deploy 入口(dynamic 模式:静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api.js`) |
 | `deno.json` | `deploy` 配置(dynamic + 入口 `deno/main.js`,源码优先于控制台;`deploy.org` / `deploy.app` 由 `deno deploy switch` 或首次 CLI 部署自动写入) |
 | `.github/workflows/deploy-deno.yml` | GitHub Actions 自动部署(方式二) |
-| `DEPLOY-DENO.md` | 本文档 |
+| `docs/deploy/deno.md` | 本文档 |

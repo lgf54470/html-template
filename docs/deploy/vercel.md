@@ -1,4 +1,4 @@
-# 部署到 Vercel(DEPLOY-VERCEL.md)
+# 部署到 Vercel(docs/deploy/vercel.md)
 
 本文介绍如何把本模板部署到 **Vercel**,数据库使用 **Turso**(远程 libSQL)。架构:
 
@@ -137,7 +137,7 @@ A:环境变量未配置或未应用到该环境(Production / Preview 分开配);
 A:`ENCRYPTION_KEY` 与写入时不一致(或未设置)。密钥必须固定、与其它环境一致。
 
 **Q:与 Cloudflare 部署的关系?**
-A:两套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` 互通。Cloudflare 见 [`DEPLOY.md`](./DEPLOY.md)。
+A:两套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` 互通。Cloudflare 见 [`cloudflare.md`](./cloudflare.md)。
 
 ## 文件清单
 
@@ -150,4 +150,4 @@ A:两套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 | `dev-server.js` | 本地 / 自托管服务器(已改名:不能叫 `server.js`,否则会被 Vercel 捕获为自定义服务器入口) |
 | `.vercelignore` | 阻止本地敏感文件(数据库、密钥、`.env`)上传到构建环境 |
 | `.github/workflows/deploy-vercel.yml` | GitHub Actions 自动部署 |
-| `DEPLOY-VERCEL.md` | 本文档 |
+| `docs/deploy/vercel.md` | 本文档 |

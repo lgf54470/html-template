@@ -1,5 +1,5 @@
 # ============================================================
-# Cloudflare Workers 配置 — 完整部署说明见 DEPLOY.md
+# Cloudflare Workers 配置 — 完整部署说明见 docs/deploy/cloudflare.md
 # 使用前必做:
 #   1. npx wrangler d1 create html-template-db
 #      把返回的 database_id 填入下方 [[d1_databases]]

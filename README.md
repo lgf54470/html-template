@@ -175,7 +175,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 |---|---|---|
 | `DB_DRIVER` | `sqlite`(默认) | 本地 SQLite,`node:sqlite` 内置模块(需 Node ≥ 22.5,推荐 ≥ 23.4),零第三方依赖 |
 | `DB_DRIVER` | `turso` | 远程 Turso / libSQL HTTP API(需 `DATABASE_URL` + `DATABASE_AUTH_TOKEN`) |
-| `DB_DRIVER` | `d1` | Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,需 `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`;详见 DEPLOY.md) |
+| `DB_DRIVER` | `d1` | Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,需 `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`;详见 docs/deploy/cloudflare.md) |
 | `ENCRYPTION_KEY` | 64 位 hex | 敏感数据 AES-256-GCM 加密密钥(生产必设;缺省时自动生成到 `server/.secret-key`) |
 | `SQLITE_PATH` | 路径 | 本地 sqlite 文件位置(默认 `sqlite.db`,已加入 .gitignore) |
 | `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | — | turso 远程数据库连接信息 |
@@ -219,14 +219,14 @@ CREATE TABLE auth_sessions (
 
 除登录外,所有 `/api/*` 均要求请求头 `x-auth-token`。
 
-### 部署到 Cloudflare / Vercel 等平台
+### 部署到 Cloudflare / Vercel / Deno 等平台
 
-模板是纯静态 + 可移植 Node 服务,可整体部署。两套完整方案均已就绪:
+模板是纯静态 + 可移植 Node 服务,可整体部署。三套完整方案均已就绪:
 
-- **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,**详见 [`DEPLOY.md`](./DEPLOY.md)**。
-- **Vercel + Turso**:`api/index.js`(无服务器函数,`vercel.json` 用 rewrites 把 `/api/*` 转发给它,复用 `server/api.js` 处理器)+ `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md)**。
-- **Deno Deploy + Turso**:`deno/main.js`(dynamic 模式入口,静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api.js`)+ `deno.json`(deploy 配置)+ GitHub Actions(`.github/workflows/deploy-deno.yml`)。支持控制台 Git 导入(零 YAML)/ GitHub Actions / `deno deploy` 命令行三种方式,**详见 [`DEPLOY-DENO.md`](./DEPLOY-DENO.md)**。
-- **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API(见 DEPLOY.md)。
+- **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,**详见 [`docs/deploy/cloudflare.md`](./docs/deploy/cloudflare.md)**。
+- **Vercel + Turso**:`api/index.js`(无服务器函数,`vercel.json` 用 rewrites 把 `/api/*` 转发给它,复用 `server/api.js` 处理器)+ `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`docs/deploy/vercel.md`](./docs/deploy/vercel.md)**。
+- **Deno Deploy + Turso**:`deno/main.js`(dynamic 模式入口,静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api.js`)+ `deno.json`(deploy 配置)+ GitHub Actions(`.github/workflows/deploy-deno.yml`)。支持控制台 Git 导入(零 YAML)/ GitHub Actions / `deno deploy` 命令行三种方式,**详见 [`docs/deploy/deno.md`](./docs/deploy/deno.md)**。
+- **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API(见 docs/deploy/cloudflare.md)。
 - **常规服务器 / 本地开发**:直接 `node dev-server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
 
 ## 日志系统

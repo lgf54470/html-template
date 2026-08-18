@@ -659,8 +659,15 @@ index.html
 
 ### 14.3 缓存控制
 
-- 所有 API 响应: `Cache-Control: no-store`
-- 静态资源: `Cache-Control: no-store`(可通过 CDN 缓存)
+- 所有 API 响应: `Cache-Control: no-store`(含敏感数据,禁止缓存)
+- `index.html`: `no-store`(入口始终最新)
+- `js/` / `assets/`: `public, no-cache` + `ETag` / `Last-Modified`,浏览器经 304 复用,避免重复下载大体积样式与图标
+
+### 14.4 缓存优先与后台刷新
+
+- 启动先读 localStorage 渲染(缓存优先),随后 GET `/api/settings` 与服务端核对
+- 仅当服务端设置与本地不同才整页刷新;标签页切回前台时再自动核对一次
+- 本地改动防抖 400ms 后 PUT 回数据库,避免逐键请求
 
 ---
 

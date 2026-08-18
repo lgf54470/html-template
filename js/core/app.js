@@ -256,14 +256,21 @@
    * @param {object} patch 部分设置(浅合并;子对象需整体替换,如 { profile: {...} })
    * @param {object} [opts] { noRerender: true } 用于输入框逐键更新时避免重渲染抢焦点
    */
+  /** 判断 patch 是否触及某类设置(避免每次击键都重建整棵侧边栏/顶栏) */
+  function patchTouches(patch, keys) {
+    return keys.some(function (k) { return Object.prototype.hasOwnProperty.call(patch, k); });
+  }
+
   function updateSettings(patch, opts) {
     opts = opts || {};
     settings = Object.assign({}, settings, patch);
     App.settings.applySettings(settings);
     App.settings.persistSettings(settings);
     pushSettingsToServer(); // 双向同步:本地改动异步写入数据库 app_settings
-    syncHeaderThemeButtons();
-    refreshSidebar(); // 菜单项可见性/侧边栏样式随设置变化
+    // 仅在相关设置变化时刷新顶栏/侧边栏:profile/account/notifications 等
+    // 表单击键不重建侧边栏,避免高频输入触发不必要的整树 DOM 重建。
+    if (patchTouches(patch, ['theme'])) syncHeaderThemeButtons();
+    if (patchTouches(patch, ['locale', 'sidebarVariant', 'sidebarCollapsible', 'sidebarWidth', 'hiddenNav'])) refreshSidebar();
     if (sheetOpen) App.shell.rerenderSheetContent(settings, tFor(settings.locale));
     // 设置页与右上角面板同源:任一侧修改,当前设置页内容同步刷新(双向同步)
     if (!opts.noRerender && currentPath().indexOf('/settings') === 0) rerenderContent();
@@ -393,13 +400,31 @@
     return App.settings.readSettings();
   }
 
-  /** 登录后从数据库拉取设置并应用(服务端为准;失败时静默回退本地) */
+  /** 服务端可覆盖的设置子集(排除 locale 等仅本地字段),用于变化检测 */
+  function serverSettingsSnapshot(s) {
+    return JSON.stringify({
+      theme: s.theme,
+      appearance: s.appearance,
+      sidebarVariant: s.sidebarVariant,
+      sidebarCollapsible: s.sidebarCollapsible,
+      sidebarWidth: s.sidebarWidth,
+      hiddenNav: s.hiddenNav,
+      profile: s.profile,
+      account: s.account,
+      notifications: s.notifications,
+    });
+  }
+
+  /** 登录后从数据库拉取设置并应用(服务端为准;失败时静默回退本地)。
+   *  优先使用本地缓存:启动时已从 localStorage 渲染;仅当服务端数据
+   *  与当前值不同才整页刷新,避免无变化时的重复渲染。 */
   function syncSettingsFromServer() {
     if (!App.auth || !App.auth.token()) return;
     App.api.get('/api/settings')
       .then(function (raw) {
         var merged = mergeServerSettings(raw);
         if (!merged) return;
+        if (serverSettingsSnapshot(settings) === serverSettingsSnapshot(merged)) return;
         settings = merged;
         App.settings.applySettings(settings);
         document.documentElement.lang = settings.locale;
@@ -533,6 +558,11 @@
 
   window.addEventListener('hashchange', function () {
     renderRoute();
+  });
+
+  // 切回前台时后台核对一次最新设置:本地缓存优先展示,服务端有变化才刷新
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') syncSettingsFromServer();
   });
 
   var navToken = 0;

@@ -127,7 +127,16 @@ function makeNodeRes() {
 
 /* ---------- 静态资源(与 dev-server.js 的 serveStatic 行为一致;MIME 复用 server/http/mime.js) ---------- */
 
-async function serveStatic(pathname) {
+function cacheControl(pathname) {
+  return pathname === '/' || pathname === '/index.html' ? 'no-store' : 'public, no-cache';
+}
+
+function etag(st) {
+  const mtime = st.mtime ? st.mtime.getTime() : 0;
+  return 'W/"' + st.size.toString(16) + '-' + mtime.toString(16) + '"';
+}
+
+async function serveStatic(request, pathname) {
   // 安全:仅放行公开资源白名单,阻断 server/、.env*、sqlite.db、部署配置等
   if (!isPublicAsset(pathname)) {
     return new Response('Not Found', {
@@ -144,27 +153,39 @@ async function serveStatic(pathname) {
       headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
     });
   }
-  let data = null;
+  let st = null;
   try {
-    data = await Deno.readFile(filePath);
+    st = await Deno.stat(filePath);
   } catch {
+    st = null;
+  }
+  if (st && st.isDirectory) {
+    filePath = join(filePath, 'index.html');
     try {
-      filePath = join(filePath, 'index.html'); // 目录 → index.html
-      data = await Deno.readFile(filePath);
+      st = await Deno.stat(filePath);
     } catch {
-      return new Response('Not Found', {
-        status: 404,
-        headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
-      });
+      st = null;
     }
   }
-  return new Response(data, {
-    status: 200,
-    headers: Object.assign({
-      'Content-Type': MIME[extname(filePath).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-store',
-    }, SECURITY_HEADERS),
-  });
+  if (!st || !st.isFile) {
+    return new Response('Not Found', {
+      status: 404,
+      headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
+    });
+  }
+  const headers = Object.assign({
+    'Content-Type': MIME[extname(filePath).toLowerCase()] || 'application/octet-stream',
+    'Cache-Control': cacheControl(pathname),
+    'ETag': etag(st),
+  }, SECURITY_HEADERS);
+  const lm = st.mtime ? new Date(st.mtime.getTime()).toUTCString() : null;
+  if (lm) headers['Last-Modified'] = lm;
+  const inm = request.headers.get('if-none-match');
+  if (inm && inm.split(',').some(function (t) { return t.trim() === headers['ETag']; })) {
+    return new Response(null, { status: 304, headers });
+  }
+  const data = await Deno.readFile(filePath);
+  return new Response(data, { status: 200, headers });
 }
 
 /* ---------- 入口 ---------- */
@@ -194,7 +215,7 @@ async function handleRequest(request) {
     return res.toResponse();
   }
 
-  return serveStatic(pathname);
+  return serveStatic(request, pathname);
 }
 
 /* Deno Deploy(dynamic 模式)入口:平台注入端口,Deno.serve 即可 */

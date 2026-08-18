@@ -37,14 +37,9 @@
     );
   }
 
-  /** 工作空间显示名:内置默认工作空间按 id + 原文名本地化,用户改名/自定义则原样显示 */
-  function workspaceName(ws, t) {
-    var defs = App.settings.DEFAULT_WORKSPACES || [];
-    for (var i = 0; i < defs.length; i++) {
-      var d = defs[i];
-      if (d.id === ws.id && d.name === ws.name && d.nameKey) return t(d.nameKey);
-    }
-    return ws.name;
+  /** 工作空间显示名:按当前语言取 names 映射,缺省回退简体/英文 */
+  function workspaceName(ws, locale) {
+    return App.settings.workspaceDisplayName(ws, locale);
   }
 
   // ---------- Sidebar ----------
@@ -136,21 +131,45 @@
       .map(function (ws) {
         var isActive = ws.id === activeWorkspace.id;
         return (
-          '<button type="button" role="menuitem" data-workspace="' +
+          '<div role="menuitem" class="ws-menu-item">' +
+          '<button type="button" data-workspace="' +
           ws.id +
           '" class="' +
-          ui().dropdownItemClass('gap-2 p-2') +
+          ui().dropdownItemClass('ws-menu-main gap-2 p-2') +
           '">' +
           workspaceIcon(ws, 'size-6 rounded-md') +
           '<span class="min-w-0 flex-1 truncate text-left">' +
-          esc(workspaceName(ws, t)) +
+          esc(workspaceName(ws, settings.locale)) +
           '</span>' +
           (isActive
             ? '<span class="ml-auto flex items-center">' +
               icon().iconSvg('circle-check', { class: 'size-4 text-primary' }) +
               '</span>'
             : '') +
-          '</button>'
+          '</button>' +
+          '<span class="ws-menu-actions">' +
+          '<button type="button" data-ws-edit="' +
+          ws.id +
+          '" title="' +
+          t('workspace.edit') +
+          '" aria-label="' +
+          t('workspace.edit') +
+          '">' +
+          icon().iconSvg('pencil') +
+          '</button>' +
+          (workspaces.length > 1
+            ? '<button type="button" data-ws-delete="' +
+              ws.id +
+              '" class="ws-menu-delete" title="' +
+              t('workspace.delete') +
+              '" aria-label="' +
+              t('workspace.delete') +
+              '">' +
+              icon().iconSvg('trash-2') +
+              '</button>'
+            : '') +
+          '</span>' +
+          '</div>'
         );
       })
       .join('');
@@ -238,7 +257,7 @@
       workspaceIcon(activeWorkspace, 'size-8 rounded-lg') +
       '<span class="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">' +
       '<span class="truncate text-left font-semibold" data-selected-workspace>' +
-      esc(workspaceName(activeWorkspace, t)) +
+      esc(workspaceName(activeWorkspace, settings.locale)) +
       '</span>' +
       '<span class="truncate text-left text-xs text-muted-foreground">' +
       t('sidebar.workspaces') +

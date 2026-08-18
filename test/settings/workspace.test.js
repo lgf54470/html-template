@@ -106,6 +106,41 @@ test('不同工作空间的设置按 workspace_id 隔离,互不影响', async ()
   assert.ok(!rawB.includes(profileB.email), '密文中不应出现明文邮箱');
 });
 
+test('DELETE 支持 ?workspace= 精确清理指定工作空间的数据', async () => {
+  // 两个工作空间各自写入资料
+  await srv.request('PUT', '/api/settings', {
+    token,
+    body: {
+      settings: {
+        [ACTIVE_KEY]: 'ws-del-a',
+        'settings:profile': JSON.stringify({ username: 'A' }),
+      },
+    },
+  });
+  await srv.request('PUT', '/api/settings', {
+    token,
+    body: {
+      settings: {
+        [ACTIVE_KEY]: 'ws-del-b',
+        'settings:profile': JSON.stringify({ username: 'B' }),
+      },
+    },
+  });
+
+  // 只删 ws-del-a 的 profile
+  const del = await srv.request('DELETE', '/api/settings?workspace=ws-del-a', {
+    token,
+    body: { keys: ['settings:profile'] },
+  });
+  assert.equal(del.status, 200);
+
+  const a = await srv.request('GET', '/api/settings?workspace=ws-del-a', { token });
+  assert.equal(a.json['settings:profile'], undefined);
+
+  const b = await srv.request('GET', '/api/settings?workspace=ws-del-b', { token });
+  assert.deepEqual(JSON.parse(b.json['settings:profile']), { username: 'B' });
+});
+
 test('app_settings 表含 workspace_id 复合主键列', async () => {
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(srv.dbPath);

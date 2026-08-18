@@ -576,13 +576,80 @@
     loadWorkspaceSettings(id);
   }
 
-  /** 新增工作空间并切入:先入注册表(全局),再加载(新空间为空,回退默认) */
-  function addWorkspace(ws) {
-    if (!ws || !ws.id || !ws.name) return;
+  /** 新增 / 编辑工作空间。isEdit=false 时切入新空间;true 时仅更新注册表(标识不变)。 */
+  function saveWorkspace(ws, isEdit) {
+    if (!ws || !ws.names || !ws.names.en) return;
+    var list = (settings.workspaces || []).slice();
+    var entry = App.settings.normalizeWorkspace(ws);
+    if (isEdit) {
+      if (!entry.id) return;
+      var found = false;
+      list = list.map(function (w) {
+        if (w.id === entry.id) {
+          found = true;
+          return entry;
+        }
+        return w;
+      });
+      if (!found) return;
+      settings = Object.assign({}, settings, { workspaces: list });
+      App.settings.persistSettings(settings);
+      pushGlobalSettingsToServer();
+      refreshSidebar();
+      return;
+    }
+    // 新增:英文名生成 id(重名自动追加序号),写入注册表后切入
+    entry.id =
+      entry.id ||
+      App.settings.uniqueWorkspaceId('ws-' + App.settings.slugify(ws.names.en), list, '');
+    if (!entry.id) return;
     flushSettingsSync();
-    applyWorkspaceSwitch((settings.workspaces || []).concat([ws]), ws.id);
+    applyWorkspaceSwitch(list.concat([entry]), entry.id);
     pushGlobalSettingsToServer();
-    loadWorkspaceSettings(ws.id);
+    loadWorkspaceSettings(entry.id);
+  }
+
+  /** 删除工作空间前,后台清理该工作空间在 app_settings 中的全部数据行 */
+  function purgeWorkspaceData(id) {
+    if (!App.auth || !App.auth.token()) return;
+    App.api
+      .get('/api/settings?workspace=' + encodeURIComponent(id))
+      .then(function (raw) {
+        var keys = Object.keys(raw || {}).filter(function (k) {
+          return (
+            k !== 'settings:workspaces' &&
+            k !== 'settings:activeWorkspace' &&
+            k.indexOf('settings:auth:') !== 0
+          );
+        });
+        if (!keys.length) return null;
+        return App.api.del('/api/settings?workspace=' + encodeURIComponent(id), { keys: keys });
+      })
+      .catch(function (e) {
+        if (e && e.status !== 401) App.logger.warn('core', '清理工作空间数据失败', e);
+      });
+  }
+
+  /** 删除工作空间:更新注册表与当前指针,至少保留一个工作空间 */
+  function deleteWorkspace(id) {
+    var list = (settings.workspaces || []).filter(function (w) {
+      return w.id !== id;
+    });
+    if (!list.length) return; // 至少保留一个工作空间
+    var wasActive = settings.activeWorkspace === id;
+    var nextActive = wasActive ? list[0].id : settings.activeWorkspace;
+    flushSettingsSync();
+    purgeWorkspaceData(id);
+    if (wasActive) {
+      applyWorkspaceSwitch(list, nextActive);
+      pushGlobalSettingsToServer();
+      loadWorkspaceSettings(nextActive);
+      return;
+    }
+    settings = Object.assign({}, settings, { workspaces: list });
+    App.settings.persistSettings(settings);
+    pushGlobalSettingsToServer();
+    refreshSidebar();
   }
 
   function setTheme(theme) {
@@ -1020,5 +1087,6 @@
   };
   App.start = start;
   App.switchWorkspace = switchWorkspace;
-  App.addWorkspace = addWorkspace;
+  App.saveWorkspace = saveWorkspace;
+  App.deleteWorkspace = deleteWorkspace;
 })();

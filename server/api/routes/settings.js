@@ -98,8 +98,15 @@ function settingsRoutes({ db, encrypt, decrypt }) {
     } catch (e) {
       return sendJson(res, 400, { error: 'bad_json' });
     }
+    // 支持 ?workspace=<id>:删除非当前工作空间时精确定位(如删除工作空间前的数据清理)
+    let requestedWs = '';
+    try {
+      requestedWs = new URL(req.url || '/', 'http://localhost').searchParams.get('workspace') || '';
+    } catch (e) {
+      requestedWs = '';
+    }
     const keys = Array.isArray(body && body.keys) ? body.keys : [];
-    const activeWs = await resolveActiveWorkspace('');
+    const activeWs = await resolveActiveWorkspace(requestedWs);
     for (const k of keys) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {
         return sendJson(res, 403, { error: 'reserved_key', message: k + ' 为保留键' });

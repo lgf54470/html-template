@@ -246,15 +246,20 @@ async function handleApi(request, env, pathname) {
     return sendJson(200, { ok: true, written: keys.length });
   }
 
-  // DELETE /api/settings(按当前工作空间定位;全局键仍落在 global)
+  // DELETE /api/settings(按当前/指定工作空间定位;全局键仍落在 global)
   if (method === 'DELETE' && parts[1] === 'settings') {
     const body = await readJson(request);
     const keys = Array.isArray(body && body.keys) ? body.keys : [];
-    const row = await db.get(
-      "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
-      [GLOBAL_WORKSPACE_ID]
-    );
-    const activeWs = (row && row.value) || GLOBAL_WORKSPACE_ID;
+    const url = new URL(request.url);
+    const requestedWs = url.searchParams.get('workspace') || '';
+    let activeWs = requestedWs;
+    if (!activeWs) {
+      const row = await db.get(
+        "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
+        [GLOBAL_WORKSPACE_ID]
+      );
+      activeWs = (row && row.value) || GLOBAL_WORKSPACE_ID;
+    }
     for (const k of keys) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {
         return sendJson(403, { error: 'reserved_key', message: k + ' 为保留键' });

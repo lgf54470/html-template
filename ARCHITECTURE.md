@@ -260,7 +260,7 @@ CREATE TABLE auth_sessions (
 - `settings:profile` — 个人资料
 - `settings:account` — 账号设置
 - `settings:notifications` — 通知设置
-- `settings:workspaces` — 工作空间列表(JSON 数组:`{ id, name, icon, color }`)
+- `settings:workspaces` — 工作空间列表(JSON 数组:`{ id, name, names: { 'zh-CN', 'zh-TW', en }, icon, color, note }`,其中 `id` 为 `ws-<英文名称>`,`names` 为三语显示名,`note` 为可选备注)
 - `settings:activeWorkspace` — 当前工作空间 id
 - `settings:auth:*` — 保留键(禁止读写)
 

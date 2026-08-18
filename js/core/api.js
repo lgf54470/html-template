@@ -23,6 +23,7 @@
         var data = null;
         try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
         if (res.status === 401) {
+          if (App.logger) App.logger.warn('api', '会话失效(401): ' + method + ' ' + pathname);
           if (App.auth && typeof App.auth.onUnauthorized === 'function') {
             App.auth.onUnauthorized();
           }
@@ -31,6 +32,7 @@
           throw err;
         }
         if (!res.ok) {
+          if (App.logger) App.logger.error('api', '请求失败 ' + method + ' ' + pathname + ' → ' + res.status, data);
           var e2 = new Error((data && data.message) || ('HTTP ' + res.status));
           e2.status = res.status;
           e2.data = data;
@@ -38,6 +40,12 @@
         }
         return data;
       });
+    }).catch(function (e) {
+      // 网络层错误(服务器未启动 / 断网):有 status 的错误已在上面处理,这里只记连接失败
+      if (e && e.status == null && App.logger) {
+        App.logger.error('api', '网络请求失败: ' + method + ' ' + pathname, e);
+      }
+      throw e;
     });
   }
 

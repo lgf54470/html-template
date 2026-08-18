@@ -274,6 +274,7 @@
   function render(route, ctx) {
     var t = ctx.t;
     var pageId = route === '/settings' ? 'profile' : route.split('/').pop();
+    App.logger.debug('settings', '渲染子页面: ' + pageId); // 日志示例:自动带上 文件#函数:行号
     var renderer = PAGES[pageId] || null;
     var bodyHtml = renderer ? renderer(ctx) : App.ui.notFound(t);
 

@@ -29,6 +29,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { getDb, isLocalSqlite, localDbPath } = require('./server/db');
 const { encrypt, decrypt } = require('./server/crypto');
+const log = require('./server/logger');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = process.cwd();
@@ -82,12 +83,11 @@ function ensureAuthPassword(db) {
     'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
     [AUTH_KEY, hashPassword(initial)],
   );
-  console.log('==================================================');
-  console.log('  首次启动:已初始化管理员密码');
-  console.log('  密码: ' + initial);
-  console.log('  请登录后立即在 设置 → 账号 修改(或使用 POST /api/auth/password)');
-  console.log('  (可用环境变量 AUTH_PASSWORD 预置初始密码)');
-  console.log('==================================================');
+  log.divider();
+  log.warn('auth', '首次启动:已初始化管理员密码(请立即在 设置 → 账号 修改)');
+  log.info('auth', '初始密码: ' + initial);
+  log.info('auth', '可用环境变量 AUTH_PASSWORD 预置初始密码');
+  log.divider();
   return true;
 }
 
@@ -324,14 +324,25 @@ function serveStatic(req, res, pathname) {
 
 /* ---------- 启动 ---------- */
 const server = http.createServer((req, res) => {
+  const start = Date.now();
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-    handleApi(req, res, url.pathname).catch((e) => {
-      console.error('[server] API 错误', e);
-      sendJson(res, 500, { error: 'internal', message: String((e && e.message) || e) });
-    });
+  const isApi = url.pathname === '/api' || url.pathname.startsWith('/api/');
+  const done = (status) => log.request(req.method, url.pathname, status, Date.now() - start, { api: isApi });
+  if (isApi) {
+    handleApi(req, res, url.pathname)
+      .then(() => done(res.statusCode || 200))
+      .catch((e) => {
+        log.error('api', '接口处理异常: ' + url.pathname, e);
+        sendJson(res, 500, { error: 'internal', message: String((e && e.message) || e) });
+        done(500);
+      });
     return;
   }
+  const origEnd = res.end;
+  res.end = function () {
+    done(res.statusCode || 200);
+    return origEnd.apply(this, arguments);
+  };
   serveStatic(req, res, url.pathname);
 });
 
@@ -339,12 +350,14 @@ bootstrap()
   .then(() => {
     server.listen(PORT, () => {
       const dbPath = isLocalSqlite() ? localDbPath() : 'DB_DRIVER=' + (process.env.DB_DRIVER || 'sqlite');
-      console.log('[server] http://127.0.0.1:' + PORT);
-      console.log('[server] 数据库: ' + dbPath);
-      console.log('[server] 静态目录: ' + ROOT);
+      log.divider();
+      log.info('server', '服务已启动: http://127.0.0.1:' + PORT);
+      log.info('db', '数据库: ' + dbPath);
+      log.info('server', '静态目录: ' + ROOT);
+      log.divider();
     });
   })
   .catch((e) => {
-    console.error('[server] 数据库初始化失败', e);
+    log.error('db', '数据库初始化失败', e);
     process.exit(1);
   });

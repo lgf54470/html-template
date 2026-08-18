@@ -52,6 +52,7 @@ AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
 └── js/
     ├── core/                 # 核心运行时(不依赖任何模块)
     │   ├── boot.js           # 引导:按序加载核心 + 模块清单 + App.start()
+    │   ├── logger.js         # 浏览器日志:分级着色 + 自动定位 文件#函数:行号 + 全局异常捕获
     │   ├── i18n.js           # 三语言词典 + 翻译(模块词典优先)
     │   ├── icons-data.js     # lucide 图标节点数据(lucide v0.525.0,ISC)
     │   ├── icons.js          # 图标渲染(SVG)与设置面板预览图
@@ -227,6 +228,30 @@ CREATE TABLE auth_sessions (
 - **Cloudflare Workers + D1**:新增 `server/db-d1.js` 适配器(实现 `query`/`run`,走 D1 REST API),`DB_DRIVER=d1` 启动;静态资源与 `/api/*` 由同一 Worker 托管。
 - **Vercel**:`server.js` 可改为无服务器入口(导出 `handler`),`DB_DRIVER=turso` 指向 Turso 数据库;`index.html` 静态目录保持不动。
 - **常规服务器**:直接 `node server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
+
+## 日志系统
+
+### 服务器终端日志(`server/logger.js`)
+
+分级 **DEBUG / INFO / WARN / ERROR**,终端彩色输出(不同等级不同前景/背景色 + 加粗徽标 + 时间戳 + 作用域),错误自动打印完整堆栈。作用域约定:`server`(启动)/ `db`(数据库)/ `auth`(鉴权)/ `api`(接口)/ `http`(静态)/ `crypto`(加密)。
+
+- 接口请求自动记录:`INFO [api] POST /api/settings 200 12ms`(2xx→info、4xx→warn、5xx→error;静态资源仅 debug,默认不刷屏)
+- 等级过滤:`LOG_LEVEL=debug|info|warn|error`(默认 `info`)
+- 用法:`log.info('db', '数据库已连接')`、`log.error('api', '接口异常', err)`、`log.request(method, path, status, ms, { api: true })`
+
+### 浏览器控制台日志(`js/core/logger.js`)
+
+分级 **debug / info / warn / error**,控制台按等级着色(彩色徽标 + 项目名 + 模块标签)。**自动定位错误位置**:通过调用栈提取调用者文件、函数与行号,输出形如:
+
+```
+[One API] ERROR [dashboard] js/modules/dashboard/module.js#render:42 加载失败
+[One API] DEBUG [settings] js/modules/settings/module.js#render:277 渲染子页面: profile
+```
+
+- **全局捕获**:`window.onerror` / `unhandledrejection` 自动上报 —— 任何未捕获异常与未处理的 Promise 拒绝都会带文件/函数/行号与完整堆栈出现在控制台
+- 传入 `Error` 对象时,控制台额外打印完整可点击的堆栈(定位到具体行)
+- 等级过滤:`App.logger.setLevel('warn')`(默认 `debug`)
+- 用法:`App.logger.error('dashboard', '渲染失败', err)`、`App.logger.info('auth', '登录成功')`;模块/文件/行号**自动提取,无需手填**
 
 ## 解耦与安全约定
 

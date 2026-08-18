@@ -59,7 +59,7 @@
   /** 模块清单注册:manifest.js 调用(仅元信息,体积极小) */
   function registerModule(meta) {
     if (!meta || !meta.id) {
-      console.error('[app] registerModule 缺少 id', meta);
+      App.logger.error('core', 'registerModule 缺少 id', meta);
       return;
     }
     var m = {
@@ -90,7 +90,7 @@
   /** 模块实现注册:module.js / 子模块文件调用 */
   function defineModule(def) {
     if (!def || !def.id) {
-      console.error('[app] defineModule 缺少 id', def);
+      App.logger.error('core', 'defineModule 缺少 id', def);
       return;
     }
     var key = def.sub ? def.id + ':' + def.sub : def.id;
@@ -340,7 +340,7 @@
       serverSyncTimer = null;
       App.api.put('/api/settings', { settings: serverSettingsPayload() })
         .catch(function (e) {
-          if (e && e.status !== 401) console.warn('[app] 设置同步到数据库失败', e);
+          if (e && e.status !== 401) App.logger.warn('core', '设置同步到数据库失败', e);
         });
     }, 400);
   }
@@ -406,7 +406,7 @@
         renderApp();
       })
       .catch(function (e) {
-        if (e && e.status !== 401) console.warn('[app] 从数据库同步设置失败', e);
+        if (e && e.status !== 401) App.logger.warn('core', '从数据库同步设置失败', e);
       });
   }
 
@@ -470,7 +470,7 @@
       if (viewport) viewport.scrollTop = scrollTop;
       updateNavActive(currentPath());
     }).catch(function (e) {
-      console.error('[app] 设置同步重渲染失败', e);
+      App.logger.error('core', '设置同步重渲染失败', e);
     });
   }
 
@@ -559,7 +559,7 @@
         closeDropdowns();
       })
       .catch(function (e) {
-        console.error('[app] 路由渲染失败', e);
+        App.logger.error('core', '路由渲染失败: ' + path, e);
         if (token !== navToken) return;
         if (contentArea) contentArea.innerHTML = App.ui.notFound(tFor(settings.locale));
         updateNavActive(path);

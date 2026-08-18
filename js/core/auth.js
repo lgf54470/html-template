@@ -175,6 +175,7 @@
         storeToken(res.token, res.expiresAt, res.expiry || pendingExpiry);
         authViewShown = false;
         setError('');
+        if (App.logger) App.logger.info('auth', '登录成功(会话有效期: ' + (res.expiry || pendingExpiry) + ')');
         App.start();
       })
       .catch(function (err) {
@@ -185,6 +186,7 @@
         } else {
           msg = t()('auth.serverRequired'); // 网络错误(如 file:// 直开):提示需要服务器
         }
+        if (App.logger) App.logger.warn('auth', '登录失败: ' + msg, err);
         setError(msg);
       });
   }
@@ -223,6 +225,7 @@
       }
       clearToken();
       authViewShown = true;
+      if (App.logger) App.logger.info('auth', '已登出');
       renderLogin();
     },
     /** API 401 回调:清除本地令牌并回到登录页 */

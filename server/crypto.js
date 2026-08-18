@@ -45,7 +45,7 @@ function getEncryptionKey() {
   const fresh = crypto.randomBytes(32);
   try {
     fs.writeFileSync(KEY_FILE, fresh.toString('hex') + '\n', { mode: 0o600 });
-    console.log('[crypto] 已生成加密密钥并保存到 ' + KEY_FILE + '(生产环境请改用 ENCRYPTION_KEY)');
+    require('./logger').warn('crypto', '已生成加密密钥并保存到 ' + KEY_FILE + '(生产环境请改用 ENCRYPTION_KEY)');
   } catch (e) { /* 目录不可写时仅内存持有,重启后无法解密旧数据 */ }
   return fresh;
 }

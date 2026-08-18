@@ -15,7 +15,7 @@
   'use strict';
 
   /** 核心运行时加载顺序(依赖顺序,勿乱序) */
-  var CORE = ['i18n', 'icons-data', 'icons', 'settings', 'api', 'auth', 'ui', 'shell', 'app', 'interactions'];
+  var CORE = ['logger', 'i18n', 'icons-data', 'icons', 'settings', 'api', 'auth', 'ui', 'shell', 'app', 'interactions'];
 
   /** 模块目录清单:侧边栏每个一级菜单对应一个模块 */
   var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'settings'];
@@ -41,10 +41,13 @@
       return loadScripts(MODULE_DIRS.map(function (d) { return 'js/modules/' + d + '/manifest.js'; }));
     })
     .then(function () {
+      if (App.logger) App.logger.info('boot', '核心运行时 + 模块清单加载完成,启动应用');
       App.start();
     })
     .catch(function (e) {
-      console.error('[boot] 启动失败', e);
+      // logger 可能尚未加载,优先用 logger,回退原生 console
+      if (App.logger) App.logger.error('boot', '应用启动失败', e);
+      else console.error('[boot] 启动失败', e);
       var app = document.getElementById('app');
       if (app) {
         app.innerHTML = '<div style="padding:40px;font-family:monospace;color:var(--destructive)">' +

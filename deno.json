@@ -1,0 +1,19 @@
+{
+  "deploy": {
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "./deno/main.js"
+    },
+    "org": "lgf5481",
+    "app": "html-template"
+  }
+}
+
+
+
+
+
+
+
+
+

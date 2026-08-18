@@ -10,5 +10,13 @@ sqlite.db-shm
 # wrangler 本地调试环境变量(不入库;模板见 .dev.vars.example)
 .dev.vars
 
+# Vercel 本地链接信息与构建产物(不入库)
+.vercel
+vercel/.vercel
+
+# Vercel 构建产物(dist 由 scripts/vercel-build.js 生成)
+dist/
+
 # 本地加密密钥(不入库;生产环境改用 ENCRYPTION_KEY 环境变量)
 server/.secret-key
+.env*

@@ -11,7 +11,7 @@
 ```
 
 - **静态资源**:由 `wrangler.toml` 的 `[assets]` 绑定托管,全球边缘网络分发,不经过 Worker。
-- **API**:`worker.js` 处理 `/api/*`(登录、会话校验、登出、改密、设置读写),逻辑与本地 `server.js` 一致。
+- **API**:`worker.js` 处理 `/api/*`(登录、会话校验、登出、改密、设置读写),逻辑与本地 `dev-server.js` 一致。
 - **数据库**:Cloudflare D1(SQLite 兼容,免费额度充足);建表在首个请求时自动完成,无需手动执行 SQL。
 - **密码与加密**:Worker 内密码哈希用 PBKDF2-SHA256(WebCrypto,不占 CPU 配额),同时兼容本地 `scrypt` 哈希;敏感键值(邮箱等)仍为 AES-256-GCM 加密落库,格式与本地互通。
 
@@ -221,7 +221,7 @@ ENCRYPTION_KEY=<与线上相同的密钥>
 启动本地服务器,首次启动即通过 D1 REST API 自动建表并写入初始密码:
 
 ```bash
-node server.js
+node dev-server.js
 ```
 
 > 需 Node ≥ 22.5(项目运行要求);REST 模式与 Worker 内 binding 模式共用同一套 SQL 与加密格式,数据互通。
@@ -282,8 +282,8 @@ A:登录用 WebCrypto PBKDF2,不占 CPU 配额;静态资源由边缘网络直接
 **Q:控制台 Git 集成时提示「部署命令不能留空」,填什么?**
 A:填 `npx wrangler deploy`(界面默认值);构建命令留空即可(本项目零构建)。详见[第 2 节](#2-cloudflare-控制台-git-集成免-ci)。
 
-**Q:想同时保留本地 server.js 开发流程?**
-A:完全可以。本地 `node server.js`(sqlite)与 Cloudflare(Worker + D1)并行,两套入口逻辑一致;本地调试远程库用 `DB_DRIVER=d1`(第 6 节)。
+**Q:想同时保留本地 dev-server.js 开发流程?**
+A:完全可以。本地 `node dev-server.js`(sqlite)与 Cloudflare(Worker + D1)并行,两套入口逻辑一致;本地调试远程库用 `DB_DRIVER=d1`(第 6 节)。
 
 ---
 

@@ -20,6 +20,17 @@ wrangler.toml
 README.md
 AGENTS.md
 DEPLOY.md
+DEPLOY-VERCEL.md
+dev-server.js
+
+# Vercel 部署相关(仅 Cloudflare 静态资源需要排除;Vercel 用 Output Directory 控制发布)
+api/
+scripts/
+dist/
+package.json
+package-lock.json
+vercel.json
+.vercelignore
 
 # CI
 .github/

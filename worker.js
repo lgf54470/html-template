@@ -1,21 +1,21 @@
 /* ============================================================
  * worker.js — Cloudflare Worker 入口(静态资源 + 鉴权 API + D1)
  * ------------------------------------------------------------
- * 与根目录 server.js 职责一一对应,按 Workers 运行时适配:
+ * 与根目录 dev-server.js 职责一一对应,按 Workers 运行时适配:
  *   - 静态资源:由 wrangler.toml [assets] 在边缘网络直接托管
  *     (index.html / js / assets);未命中资源的请求(如 /api/*)
  *     才进入本 Worker,非 API 请求一律透传给 ASSETS 绑定
- *   - API:登录 / 校验 / 登出 / 改密 / 设置 KV,逻辑与 server.js 保持一致
+ *   - API:登录 / 校验 / 登出 / 改密 / 设置 KV,逻辑与 server/api.js 保持一致
  *   - 数据库:Cloudflare D1(binding = DB),适配器 server/db-d1.js
  *   - 密码哈希:PBKDF2-SHA256(WebCrypto,不占 CPU 配额;
- *     同时兼容本地 server.js 生成的 scrypt 哈希)
+ *     同时兼容本地 dev-server.js 生成的 scrypt 哈希)
  *   - 敏感键加密:AES-256-GCM,存储格式与 server/crypto.js 一致(enc:v1:...)
  *
  * 环境变量(通过 `wrangler secret put` 设置,勿写入 wrangler.toml):
  *   AUTH_PASSWORD   首次启动初始化管理员密码(生产必设;密码已在库中则忽略)
  *   ENCRYPTION_KEY  敏感数据加密密钥,64 位 hex(生产必设;缺失时报错)
  *
- * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server.js(或反之)。
+ * 注意:修改本文件的鉴权 / 设置逻辑时,请同步 server/api.js(或反之)。
  * 完整部署说明见 DEPLOY.md。
  * ============================================================ */
 
@@ -137,7 +137,7 @@ async function verifyPassword(password, stored) {
     return timingSafeEqualHex(hash, parts[3]);
   }
   if (parts[0] === 'scrypt' && parts.length === 6) {
-    // 兼容本地 server.js 生成的 scrypt 哈希(异步版,不阻塞 Worker 主线程)
+    // 兼容本地 dev-server.js 生成的 scrypt 哈希(异步版,不阻塞 Worker 主线程)
     const [, N, r, p, salt, expected] = parts;
     const hash = await new Promise((resolve, reject) => {
       crypto.scrypt(password, salt, 64, { N: Number(N), r: Number(r), p: Number(p) }, (err, key) => {
@@ -242,7 +242,7 @@ function isSensitiveKey(k) {
   return SENSITIVE_WORDS.some(function (w) { return lower.indexOf(w) !== -1; });
 }
 
-/* ---------- API 路由(与 server.js handleApi 保持一致) ---------- */
+/* ---------- API 路由(与 server/api.js createApiHandler 保持一致) ---------- */
 async function handleApi(request, env, pathname) {
   const db = getDb(env);
   await boot(db, env); // 建表 + 初始化密码(幂等,仅首次真正执行)

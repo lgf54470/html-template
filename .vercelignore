@@ -1,0 +1,13 @@
+# 不上传到 Vercel 构建环境的文件(运行时数据 / 本地密钥 / 构建产物)
+# 注意:Vercel 只公开发布 Output Directory(dist)与 api/ 函数,
+# 这里主要防止本地敏感文件进入构建环境。
+
+node_modules
+.vercel
+dist
+sqlite.db
+sqlite.db-wal
+sqlite.db-shm
+.env
+.env.example
+server/.secret-key

@@ -20,16 +20,16 @@
 # 方式二:任意静态服务器托管本目录(同上)
 python -m http.server 8000
 
-# 方式三:完整模式 —— node server.js(静态托管 + 全局 x-auth-password 鉴权 + 数据库持久化)
-node server.js            # 默认 http://127.0.0.1:3000,数据库 sqlite.db(首次启动自动生成并打印管理员密码)
-AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
+# 方式三:完整模式 —— node dev-server.js(静态托管 + 全局 x-auth-password 鉴权 + 数据库持久化)
+node dev-server.js        # 默认 http://127.0.0.1:3000,数据库 sqlite.db(首次启动自动生成并打印管理员密码)
+AUTH_PASSWORD=admin123 node dev-server.js   # 可用环境变量预置初始密码
 ```
 
 所有环境变量(`PORT` / `AUTH_PASSWORD` / `DB_DRIVER` / `SQLITE_PATH` / `DATABASE_URL` / `DATABASE_AUTH_TOKEN`)也支持写入项目根目录的 `.env`(零依赖加载器 `server/env.js`,进程环境变量优先;模板见 `.env.example`,`.env` 已 gitignore)。
 
 ## 服务器模式与全局鉴权(x-auth-password)
 
-`node server.js` 启动后,应用进入**鉴权门禁**:未登录时渲染整页登录卡片,登录成功后才启动 App Shell。
+`node dev-server.js` 启动后,应用进入**鉴权门禁**:未登录时渲染整页登录卡片,登录成功后才启动 App Shell。
 
 - **失效选项(2×4 网格)**:3 / 6 / 9 / 12 / 24 小时,7 / 14 / 30 天;最底部单独一行的 **「下一次浏览器打开」**(单独占满一行)。
 - **令牌存储**:时长选项 → `localStorage`(持久);「下一次浏览器打开」→ `sessionStorage`(关浏览器即失效)。服务端会话同时存在于 `auth_sessions` 表并带有过期时间,双端校验。
@@ -38,7 +38,7 @@ AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
 - **登出**:顶栏/侧边栏用户菜单的登出按钮 → 删除服务端会话并清除本地令牌,回到登录页;任何接口返回 401 也会自动回到登录页。
 - **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`)。
 
-> 纯静态方式(双击 `index.html`)不经过鉴权,登录页会提示需要服务器 —— 这是预期行为:鉴权与持久化依赖 `server.js`。
+> 纯静态方式(双击 `index.html`)不经过鉴权,登录页会提示需要服务器 —— 这是预期行为:鉴权与持久化依赖 `dev-server.js`。
 
 ## 目录结构
 
@@ -223,12 +223,12 @@ CREATE TABLE auth_sessions (
 
 ### 部署到 Cloudflare / Vercel 等平台
 
-模板是纯静态 + 可移植 Node 服务,可整体部署。**Cloudflare 完整部署(静态资源 + 鉴权 API + D1)已就绪,支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,详细步骤见 [`DEPLOY.md`](./DEPLOY.md)。**
+模板是纯静态 + 可移植 Node 服务,可整体部署。两套完整方案均已就绪:
 
-- **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。
-- **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API。
-- **Vercel**:`server.js` 可改为无服务器入口(导出 `handler`),`DB_DRIVER=turso` 指向 Turso 数据库;`index.html` 静态目录保持不动。
-- **常规服务器**:直接 `node server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
+- **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,**详见 [`DEPLOY.md`](./DEPLOY.md)**。
+- **Vercel + Turso**:`api/[[...path]].js`(无服务器函数,复用 `server/api.js` 处理器)+ `vercel.json` + `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md)**。
+- **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API(见 DEPLOY.md)。
+- **常规服务器 / 本地开发**:直接 `node dev-server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
 
 ## 日志系统
 

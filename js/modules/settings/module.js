@@ -162,22 +162,6 @@
   function pageProfile(ctx) {
     var t = ctx.t;
     var p = ctx.settings.profile || {};
-    var emailOptions = [p.email, 'm@example.com', 'm@google.com', 'm@support.com']
-      .filter(function (v, i, arr) {
-        return v && arr.indexOf(v) === i;
-      })
-      .map(function (v) {
-        return (
-          '<option value="' +
-          escAttr(v) +
-          '"' +
-          (v === p.email ? ' selected' : '') +
-          '>' +
-          escHtml(v) +
-          '</option>'
-        );
-      })
-      .join('');
     var links = Array.isArray(p.links) && p.links.length ? p.links : ['', ''];
     var body =
       '<form class="sp-form">' +
@@ -199,9 +183,11 @@
       '<label class="sp-label">' +
       t('profile.email.label') +
       '</label>' +
-      '<select class="sp-select" data-setting="profile.email">' +
-      emailOptions +
-      '</select>' +
+      '<input class="sp-input" type="email" data-setting="profile.email" value="' +
+      escAttr(p.email) +
+      '" placeholder="' +
+      t('profile.email.placeholder') +
+      '" />' +
       '<p class="sp-field-desc">' +
       t('profile.email.descriptionBefore') +
       ' <a href="#/settings" data-link="/settings">' +

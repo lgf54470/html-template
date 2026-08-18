@@ -14,7 +14,7 @@ window.__moduleI18n['settings'] = {
     'profile.username.description':
       'This is your public display name. It can be your real name or a pseudonym. You can only change this once every 30 days.',
     'profile.email.label': 'Email',
-    'profile.email.placeholder': 'Select a verified email to display',
+    'profile.email.placeholder': 'Enter your email address',
     'profile.email.descriptionBefore': 'You can manage verified email addresses in your',
     'profile.email.emailSettings': 'email settings',
     'profile.bio.label': 'Bio',
@@ -84,7 +84,7 @@ window.__moduleI18n['settings'] = {
     'profile.username.description':
       '这是你的公开显示名称。可以是你的真实姓名或化名。你每 30 天只能更改一次。',
     'profile.email.label': '电子邮件',
-    'profile.email.placeholder': '选择要显示的已验证电子邮件',
+    'profile.email.placeholder': '输入你的邮箱地址',
     'profile.email.descriptionBefore': '你可以通过',
     'profile.email.emailSettings': '电子邮件设置',
     'profile.bio.label': '简介',
@@ -149,7 +149,7 @@ window.__moduleI18n['settings'] = {
     'profile.username.description':
       '這是你的公開顯示名稱。可以是你的真實姓名或化名。你每 30 天只能變更一次。',
     'profile.email.label': '電子郵件',
-    'profile.email.placeholder': '選取要顯示的已驗證電子郵件',
+    'profile.email.placeholder': '輸入你的電子郵件地址',
     'profile.email.descriptionBefore': '你可以透過',
     'profile.email.emailSettings': '電子郵件設定',
     'profile.bio.label': '簡介',

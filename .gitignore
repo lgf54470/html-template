@@ -20,3 +20,6 @@ dist/
 # 本地加密密钥(不入库;生产环境改用 ENCRYPTION_KEY 环境变量)
 server/.secret-key
 .env*
+
+# node_modules/ --- IGNORE ---
+node_modules/

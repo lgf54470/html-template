@@ -8,6 +8,10 @@
  * ============================================================ */
 
 /* ---------- 页面骨架 ---------- */
+/* 工作台页占满视口(仅当内容区渲染 .hub-page 时生效,不影响其它页面) */
+[data-content-area]:has(.hub-page) {
+  height: 100%;
+}
 .hub-page {
   display: flex;
   flex-direction: column;
@@ -46,11 +50,15 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1.15fr);
+  /* 行高 = 容器高:列内 max-height/min-height 才生效,三栏各自独立滚动 */
+  grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
 }
 @media (max-width: 1330px) {
   .hub-grid {
     grid-template-columns: 230px minmax(0, 1fr);
+    /* 左/中栏占满视口各自滚动;下方运行面板按内容展开,页面整体滚动 */
+    grid-template-rows: minmax(0, 1fr) auto;
   }
   .hub-run {
     grid-column: 1 / -1;
@@ -60,6 +68,7 @@
 @media (max-width: 860px) {
   .hub-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
   }
   .hub-side {
     max-height: none;

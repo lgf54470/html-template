@@ -11,7 +11,7 @@
                               └─ SQLite(sqlite.db,挂载于数据卷 /app/data)
 ```
 
-- **零依赖镜像**:项目无任何 npm 运行时依赖,基础镜像仅需 `debian:latest` + 官方仓库的 `nodejs` 包(≥ 22.5,含内置 `node:sqlite`),无需 `npm install`、无需构建步骤。
+- **零依赖镜像**:项目无任何 npm 运行时依赖,基础镜像 `debian:latest` + 官方 **Node.js 22 LTS**(nodejs.org 固定版本 tarball,含 SHA-256 校验;Debian 仓库自带的 nodejs 版本过低,不含内置 `node:sqlite`),无需 `npm install`、无需构建步骤。
 - **与本地完全同构**:镜像内跑的就是根目录 `dev-server.js`(静态托管 + 登录 / 校验 / 登出 / 设置 KV),行为与 `node dev-server.js` 一致。
 - **非 root 运行**:镜像内以 `appuser`(UID 1001)运行,数据卷目录需可写。
 
@@ -31,7 +31,7 @@ docker build -t html-template .
 ```
 
 - 构建上下文排除项见 `.dockerignore`(本地数据库 / `.env*` / CI / 其它平台代码 / 文档均不入镜像)。
-- 镜像内 Node 版本 = Debian 仓库版(≥ 22.5,满足 `node:sqlite` 要求);可用 `docker run --rm html-template node -v` 确认。
+- 镜像内 Node 版本 = 固定版 **Node 22 LTS**(`Dockerfile` 的 `ARG NODE_VERSION`,默认 22.23.2;构建时已自动验证 `node:sqlite` 可用),可用 `docker run --rm html-template node -v` 确认。升级 Node:`docker build --build-arg NODE_VERSION=xx.yy.z -t html-template .` 或直接改 `Dockerfile` 里的默认值。
 - 想改端口:镜像内默认 `PORT=3000`,运行时用 `-e PORT=xxxx` 覆盖即可。
 
 ## 发布到 GitHub Container Registry(GHCR)
@@ -140,7 +140,7 @@ docker compose pull && docker compose up -d # 需先把 compose 的 build 换成
 ## 常见问题(FAQ)
 
 **Q:启动报 `Error: Cannot find module 'node:sqlite'`?**
-A:镜像内 Node 版本过低(< 22.5)。`docker run --rm html-template node -v` 检查;Debian 13 仓库默认 ≥ 22.5,请确认 `debian:latest` 是最新版(`docker pull debian:latest`)。
+A:镜像内 Node 版本过低(< 22.5)。`docker run --rm html-template node -v` 检查;本镜像默认内置 Node 22 LTS,若你用 `--build-arg NODE_VERSION=…` 自定义过版本,请确保 ≥ 22.5 并重新构建。
 
 **Q:重启容器后设置丢失?**
 A:数据库没落数据卷。确认 `SQLITE_PATH=/app/data/sqlite.db` 且 `html-data:/app/data` 挂载存在(compose 已内置);`docker compose down -v` 才会真正清空。
@@ -161,7 +161,7 @@ A:四套独立方案,任选其一;数据可通过同一 `ENCRYPTION_KEY` 互通�
 
 | 文件 | 作用 |
 |---|---|
-| `Dockerfile` | 镜像构建(基础镜像 `debian:latest` + 官方 nodejs 包;非 root 运行;健康检查) |
+| `Dockerfile` | 镜像构建(基础镜像 `debian:latest` + 官方 Node 22 LTS tarball;非 root 运行;健康检查) |
 | `.dockerignore` | 构建上下文排除(本地数据库 / `.env*` / CI / 其它平台代码 / 文档) |
 | `docker-compose.yml` | 一键启动:端口 / 环境变量 / 数据卷 / 自动重启 |
 | `.github/workflows/publish-docker-ghcr.yml` | GitHub Actions:自动构建并发布镜像到 GHCR |

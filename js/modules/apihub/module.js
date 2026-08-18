@@ -999,8 +999,8 @@
 
   /** JSON 语法高亮(仅转义 & < >,保留引号以便正则匹配字符串) */
   function highlightJson(text) {
-    var src = prettyJson(text);
-    var isJson = src !== null;
+    var src = viewPretty(text);
+    var isJson = prettyJson(text) !== null;
     if (!isJson) src = String(text || '');
     src = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     if (!isJson) return src;
@@ -1640,6 +1640,39 @@
     if (n < 1024) return n + ' B';
     if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
     return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  /** 递归解码 JSON 字符串值(美化视图用:settings 等 KV 值以 JSON 字符串落库) */
+  function decodeNested(value) {
+    if (typeof value === 'string') {
+      var t = value.trim();
+      if (t && (t.charAt(0) === '{' || t.charAt(0) === '[')) {
+        try {
+          return decodeNested(JSON.parse(value));
+        } catch (e) {
+          return value;
+        }
+      }
+      return value;
+    }
+    if (Array.isArray(value)) return value.map(decodeNested);
+    if (value && typeof value === 'object') {
+      var out = {};
+      Object.keys(value).forEach(function (k) {
+        out[k] = decodeNested(value[k]);
+      });
+      return out;
+    }
+    return value;
+  }
+
+  /** 美化视图文本:解析 JSON → 递归解码嵌套字符串 → 缩进序列化 */
+  function viewPretty(text) {
+    try {
+      return JSON.stringify(decodeNested(JSON.parse(text)), null, 2);
+    } catch (e) {
+      return prettyJson(text) || text;
+    }
   }
 
   function responseHtml() {

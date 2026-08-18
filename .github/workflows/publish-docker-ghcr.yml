@@ -1,0 +1,63 @@
+# ============================================================
+# publish-docker-ghcr.yml — 构建 Docker 镜像并发布到 GitHub Container Registry
+# ------------------------------------------------------------
+# 触发:push 到 main / 打 v* 标签 / 手动(workflow_dispatch)
+# 产物:ghcr.io/<owner>/<repo>:<分支或版本>  (如 ghcr.io/you/html-template:main)
+# 说明:镜像内是完整自托管服务(静态资源 + API + 本地 SQLite),
+#       运行期环境变量(AUTH_PASSWORD / ENCRYPTION_KEY …)在部署端配置,与构建无关。
+# 完整部署与测试见 docs/deploy/docker.md。
+# ============================================================
+name: Publish Docker image to GHCR
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 自动生成镜像标签与元数据:
+      #   push 到 main      → ghcr.io/<owner>/<repo>:main + :sha-<commit>
+      #   push v1.2.3 标签  → ghcr.io/<owner>/<repo>:1.2.3 / 1.2 / 1 / latest
+      #   workflow_dispatch → 按当前分支名
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

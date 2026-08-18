@@ -21,6 +21,9 @@ README.md
 AGENTS.md
 docs/
 dev-server.js
+Dockerfile
+docker-compose.yml
+.dockerignore
 
 # Vercel 部署相关(仅 Cloudflare 静态资源需要排除;Vercel 用 Output Directory 控制发布)
 api/

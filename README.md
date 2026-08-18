@@ -219,13 +219,14 @@ CREATE TABLE auth_sessions (
 
 除登录外,所有 `/api/*` 均要求请求头 `x-auth-token`。
 
-### 部署到 Cloudflare / Vercel / Deno 等平台
+### 部署到 Cloudflare / Vercel / Deno / Docker 等平台
 
-模板是纯静态 + 可移植 Node 服务,可整体部署。三套完整方案均已就绪:
+模板是纯静态 + 可移植 Node 服务,可整体部署。四套完整方案均已就绪:
 
 - **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,**详见 [`docs/deploy/cloudflare.md`](./docs/deploy/cloudflare.md)**。
 - **Vercel + Turso**:`api/index.js`(无服务器函数,`vercel.json` 用 rewrites 把 `/api/*` 转发给它,复用 `server/api.js` 处理器)+ `npm run build` 输出 `dist/` 静态目录,`DB_DRIVER=turso` 指向 Turso 数据库。支持控制台 Git 导入 / `vercel` CLI / GitHub Actions 三种方式,**详见 [`docs/deploy/vercel.md`](./docs/deploy/vercel.md)**。
 - **Deno Deploy + Turso**:`deno/main.js`(dynamic 模式入口,静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api.js`)+ `deno.json`(deploy 配置)+ GitHub Actions(`.github/workflows/deploy-deno.yml`)。支持控制台 Git 导入(零 YAML)/ GitHub Actions / `deno deploy` 命令行三种方式,**详见 [`docs/deploy/deno.md`](./docs/deploy/deno.md)**。
+- **Docker(自托管)**:`Dockerfile`(`debian:latest` 基础 + 官方仓库 nodejs,零 npm 依赖)+ `docker-compose.yml`(端口映射 / 环境变量 / 数据卷 `/app/data`)+ `.dockerignore`;`docker compose up -d --build` 一键启动完整服务,本地 SQLite 落盘数据卷,容器重建不丢数据,**详见 [`docs/deploy/docker.md`](./docs/deploy/docker.md)**。
 - **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API(见 docs/deploy/cloudflare.md)。
 - **常规服务器 / 本地开发**:直接 `node dev-server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
 

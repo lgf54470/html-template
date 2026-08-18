@@ -22,7 +22,7 @@
     { value: 'documentation', label: 'Documentation' },
   ];
   var STATUSES = [
-    { value: 'backlog', label: 'Backlog', icon: 'circle-dot' },
+    { value: 'backlog', label: 'Backlog', icon: 'circle-help' },
     { value: 'todo', label: 'Todo', icon: 'circle' },
     { value: 'in progress', label: 'In Progress', icon: 'timer' },
     { value: 'done', label: 'Done', icon: 'circle-check' },
@@ -321,7 +321,7 @@
       '" class="' +
       App.ui.buttonClass('outline', 'sm', 'h-8 border-dashed') +
       '">' +
-      icon().iconSvg('plus', { class: 'size-4' }) +
+      icon().iconSvg('circle-plus', { class: 'size-4' }) +
       title +
       badges +
       '</button>' +
@@ -482,7 +482,7 @@
 
   function labelBadge(value) {
     var l = byValue(LABELS, value);
-    return l ? '<span class="tk-badge">' + l.label + '</span>' : '';
+    return l ? '<span class="tk-badge" data-variant="outline">' + l.label + '</span>' : '';
   }
 
   function statusCell(t) {

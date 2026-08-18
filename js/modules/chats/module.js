@@ -323,9 +323,9 @@
     return AVATAR_COLORS[h % AVATAR_COLORS.length];
   }
 
-  function avatarHtml(name, size) {
-    return (
-      '<span class="ch-avatar" style="background:' +
+  function avatarHtml(name, size, cls) {
+    var style =
+      'background:' +
       avatarColor(name) +
       ';width:' +
       size +
@@ -333,7 +333,13 @@
       size +
       'px;font-size:' +
       Math.round(size * 0.38) +
-      'px">' +
+      'px';
+    return (
+      '<span class="ch-avatar' +
+      (cls ? ' ' + cls : '') +
+      '" style="' +
+      style +
+      '">' +
       esc(initials(name)) +
       '</span>'
     );
@@ -379,8 +385,8 @@
     });
   }
 
-  /* ---------- 渲染 ---------- */
-  function render(root, ctx) {
+  /* ---------- 渲染(返回 HTML 字符串) ---------- */
+  function render(route, ctx) {
     var t = ctx.t;
     var chats = filteredChats();
     var selected = null;
@@ -389,7 +395,7 @@
     }
 
     var html =
-      '<div class="ch-page">' +
+      '<div class="ch-page" data-ch-region>' +
       /* 左侧:会话列表 */
       '<div class="ch-side">' +
       '<div class="ch-side-head">' +
@@ -449,8 +455,11 @@
       html +=
         '<div class="ch-panel">' +
         '<div class="ch-panel-head">' +
+        '<button type="button" class="ch-icon-btn ch-back" data-ch-back aria-label="Back">' +
+        icon().iconSvg('arrow-left', { class: 'size-5' }) +
+        '</button>' +
         '<div class="ch-panel-user">' +
-        avatarHtml(selected.fullName, 44) +
+        avatarHtml(selected.fullName, 44, 'ch-avatar-lg') +
         '<div class="ch-panel-meta">' +
         '<span class="ch-panel-name">' +
         esc(selected.fullName) +
@@ -636,135 +645,132 @@
         '</div>' +
         '<div class="ch-dialog-foot">' +
         '<button type="button" class="ch-primary-btn" data-ch-send-new disabled>' +
-        t('chats.send') +
+        t('chats.chat') +
         '</button>' +
         '</div>' +
         '</div>' +
         '</div>';
     }
 
-    root.innerHTML = html;
+    return html;
   }
 
-  /* ---------- 交互 ---------- */
-  function rerender(ctx) {
-    var root = document.querySelector('[data-ch-page]');
-    if (root) render(root, ctx);
+  /* ---------- 交互(document 级事件委托) ---------- */
+  function rerender() {
+    var region = document.querySelector('[data-ch-region]');
+    if (!region) return;
+    var locale = App.getShellContext().settings.locale;
+    var t = App.i18n.makeT(locale, window.__moduleI18n && window.__moduleI18n.chats);
+    region.outerHTML = render('/chats', { t: t, settings: App.getShellContext().settings });
   }
 
-  function bind(root, ctx) {
-    root.addEventListener('input', function (e) {
-      var search = e.target.closest('[data-ch-search]');
-      if (search) {
-        state.search = search.value;
-        rerender(ctx);
-        return;
-      }
-      var people = e.target.closest('[data-ch-people-search]');
-      if (people) {
-        state.newSearch = people.value;
-        rerender(ctx);
-      }
-    });
+  document.addEventListener('input', function (e) {
+    var search = e.target.closest('[data-ch-search]');
+    if (search) {
+      state.search = search.value;
+      rerender();
+      return;
+    }
+    var people = e.target.closest('[data-ch-people-search]');
+    if (people) {
+      state.newSearch = people.value;
+      rerender();
+    }
+  });
 
-    root.addEventListener('click', function (e) {
-      var open = e.target.closest('[data-ch-open]');
-      if (open) {
-        state.selectedId = open.getAttribute('data-ch-open');
-        rerender(ctx);
-        return;
-      }
-      if (e.target.closest('[data-ch-new]')) {
-        state.newChatOpen = true;
-        state.newSearch = '';
-        state.selectedUsers = [];
-        rerender(ctx);
-        return;
-      }
-      if (e.target.closest('[data-ch-close]') || e.target.closest('[data-ch-overlay]')) {
-        state.newChatOpen = false;
-        rerender(ctx);
-        return;
-      }
-      var person = e.target.closest('[data-ch-person]');
-      if (person) {
-        var id = person.getAttribute('data-ch-person');
-        var u = null;
-        usersWithoutMessages().forEach(function (x) {
-          if (x.id === id) u = x;
-        });
-        if (!u) return;
-        var idx = state.selectedUsers.findIndex(function (s) {
-          return s.id === id;
-        });
-        if (idx === -1) state.selectedUsers.push(u);
-        else state.selectedUsers.splice(idx, 1);
-        rerender(ctx);
-        return;
-      }
-      var rm = e.target.closest('[data-ch-tag-remove]');
-      if (rm) {
-        var rid = rm.getAttribute('data-ch-tag-remove');
-        state.selectedUsers = state.selectedUsers.filter(function (s) {
-          return s.id !== rid;
-        });
-        rerender(ctx);
-        return;
-      }
-    });
-
-    root.addEventListener('submit', function (e) {
-      var form = e.target.closest('[data-ch-send-form]');
-      if (!form) return;
-      e.preventDefault();
-      var input = form.querySelector('[data-ch-input]');
-      var val = ((input && input.value) || '').trim();
-      if (!val) return;
-      var sel = null;
-      for (var i = 0; i < CONVERSATIONS.length; i++) {
-        if (CONVERSATIONS[i].id === state.selectedId) sel = CONVERSATIONS[i];
-      }
-      if (sel) {
-        sel.messages.unshift({
-          sender: 'You',
-          message: val,
-          timestamp: new Date().toISOString().slice(0, 19),
-        });
-      }
-      if (input) input.value = '';
-      rerender(ctx);
-    });
-
-    var sendNew = root.querySelector('[data-ch-send-new]');
+  document.addEventListener('click', function (e) {
+    var open = e.target.closest('[data-ch-open]');
+    if (open) {
+      state.selectedId = open.getAttribute('data-ch-open');
+      rerender();
+      return;
+    }
+    if (e.target.closest('[data-ch-new]')) {
+      state.newChatOpen = true;
+      state.newSearch = '';
+      state.selectedUsers = [];
+      rerender();
+      return;
+    }
+    if (e.target.closest('[data-ch-close]') || e.target.closest('[data-ch-overlay]')) {
+      state.newChatOpen = false;
+      rerender();
+      return;
+    }
+    if (e.target.closest('[data-ch-back]')) {
+      state.selectedId = null;
+      rerender();
+      return;
+    }
+    var person = e.target.closest('[data-ch-person]');
+    if (person) {
+      var id = person.getAttribute('data-ch-person');
+      var u = null;
+      usersWithoutMessages().forEach(function (x) {
+        if (x.id === id) u = x;
+      });
+      if (!u) return;
+      var idx = state.selectedUsers.findIndex(function (s) {
+        return s.id === id;
+      });
+      if (idx === -1) state.selectedUsers.push(u);
+      else state.selectedUsers.splice(idx, 1);
+      rerender();
+      return;
+    }
+    var rm = e.target.closest('[data-ch-tag-remove]');
+    if (rm) {
+      var rid = rm.getAttribute('data-ch-tag-remove');
+      state.selectedUsers = state.selectedUsers.filter(function (s) {
+        return s.id !== rid;
+      });
+      rerender();
+      return;
+    }
+    var sendNew = e.target.closest('[data-ch-send-new]');
     if (sendNew) {
-      sendNew.disabled = state.selectedUsers.length === 0;
-      sendNew.addEventListener('click', function () {
-        if (state.selectedUsers.length === 0) return;
-        var label = ctx.t('chats.selected').replace('{count}', String(state.selectedUsers.length));
-        state.newChatOpen = false;
-        App.ui.toast(
-          state.selectedUsers
-            .map(function (u) {
-              return u.fullName;
-            })
-            .join(', ') +
-            ' (' +
-            label +
-            ')',
-          'default'
-        );
-        state.selectedUsers = [];
-        rerender(ctx);
+      if (state.selectedUsers.length === 0) return;
+      var locale = App.getShellContext().settings.locale;
+      var tt = App.i18n.makeT(locale, window.__moduleI18n && window.__moduleI18n.chats);
+      var label = tt('chats.selected').replace('{count}', String(state.selectedUsers.length));
+      state.newChatOpen = false;
+      App.ui.toast(
+        state.selectedUsers
+          .map(function (u) {
+            return u.fullName;
+          })
+          .join(', ') +
+          ' (' +
+          label +
+          ')',
+        'default'
+      );
+      state.selectedUsers = [];
+      rerender();
+    }
+  });
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target.closest && e.target.closest('[data-ch-send-form]');
+    if (!form) return;
+    e.preventDefault();
+    var input = form.querySelector('[data-ch-input]');
+    var val = ((input && input.value) || '').trim();
+    if (!val) return;
+    var sel = null;
+    for (var i = 0; i < CONVERSATIONS.length; i++) {
+      if (CONVERSATIONS[i].id === state.selectedId) sel = CONVERSATIONS[i];
+    }
+    if (sel) {
+      sel.messages.unshift({
+        sender: 'You',
+        message: val,
+        timestamp: new Date().toISOString().slice(0, 19),
       });
     }
-  }
-
-  App.defineModule({
-    id: 'chats',
-    render: function (root, ctx) {
-      root.setAttribute('data-ch-page', '');
-      render(root, ctx);
-      bind(root, ctx);
-    },
+    if (input) input.value = '';
+    rerender();
   });
+
+  App.defineModule({ id: 'chats', render: render });
 })();

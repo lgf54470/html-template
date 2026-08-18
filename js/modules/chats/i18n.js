@@ -17,6 +17,7 @@ window.__moduleI18n['chats'] = {
     'chats.typeHere': '输入你的消息...',
     'chats.send': '发送',
     'chats.create': '新建',
+    'chats.chat': '聊天',
     'chats.selected': '已选择 {count} 人',
   },
   'zh-TW': {
@@ -33,6 +34,7 @@ window.__moduleI18n['chats'] = {
     'chats.typeHere': '輸入你的訊息...',
     'chats.send': '發送',
     'chats.create': '新增',
+    'chats.chat': '聊天',
     'chats.selected': '已選取 {count} 人',
   },
   en: {
@@ -49,6 +51,7 @@ window.__moduleI18n['chats'] = {
     'chats.typeHere': 'Type your messages...',
     'chats.send': 'Send',
     'chats.create': 'Create',
+    'chats.chat': 'Chat',
     'chats.selected': '{count} selected',
   },
 };

@@ -4,7 +4,8 @@
  * - 品牌图标(15 个 lucide 风格 logo)来自 icons-data.js
  * - 筛选输入 + 连接状态下拉 + 排序下拉(asc/desc)
  * - 卡片网格:logo + 名称 + 描述 + 连接状态按钮
- * 零依赖,样式走模块私有 CSS(apps.css)+ App.ui。
+ * 零依赖;render 遵循核心契约(返回 HTML 字符串),交互走
+ * document 级事件委托(与 tasks/dashboard 一致)。
  * ============================================================ */
 (function () {
   'use strict';
@@ -141,18 +142,13 @@
     return list;
   }
 
-  function brandIconHtml(name) {
-    return icon().iconSvg(name, { class: 'ap-logo-svg' });
-  }
-
-  /* ---------- 渲染 ---------- */
-  function render(root, ctx) {
+  /* ---------- 渲染(返回 HTML 字符串) ---------- */
+  function render(route, ctx) {
     var t = ctx.t;
     var list = filteredApps();
 
-    var html =
-      '<div class="ap-page">' +
-      '<div class="ap-head">' +
+    var html = '<div class="ap-page" data-app-region>';
+    '<div class="ap-head">' +
       '<h1>' +
       t('apps.title') +
       '</h1>' +
@@ -239,6 +235,7 @@
       '</div>' +
       '</div>' +
       '</div>' +
+      '<div class="ap-separator"></div>' +
       '<div class="ap-grid">';
 
     if (list.length === 0) {
@@ -250,7 +247,7 @@
             '<div class="ap-card">' +
             '<div class="ap-card-top">' +
             '<div class="ap-logo">' +
-            brandIconHtml(a.logo) +
+            icon().iconSvg(a.logo, { class: 'ap-logo-svg' }) +
             '</div>' +
             '<button type="button" class="ap-connect ' +
             (a.connected ? 'ap-connect-on' : '') +
@@ -273,54 +270,51 @@
     }
 
     html += '</div></div>';
-    root.innerHTML = html;
+    return html;
   }
 
-  /* ---------- 交互 ---------- */
-  function rerender(ctx) {
-    var root = document.querySelector('[data-app-page]');
-    if (root) render(root, ctx);
+  /* ---------- 交互(document 级事件委托,模块加载时绑定一次) ---------- */
+  function rerender() {
+    var region = document.querySelector('[data-app-region]');
+    if (!region) return;
+    var locale = App.getShellContext().settings.locale;
+    var t = App.i18n.makeT(locale, window.__moduleI18n && window.__moduleI18n.apps);
+    region.outerHTML = render('/apps', { t: t, settings: App.getShellContext().settings });
   }
 
-  function bind(root, ctx) {
-    root.addEventListener('input', function (e) {
-      var el = e.target.closest('[data-app-filter]');
-      if (!el) return;
-      state.term = el.value;
-      rerender(ctx);
-    });
-
-    root.addEventListener('click', function (e) {
-      var typeBtn = e.target.closest('[data-app-type]');
-      if (typeBtn) {
-        state.type = typeBtn.getAttribute('data-app-type');
-        rerender(ctx);
-        return;
-      }
-      var sortBtn = e.target.closest('[data-app-sort]');
-      if (sortBtn) {
-        state.sort = sortBtn.getAttribute('data-app-sort');
-        rerender(ctx);
-        return;
-      }
-      var toggle = e.target.closest('[data-app-toggle]');
-      if (toggle) {
-        var name = toggle.getAttribute('data-app-toggle');
-        APPS.forEach(function (a) {
-          if (a.name === name) a.connected = !a.connected;
-        });
-        rerender(ctx);
-        return;
-      }
-    });
-  }
-
-  App.defineModule({
-    id: 'apps',
-    render: function (root, ctx) {
-      root.setAttribute('data-app-page', '');
-      render(root, ctx);
-      bind(root, ctx);
-    },
+  document.addEventListener('input', function (e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var el = target.closest('[data-app-filter]');
+    if (!el) return;
+    state.term = el.value;
+    rerender();
   });
+
+  document.addEventListener('click', function (e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var typeBtn = target.closest('[data-app-type]');
+    if (typeBtn) {
+      state.type = typeBtn.getAttribute('data-app-type');
+      rerender();
+      return;
+    }
+    var sortBtn = target.closest('[data-app-sort]');
+    if (sortBtn) {
+      state.sort = sortBtn.getAttribute('data-app-sort');
+      rerender();
+      return;
+    }
+    var toggle = target.closest('[data-app-toggle]');
+    if (toggle) {
+      var name = toggle.getAttribute('data-app-toggle');
+      APPS.forEach(function (a) {
+        if (a.name === name) a.connected = !a.connected;
+      });
+      rerender();
+    }
+  });
+
+  App.defineModule({ id: 'apps', render: render });
 })();

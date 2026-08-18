@@ -546,7 +546,6 @@
       '<button type="button" data-db-download class="' +
       App.ui.buttonClass('default') +
       '">' +
-      icon().iconSvg('download', { class: 'size-4' }) +
       t('dashboard.download') +
       '</button>' +
       '</div>' +

@@ -15,6 +15,8 @@ export default [
       'js/core/icons-data.js',
       'js/lib/**',
       'package-lock.json',
+      // 平台管理目录(如 Freebuff 预览脚手架),gitignored,不参与 lint
+      '.freebuff/**',
     ],
   },
   js.configs.recommended,

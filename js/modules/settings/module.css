@@ -398,6 +398,16 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+.sp-display-item.is-sub {
+  margin-left: 1.75rem;
+  width: calc(100% - 1.75rem);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  font-weight: 400;
+}
+.sp-display-item.is-sub .sp-item-icon {
+  color: var(--muted-foreground);
+}
 .sp-display-hint {
   font-size: 0.75rem;
   color: var(--muted-foreground);

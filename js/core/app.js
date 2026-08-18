@@ -236,10 +236,16 @@
     });
   }
 
-  /** 构建侧边栏导航项:过滤显示页隐藏的菜单项 */
+  /** 构建侧边栏导航项:过滤显示页隐藏的菜单项(支持父级 'id' 与子级 'parent:child') */
   function buildNavItems(locale) {
     return buildAllNavItems(locale).filter(function (item) {
-      return settings.hiddenNav.indexOf(item.id) === -1;
+      if (settings.hiddenNav.indexOf(item.id) !== -1) return false;
+      if (item.children && item.children.length) {
+        item.children = item.children.filter(function (c) {
+          return settings.hiddenNav.indexOf(item.id + ':' + c.id) === -1;
+        });
+      }
+      return true;
     });
   }
 
@@ -291,9 +297,40 @@
     });
   }
 
+  /** 配置文件域:命中这些键时把当前设置同步进激活配置文件的快照(VSCode 行为:改动即保存) */
+  var PROFILE_DOMAIN_KEYS = [
+    'theme',
+    'appearance',
+    'notifications',
+    'sidebarVariant',
+    'sidebarCollapsible',
+    'sidebarWidth',
+    'hiddenNav',
+  ];
+
+  /** 把当前设置写回激活配置文件的快照(值未变化则跳过,避免无谓写存储) */
+  function syncActiveProfileSnapshot() {
+    var list = settings.profiles || [];
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === settings.activeProfile) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx === -1) return;
+    var snap = App.settings.profileCapture(settings);
+    if (JSON.stringify(list[idx].snapshot) === JSON.stringify(snap)) return;
+    var next = list.slice();
+    next[idx] = Object.assign({}, list[idx], { snapshot: snap });
+    settings = Object.assign({}, settings, { profiles: next });
+  }
+
   function updateSettings(patch, opts) {
     opts = opts || {};
     settings = Object.assign({}, settings, patch);
+    // 外观/通知/显示发生变化时同步激活配置文件快照(须在 pushSettingsToServer 之前)
+    if (patchTouches(patch, PROFILE_DOMAIN_KEYS)) syncActiveProfileSnapshot();
     App.settings.applySettings(settings);
     App.settings.persistSettings(settings);
     pushSettingsToServer(); // 双向同步:本地改动异步写入数据库 app_settings
@@ -379,6 +416,8 @@
       'settings:notifications': JSON.stringify(settings.notifications || {}),
       'settings:workspaces': JSON.stringify(settings.workspaces || []),
       'settings:activeWorkspace': String(settings.activeWorkspace || ''),
+      'settings:profiles': JSON.stringify(settings.profiles || []),
+      'settings:activeProfile': String(settings.activeProfile || ''),
     };
   }
 
@@ -467,6 +506,17 @@
     if (typeof raw['settings:activeWorkspace'] === 'string' && raw['settings:activeWorkspace']) {
       set(K('active-workspace'), raw['settings:activeWorkspace']);
     }
+    if (typeof raw['settings:profiles'] === 'string' && raw['settings:profiles']) {
+      try {
+        var ps = JSON.parse(raw['settings:profiles']);
+        if (Array.isArray(ps) && ps.length) set(K('profiles'), JSON.stringify(ps));
+      } catch (e) {
+        /* 脏数据忽略,保持本地值 */
+      }
+    }
+    if (typeof raw['settings:activeProfile'] === 'string' && raw['settings:activeProfile']) {
+      set(K('active-profile'), raw['settings:activeProfile']);
+    }
     return App.settings.readSettings();
   }
 
@@ -484,6 +534,8 @@
       notifications: s.notifications,
       workspaces: s.workspaces,
       activeWorkspace: s.activeWorkspace,
+      profiles: s.profiles,
+      activeProfile: s.activeProfile,
     });
   }
 
@@ -651,6 +703,94 @@
     App.settings.persistSettings(settings);
     pushGlobalSettingsToServer();
     refreshSidebar();
+  }
+
+  /* ---------- 配置文件(VSCode 风格:切换/新建/重命名/删除,保存 外观/通知/显示) ---------- */
+  /** 切换配置文件:先把当前设置存进当前激活配置的快照,再应用目标快照 */
+  function switchProfile(id) {
+    var list = (settings.profiles || []).slice();
+    var target = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        target = list[i];
+        break;
+      }
+    }
+    if (!target || id === settings.activeProfile) return;
+    for (var j = 0; j < list.length; j++) {
+      if (list[j].id === settings.activeProfile) {
+        list[j] = Object.assign({}, list[j], {
+          snapshot: App.settings.profileCapture(settings),
+        });
+      }
+    }
+    settings = App.settings.profileApply(
+      Object.assign({}, settings, { profiles: list }),
+      target.snapshot
+    );
+    settings.activeProfile = target.id;
+    App.settings.applySettings(settings);
+    App.settings.persistSettings(settings);
+    pushSettingsToServer();
+    renderApp();
+  }
+
+  /** 新建(基于当前设置快照并激活)或重命名当前配置文件;返回是否成功 */
+  function saveProfile(name, isEdit) {
+    name = String(name == null ? '' : name).trim();
+    if (!name) return false;
+    var list = (settings.profiles || []).slice();
+    if (isEdit) {
+      var found = false;
+      list = list.map(function (p) {
+        if (p.id === settings.activeProfile) {
+          found = true;
+          return Object.assign({}, p, { name: name, nameKey: '' });
+        }
+        return p;
+      });
+      if (!found) return false;
+      settings = Object.assign({}, settings, { profiles: list });
+    } else {
+      var id = 'p-' + Date.now().toString(36);
+      while (
+        list.some(function (p) {
+          return p.id === id;
+        })
+      ) {
+        id = 'p-' + Date.now().toString(36);
+      }
+      list = list.concat([
+        { id: id, name: name, nameKey: '', snapshot: App.settings.profileCapture(settings) },
+      ]);
+      settings = Object.assign({}, settings, { profiles: list, activeProfile: id });
+    }
+    App.settings.applySettings(settings);
+    App.settings.persistSettings(settings);
+    pushSettingsToServer();
+    renderApp();
+    return true;
+  }
+
+  /** 删除配置文件:至少保留一个;删除激活配置时切换到剩余第一个 */
+  function deleteProfile(id) {
+    var list = (settings.profiles || []).filter(function (p) {
+      return p.id !== id;
+    });
+    if (!list.length) return;
+    var wasActive = settings.activeProfile === id;
+    settings = Object.assign({}, settings, {
+      profiles: list,
+      activeProfile: wasActive ? list[0].id : settings.activeProfile,
+    });
+    if (wasActive) {
+      settings = App.settings.profileApply(settings, list[0].snapshot);
+      settings.activeProfile = list[0].id;
+    }
+    App.settings.applySettings(settings);
+    App.settings.persistSettings(settings);
+    pushSettingsToServer();
+    renderApp();
   }
 
   function setTheme(theme) {
@@ -1107,4 +1247,7 @@
   App.switchWorkspace = switchWorkspace;
   App.saveWorkspace = saveWorkspace;
   App.deleteWorkspace = deleteWorkspace;
+  App.switchProfile = switchProfile;
+  App.saveProfile = saveProfile;
+  App.deleteProfile = deleteProfile;
 })();

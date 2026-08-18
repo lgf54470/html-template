@@ -28,6 +28,7 @@
     'shell',
     'app',
     'workspace',
+    'profile',
     'interactions',
   ];
 

@@ -262,6 +262,8 @@ CREATE TABLE auth_sessions (
 - `settings:notifications` — 通知设置
 - `settings:workspaces` — 工作空间列表(JSON 数组:`{ id, name, names: { 'zh-CN', 'zh-TW', en }, icon, color, note }`,其中 `id` 为 `ws-<英文名称>`,`names` 为三语显示名,`note` 为可选备注)
 - `settings:activeWorkspace` — 当前工作空间 id
+- `settings:profiles` — 配置文件列表(VSCode 风格,JSON 数组:`{ id, name, nameKey, snapshot }`,`snapshot` 按域结构化:`{ appearance, notifications, display }`,新增域只需在 `PROFILE_HANDLERS` 注册 capture/apply)
+- `settings:activeProfile` — 当前配置文件 id
 - `settings:auth:*` — 保留键(禁止读写)
 
 **工作空间隔离:**

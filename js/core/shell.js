@@ -177,6 +177,12 @@
     var profile = settings.profile || {};
     var displayName = profile.username || 'Admin';
     var displayEmail = profile.email || 'admin@example.com';
+    var profiles =
+      settings.profiles && settings.profiles.length
+        ? settings.profiles
+        : App.settings.defaultProfiles();
+    var activeProfile = App.settings.findProfile(profiles, settings.activeProfile);
+    var activeProfileName = App.settings.profileDisplayName(activeProfile, t);
     var userItems =
       '<div class="' +
       ui().dropdownLabelClass('p-0 font-normal') +
@@ -201,12 +207,15 @@
       '<span>' +
       t('sidebar.profile') +
       '</span></button>' +
-      '<button type="button" role="menuitem" class="' +
+      '<button type="button" role="menuitem" data-open-profiles class="' +
       ui().dropdownItemClass() +
       '">' +
-      icon().iconSvg('credit-card', { class: 'size-4' }) +
+      icon().iconSvg('user-cog', { class: 'size-4' }) +
       '<span>' +
-      t('sidebar.billing') +
+      t('sidebar.profiles') +
+      '</span>' +
+      '<span class="ml-auto truncate text-xs text-muted-foreground">' +
+      esc(activeProfileName) +
       '</span></button>' +
       '<button type="button" role="menuitem" class="' +
       ui().dropdownItemClass() +

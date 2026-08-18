@@ -13,6 +13,7 @@
 - **主题设置面板**:主题模式、侧边栏样式、布局、基础色/强调色、8 套风格、字体、圆角、菜单颜色/外观、重置
 - **可拖拽调宽 / 可折叠侧边栏**、毛玻璃顶栏、单一内容滚动区、移动端抽屉
 - **工作空间**:侧边栏顶部工作空间切换(默认/工作/学习/生活/娱乐/旅游),支持新增/编辑/删除(双语名称 + 备注 + 图标 + 强调色);业务数据按工作空间隔离
+- **配置文件**(VSCode 风格):头像下拉菜单可新建 / 重命名 / 删除 / 切换配置文件,每个配置文件保存一组 外观/通知/显示 设置(域表驱动,后续可扩展新域)
 - **用户头像**:个人资料页可设置头像(用户名首字母 / 预设图标 / Emoji / 上传图片),上传图片限 200KB 以内并自动居中裁切压缩为 256×256 方形;侧边栏用户菜单同步展示
 
 ## 快速开始
@@ -37,7 +38,7 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
 - **密码**:登录密码与 `AUTH_PASSWORD` 环境变量直接做常量时间比较(**不落库、无随机初始密码**);未配置该变量时登录返回明确报错。
 - **改密**:密码由部署平台环境变量 `AUTH_PASSWORD` 统一管理,应用内不支持修改——请到平台更新环境变量后重新部署。
 - **登出**:顶栏/侧边栏用户菜单的登出按钮 → 删除服务端会话并清除本地令牌,回到登录页;任何接口返回 401 也会自动回到登录页。
-- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度/工作空间…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`、工作空间 → `settings:workspaces` / `settings:activeWorkspace`)。
+- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度/工作空间…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`、工作空间 → `settings:workspaces` / `settings:activeWorkspace`、配置文件 → `settings:profiles` / `settings:activeProfile`)。
 
 > 纯静态方式(双击 `index.html`)不经过鉴权,登录页会提示需要服务器 —— 这是预期行为:鉴权与持久化依赖 `dev-server.js`。
 
@@ -52,6 +53,16 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
 - **持久化**:工作空间列表存于 `html-template-workspaces` 并同步到 `settings:workspaces`(JSON 数组)。
 
 **工作空间隔离**:`app_settings` 按 `workspace_id` 分片 —— `workspace_id='global'` 只存 `settings:workspaces` / `settings:activeWorkspace` 两个全局键,其余 `settings:*` 与业务数据都落在当前工作空间;`auth_sessions` 是登录会话基础设施,保持全局。切换工作空间后加载不同数据,互相隔开、互不影响(见「数据库设计」)。
+
+## 配置文件
+
+头像下拉菜单的**「配置文件」**入口即 VSCode 风格的配置文件选择器:
+
+- **保存内容**:每个配置文件保存一组 **外观 / 通知 / 显示** 设置(主题/风格/配色/字体/圆角、通知开关、侧边栏变体/折叠/宽度/隐藏菜单),切换即整体生效;正在使用的配置会随设置修改实时更新(改动即保存)。
+- **切换**:点击头像下拉菜单的「配置文件」→ 在列表中选择目标配置,当前配置的未保存改动会先写入其快照再切换。
+- **新建 / 重命名 / 删除**:悬停配置条目出现重命名、删除按钮;新建基于当前设置创建并立即激活;内置「默认」配置不可删除,且始终至少保留一个配置。
+- **显示页联动**:设置 → 显示 页会自动列出侧边栏的**一级与二级菜单项**(来自模块注册表,新增模块/子模块无需手动维护),支持逐项显隐。
+- **持久化**:配置列表存于 `html-template-profiles` 并同步到 `settings:profiles`(JSON 数组,快照按域结构化),当前 id 存于 `html-template-active-profile` 并同步到 `settings:activeProfile`;与工作空间一致,配置文件数据**按工作空间隔离**。
 
 ## 目录结构
 
@@ -228,7 +239,7 @@ CREATE TABLE auth_sessions (
 
 ### 键值命名规范(app_settings)
 
-- **设置键**:`settings:<域>` —— 如 `settings:appearance`(主题/风格/字体/圆角等)、`settings:display`(侧边栏宽度/变体/隐藏菜单)、`settings:profile`(用户资料)。除 `settings:workspaces`(工作空间列表)与 `settings:activeWorkspace`(当前工作空间 id)两个全局键外,均落在当前工作空间;值统一为 JSON 字符串。
+- **设置键**:`settings:<域>` —— 如 `settings:appearance`(主题/风格/字体/圆角等)、`settings:display`(侧边栏宽度/变体/隐藏菜单)、`settings:profile`(用户资料)、`settings:profiles`(配置文件列表,快照按域结构化)与 `settings:activeProfile`(当前配置文件 id)。除 `settings:workspaces`(工作空间列表)与 `settings:activeWorkspace`(当前工作空间 id)两个全局键外,均落在当前工作空间;值统一为 JSON 字符串。
 - **鉴权保留键**:`settings:auth:*`(历史遗留,如 `settings:auth:password`;登录密码已改为与 `AUTH_PASSWORD` 环境变量直接校验,不再写入数据库)。**禁止**通过通用 KV 接口读写:PUT/DELETE 返回 403,GET 不返回。
 - **模块数据表**:`<模块名>_<用途>` —— 如笔记模块 `notes_tags`、`notes_data`;数据表与全局设置表分离,模块表不混入 `app_settings`。
 - **工作空间隔离**:`app_settings` 本身按 `workspace_id` 分片(`global` 作用域仅存 `settings:workspaces` / `settings:activeWorkspace`);`auth_sessions` 是登录会话基础设施,保持全局;所有业务数据表必须包含 `workspace_id` 列,写入时带上当前工作空间 id、查询时按 `WHERE workspace_id = ?` 过滤,不同工作空间的数据互相隔开、互不影响。

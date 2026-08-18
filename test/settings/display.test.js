@@ -28,7 +28,8 @@ const DISPLAY = {
   sidebarVariant: 'floating',
   sidebarCollapsible: 'offcanvas',
   sidebarWidth: 272,
-  hiddenNav: ['channels', 'tokens'],
+  // 含父级('channels'/'tokens')与子级('docs:introduction')隐藏 id
+  hiddenNav: ['channels', 'tokens', 'docs:introduction'],
 };
 
 test('无 token 写显示设置被拒绝(401)', async () => {

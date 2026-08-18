@@ -345,14 +345,13 @@
   }
 
   /* ---------- 设置表单字段(个人资料/账号/通知)数据绑定 ---------- */
-  /** data-setting="domain.field[.index]" → 更新嵌套值并同步数据库 */
-  function applySettingField(el, noRerender) {
-    var parts = (el.getAttribute('data-setting') || '').split('.');
+  /** 写设置字段(路径如 profile.email / account.dob / notifications.mobile),自定义控件也可复用 */
+  function applySettingValue(setting, value, noRerender) {
+    var parts = String(setting || '').split('.');
     if (parts.length < 2) return;
     var domain = parts[0];
     if (domain !== 'profile' && domain !== 'account' && domain !== 'notifications') return;
     var fields = parts.slice(1);
-    var value = el.type === 'checkbox' ? !!el.checked : el.value;
     var current = Object.assign({}, settings[domain]);
     var target = current;
     for (var i = 0; i < fields.length - 1; i++) {
@@ -364,6 +363,12 @@
     var patch = {};
     patch[domain] = current;
     updateSettings(patch, noRerender ? { noRerender: true } : undefined);
+  }
+
+  /** data-setting="domain.field[.index]" → 更新嵌套值并同步数据库 */
+  function applySettingField(el, noRerender) {
+    var value = el.type === 'checkbox' ? !!el.checked : el.value;
+    applySettingValue(el.getAttribute('data-setting'), value, noRerender);
   }
 
   // change:选择/复选/单选/失焦(可重渲染同步 UI);input:逐键输入(不重渲染,避免抢焦点)
@@ -1224,6 +1229,7 @@
   App.buildAllNavItems = buildAllNavItems;
   App.currentPath = currentPath;
   App.updateSettings = updateSettings; // 设置表单字段/模块改动统一入口(自动持久化 + 同步数据库)
+  App.applySettingValue = applySettingValue; // 自定义控件(下拉/日历等)写设置字段统一入口
   App.setSidebarWidth = setSidebarWidth; // 拖拽调宽收尾持久化(interactions.js 使用)
   App.getShellContext = function () {
     // 移动端抽屉构建侧边栏所需上下文(interactions.js 使用)

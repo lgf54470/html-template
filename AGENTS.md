@@ -49,6 +49,7 @@
 - 响应式优先：布局与组件需提前考虑响应式，尽量减少留白，避免信息卡片上、下、左、右出现大量空白（可通过加大字体、补充图标等方式收敛）。
 - 组件复用优先：先检查现有可复用组件，避免重复设计；新组件若会被多处使用，应提取为公共组件。
 - 统一风格：UI 模仿 shadcn 的 Base UI 风格，采用 Nova 样式与 Zinc 主题，组件观感与 shadcn 保持一致。
+- 禁用浏览器原生组件：一律不使用 window.alert/prompt/confirm、原生 <select>、input[type=date/color/range] 等由系统皮肤渲染的控件，必须自研类 shadcn 的弹窗、下拉、日历等组件（可复用 [data-dropdown] 弹层机制与 App.ui 公共样式）；唯一例外是隐藏的 input[type=file]（display:none + 自定义按钮触发，OS 文件选择器无法绕过），上传预览与裁切须自研。
 - 布局约定：整体采用 sidebar-with-header 布局（侧边栏 + 顶栏），新增模块只允许在剩余 Main 区域实现。
 - 滚动约定：仅 Main 区域拥有滚动条（与 shadcn 样式保持一致）。
 

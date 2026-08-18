@@ -70,6 +70,8 @@ turso db tokens create html-template-db  # 生成长期访问令牌(或 turso db
 | `DENO_DEPLOY_ORG`(Variable) | 组织名(console.deno.com 网址路径中的名称) |
 | `DENO_DEPLOY_APP`(Variable) | 应用名(**必须先存在**:首次用方式一或方式三创建) |
 
+**触发**:push `v*` 标签(如 `git tag v1.0.0 && git push --tags`)自动部署,或 Actions 页面手动 `Run workflow`。
+
 工作流先用 `deno deploy switch` 把组织 / 应用写入 `deno.json`(CLI 发布要求 deploy 段含 `org` / `app`,见 FAQ),再执行 `deno deploy --org … --app … --prod`,并用 `--ignore` 排除本地敏感文件(`sqlite.db*` / `.env*` / `.dev.vars` / `server/.secret-key`)不上传;运行期环境变量仍在 Deno Deploy 应用里配置(不由 GitHub 管理)。
 
 ### 方式三:本地 deno deploy 命令

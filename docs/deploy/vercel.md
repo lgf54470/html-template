@@ -81,6 +81,8 @@ npx vercel --prod                      # 构建并发布(自动执行 npm run bu
 | `VERCEL_ORG_ID` | Vercel 项目 Settings → General 里的 **Vercel org id**(或 `npx vercel whoami` 后查看) |
 | `VERCEL_PROJECT_ID` | 项目 Settings → General 里的 **Vercel project id** |
 
+**触发**:push `v*` 标签(如 `git tag v1.0.0 && git push --tags`)自动部署,或 Actions 页面手动 `Run workflow`。
+
 工作流执行 `vercel pull → vercel build → vercel deploy --prebuilt`,运行期环境变量仍在 Vercel 项目里配置(不由 GitHub 管理)。
 
 ## 验证部署

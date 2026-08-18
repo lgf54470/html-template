@@ -1,7 +1,7 @@
 # ============================================================
 # publish-docker-ghcr.yml — 构建 Docker 镜像并发布到 GitHub Container Registry
 # ------------------------------------------------------------
-# 触发:push 到 main / 打 v* 标签 / 手动(workflow_dispatch)
+# 触发:push v* 标签 / 手动(workflow_dispatch)
 # 产物:ghcr.io/<owner>/<repo>:<分支或版本>  (如 ghcr.io/you/html-template:main)
 # 说明:镜像内是完整自托管服务(静态资源 + API + 本地 SQLite),
 #       运行期环境变量(AUTH_PASSWORD / ENCRYPTION_KEY …)在部署端配置,与构建无关。
@@ -11,7 +11,6 @@ name: Publish Docker image to GHCR
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
@@ -39,9 +38,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # 自动生成镜像标签与元数据:
-      #   push 到 main      → ghcr.io/<owner>/<repo>:main + :sha-<commit>
-      #   push v1.2.3 标签  → ghcr.io/<owner>/<repo>:1.2.3 / 1.2 / 1 / latest
-      #   workflow_dispatch → 按当前分支名
+      #   push v1.2.3 标签  → ghcr.io/<owner>/<repo>:1.2.3 / 1.2 / 1 / latest + :sha-<commit>
+      #   workflow_dispatch → 按当前分支名打标签 + :sha-<commit>
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5

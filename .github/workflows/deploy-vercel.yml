@@ -1,4 +1,4 @@
-# Vercel 自动部署 — 触发:push 到 main 或手动触发
+# Vercel 自动部署 — 触发:push v* 标签或手动触发
 # 前置:GitHub 仓库 Secrets 配置 VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID
 # 运行期环境变量(DATABASE_URL / DATABASE_AUTH_TOKEN / AUTH_PASSWORD / ENCRYPTION_KEY)
 # 在 Vercel 项目 Settings → Environment Variables 中配置,不在本工作流管理。
@@ -7,7 +7,7 @@ name: Deploy to Vercel
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:

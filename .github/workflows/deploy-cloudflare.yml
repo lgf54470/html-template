@@ -1,4 +1,4 @@
-# Cloudflare Workers 自动部署 — 触发:push 到 main 或手动触发
+# Cloudflare Workers 自动部署 — 触发:push v* 标签或手动触发
 # 前置:仓库 Settings → Secrets and variables → Actions 添加以下 Secrets:
 #   CLOUDFLARE_API_TOKEN  API Token(权限:Workers Scripts:Edit、D1:Edit、Account Settings:Read)
 #   CLOUDFLARE_ACCOUNT_ID Cloudflare 账号 ID(控制台首页右侧)
@@ -9,7 +9,7 @@ name: Deploy to Cloudflare Workers
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:

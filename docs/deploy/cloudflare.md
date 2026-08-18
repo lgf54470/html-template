@@ -19,7 +19,7 @@
 
 | 方式 | 适用场景 | 自动化 | 章节 |
 |---|---|---|---|
-| GitHub Actions | 已有 GitHub 仓库,想要 push 即自动部署 | 全自动 | [方式一](#1-github-actions-自动部署推荐) |
+| GitHub Actions | 已有 GitHub 仓库,想要 push `v*` 标签即自动部署 | 全自动 | [方式一](#1-github-actions-自动部署推荐) |
 | 控制台 Git 集成 | 不想配置 CI,在 Cloudflare 后台连仓库 | 全自动 | [方式二](#2-cloudflare-控制台-git-集成免-ci) |
 | 本地 wrangler 命令 | 首次部署 / 手动发布 / 本地调试 | 手动 | [方式三](#3-本地-wrangler-命令) |
 
@@ -108,7 +108,7 @@ Worker 运行在无文件系统环境,**首次部署前必须设置**:
 
 仓库已内置工作流 `.github/workflows/deploy-cloudflare.yml`:
 
-- **触发**:push 到 `main` 分支,或 Actions 页面手动 `Run workflow`。
+- **触发**:push `v*` 标签(如 `git tag v1.0.0 && git push --tags`)自动部署,或 Actions 页面手动 `Run workflow`。
 - **动作**:`cloudflare/wrangler-action@v4` 执行 `wrangler deploy`,并把 `AUTH_PASSWORD` / `ENCRYPTION_KEY` 同步为 Worker secret。
 - **查看结果**:Actions 页面的部署日志会打印最终 URL。
 

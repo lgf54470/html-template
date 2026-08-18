@@ -36,11 +36,10 @@ docker build -t html-template .
 
 ## 发布到 GitHub Container Registry(GHCR)
 
-仓库内置工作流 `.github/workflows/publish-docker-ghcr.yml`,push 到 `main`、打 `v*` 标签或手动触发时,自动构建镜像并推送到 **GHCR**:**`ghcr.io/<owner>/<repo>`**(GitHub 仓库 Settings → Packages 可看到,无需额外配置 Secret,用仓库自带的 `GITHUB_TOKEN`)。
+仓库内置工作流 `.github/workflows/publish-docker-ghcr.yml`,**push `v*` 标签**(如 `git tag v1.0.0 && git push --tags`)或手动触发时,自动构建镜像并推送到 **GHCR**:**`ghcr.io/<owner>/<repo>`**(GitHub 仓库 Settings → Packages 可看到,无需额外配置 Secret,用仓库自带的 `GITHUB_TOKEN`)。
 
-- push 到 `main` → 标签 `main` + `sha-<commit>`
-- 打 `v1.2.3` 标签 → 标签 `1.2.3` / `1.2` / `1` / `latest`(语义化版本)
-- `workflow_dispatch` 手动触发 → 按当前分支名打标签,方便发布前自行验证
+- 打 `v1.2.3` 标签 → 标签 `1.2.3` / `1.2` / `1` / `latest` + `sha-<commit>`(语义化版本)
+- `workflow_dispatch` 手动触发 → 按当前分支名打标签 + `sha-<commit>`,方便发布前自行验证
 
 发布后任何服务器拉取即可运行:
 

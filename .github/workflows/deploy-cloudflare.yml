@@ -1,0 +1,35 @@
+# Cloudflare Workers 自动部署 — 触发:push 到 main 或手动触发
+# 前置:仓库 Settings → Secrets and variables → Actions 添加以下 Secrets:
+#   CLOUDFLARE_API_TOKEN  API Token(权限:Workers Scripts:Edit、D1:Edit、Account Settings:Read)
+#   CLOUDFLARE_ACCOUNT_ID Cloudflare 账号 ID(控制台首页右侧)
+#   AUTH_PASSWORD         首次登录管理员密码(每次部署同步为 Worker secret)
+#   ENCRYPTION_KEY        64 位 hex 加密密钥(每次部署同步为 Worker secret;openssl rand -hex 32 生成)
+# 还需先在 wrangler.toml 中填好 D1 的 database_id(见 DEPLOY.md)
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          # 部署的同时把下列名称同步为 Worker secret(值来自下方 env)
+          secrets: |
+            AUTH_PASSWORD
+            ENCRYPTION_KEY
+        env:
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}

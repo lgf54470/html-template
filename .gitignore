@@ -7,5 +7,8 @@ sqlite.db-shm
 # 本地环境变量(不入库;模板见 .env.example)
 .env
 
+# wrangler 本地调试环境变量(不入库;模板见 .dev.vars.example)
+.dev.vars
+
 # 本地加密密钥(不入库;生产环境改用 ENCRYPTION_KEY 环境变量)
 server/.secret-key

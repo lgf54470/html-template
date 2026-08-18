@@ -1,0 +1,25 @@
+# 本文件(与 .gitignore 同格式)用于 Workers 静态资源 [assets] 的排除:
+# 命中的文件/目录不会作为静态资源发布,仅供构建与本地使用。
+
+# 本地 / 运行时文件(不入库,亦不发布)
+.freebuff/
+.git/
+server/
+.env
+.env.example
+.dev.vars
+.dev.vars.example
+.gitignore
+sqlite.db
+sqlite.db-wal
+sqlite.db-shm
+
+# 部署配置与文档(非站点资源)
+wrangler.toml
+.assetsignore
+README.md
+AGENTS.md
+DEPLOY.md
+
+# CI
+.github/

@@ -176,7 +176,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 |---|---|---|
 | `DB_DRIVER` | `sqlite`(默认) | 本地 SQLite,`node:sqlite` 内置模块(需 Node ≥ 22.5,推荐 ≥ 23.4),零第三方依赖 |
 | `DB_DRIVER` | `turso` | 远程 Turso / libSQL HTTP API(需 `DATABASE_URL` + `DATABASE_AUTH_TOKEN`) |
-| `DB_DRIVER` | `d1` | Cloudflare D1(REST API;接口相同,按 `server/db-turso.js` 的示例新增适配器即可) |
+| `DB_DRIVER` | `d1` | Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,需 `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`;详见 DEPLOY.md) |
 | `ENCRYPTION_KEY` | 64 位 hex | 敏感数据 AES-256-GCM 加密密钥(生产必设;缺省时自动生成到 `server/.secret-key`) |
 | `SQLITE_PATH` | 路径 | 本地 sqlite 文件位置(默认 `sqlite.db`,已加入 .gitignore) |
 | `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | — | turso 远程数据库连接信息 |
@@ -223,9 +223,10 @@ CREATE TABLE auth_sessions (
 
 ### 部署到 Cloudflare / Vercel 等平台
 
-模板是纯静态 + 可移植 Node 服务,可整体部署:
+模板是纯静态 + 可移植 Node 服务,可整体部署。**Cloudflare 完整部署(静态资源 + 鉴权 API + D1)已就绪,支持 GitHub Actions / 控制台 Git 集成 / `wrangler` 命令行三种方式,详细步骤见 [`DEPLOY.md`](./DEPLOY.md)。**
 
-- **Cloudflare Workers + D1**:新增 `server/db-d1.js` 适配器(实现 `query`/`run`,走 D1 REST API),`DB_DRIVER=d1` 启动;静态资源与 `/api/*` 由同一 Worker 托管。
+- **Cloudflare Workers + D1**(推荐):`worker.js`(Worker 入口)+ `server/db-d1.js`(D1 适配器)+ `wrangler.toml` + `.assetsignore`;静态资源由边缘网络托管,`/api/*` 由同一 Worker 处理,数据存 D1。
+- **本地 Node 直连 D1**:`DB_DRIVER=d1` + `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`,走官方 D1 REST API。
 - **Vercel**:`server.js` 可改为无服务器入口(导出 `handler`),`DB_DRIVER=turso` 指向 Turso 数据库;`index.html` 静态目录保持不动。
 - **常规服务器**:直接 `node server.js`(内置静态托管),`DB_DRIVER=turso` 即可让数据库远程化。
 

@@ -75,11 +75,11 @@ function verifyPassword(password, stored) {
 }
 
 /* ---------- 首次启动:初始化管理员密码 ---------- */
-function ensureAuthPassword(db) {
-  const row = db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
+async function ensureAuthPassword(db) {
+  const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
   if (row) return false;
   const initial = process.env.AUTH_PASSWORD || randomPassword();
-  db.run(
+  await db.run(
     'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
     [AUTH_KEY, hashPassword(initial)],
   );
@@ -106,7 +106,7 @@ async function bootstrap() {
     // 远程驱动:异步建表后再初始化密码
     await db.initSchema(require('./server/db').SCHEMA);
   }
-  ensureAuthPassword(db);
+  await ensureAuthPassword(db);
   return db;
 }
 
@@ -115,13 +115,13 @@ function sha256(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
 
-function getSession(token) {
+async function getSession(token) {
   if (!token) return null;
   const hash = sha256(token);
-  const row = db.get('SELECT * FROM auth_sessions WHERE token_hash = ?', [hash]);
+  const row = await db.get('SELECT * FROM auth_sessions WHERE token_hash = ?', [hash]);
   if (!row) return null;
   if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) {
-    db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [hash]);
+    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [hash]);
     return null;
   }
   return row;
@@ -149,8 +149,8 @@ function readBody(req) {
   });
 }
 
-function authed(req, res) {
-  const session = getSession(req.headers['x-auth-token']);
+async function authed(req, res) {
+  const session = await getSession(req.headers['x-auth-token']);
   if (!session) {
     sendJson(res, 401, { error: 'unauthorized', message: '登录已失效,请重新登录' });
     return null;
@@ -183,18 +183,18 @@ async function handleApi(req, res, pathname) {
     const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
     const ttl = EXPIRY_MS[expiry];
     if (!ttl) return sendJson(res, 400, { error: 'bad_expiry', message: '不支持的失效选项' });
-    const row = db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
-    if (!verifyPassword(password, row && row.value)) {
+    const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
+    if (!(await verifyPassword(password, row && row.value))) {
       return sendJson(res, 401, { error: 'bad_password', message: '密码错误' });
     }
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();
     // 数据库仅存 SHA-256 哈希,明文令牌只在响应中返回给客户端
-    db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
+    await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
     return sendJson(res, 200, { token, expiresAt, expiry });
   }
 
-  const session = authed(req, res);
+  const session = await authed(req, res);
   if (!session) return;
 
   // GET /api/auth/verify
@@ -204,7 +204,7 @@ async function handleApi(req, res, pathname) {
 
   // POST /api/auth/logout
   if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
-    db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(req.headers['x-auth-token'])]);
+    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(req.headers['x-auth-token'])]);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -212,24 +212,24 @@ async function handleApi(req, res, pathname) {
   if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'password') {
     let body;
     try { body = await readBody(req); } catch (e) { return sendJson(res, 400, { error: 'bad_json' }); }
-    const row = db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
-    if (!verifyPassword(String(body.currentPassword || ''), row && row.value)) {
+    const row = await db.get('SELECT value FROM app_settings WHERE key = ?', [AUTH_KEY]);
+    if (!(await verifyPassword(String(body.currentPassword || ''), row && row.value))) {
       return sendJson(res, 401, { error: 'bad_password', message: '当前密码错误' });
     }
     const np = String(body.newPassword || '');
     if (np.length < 6) return sendJson(res, 400, { error: 'weak_password', message: '新密码至少 6 位' });
-    db.run(
+    await db.run(
       'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
       [AUTH_KEY, hashPassword(np)],
     );
     // 修改密码后吊销全部既有会话
-    db.run('DELETE FROM auth_sessions');
+    await db.run('DELETE FROM auth_sessions');
     return sendJson(res, 200, { ok: true });
   }
 
   // GET /api/settings(保留键 settings:auth:* 不返回;敏感键解密后返回)
   if (method === 'GET' && parts[1] === 'settings') {
-    const rows = db.query('SELECT key, value FROM app_settings ORDER BY key');
+    const rows = await db.query('SELECT key, value FROM app_settings ORDER BY key');
     const out = {};
     rows.forEach((r) => {
       if (r.key.indexOf(RESERVED_SETTINGS_PREFIX) === 0) return;
@@ -255,7 +255,7 @@ async function handleApi(req, res, pathname) {
       let v = typeof entries[k] === 'string' ? entries[k] : JSON.stringify(entries[k]);
       // 敏感键:落库前加密,数据库不以明文存放
       if (isSensitiveKey(k)) v = encrypt(v);
-      db.run(
+      await db.run(
         'INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
         [k, v, now],
       );
@@ -272,7 +272,7 @@ async function handleApi(req, res, pathname) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {
         return sendJson(res, 403, { error: 'reserved_key', message: k + ' 为保留键' });
       }
-      db.run('DELETE FROM app_settings WHERE key = ?', [k]);
+      await db.run('DELETE FROM app_settings WHERE key = ?', [k]);
     }
     return sendJson(res, 200, { ok: true, removed: keys.length });
   }

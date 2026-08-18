@@ -1,0 +1,9 @@
+# 本地 wrangler dev 环境变量模板 — 复制为 .dev.vars 并按需修改
+# .dev.vars 已由 .gitignore / .assetsignore 排除,勿提交;仅本地调试用
+# 线上环境请用 `wrangler secret put` 设置(见 DEPLOY.md)
+
+# 本地首次登录管理员密码
+AUTH_PASSWORD=dev-password-change-me
+
+# 敏感数据加密密钥(64 位 hex = 32 字节;与线上保持一致才能解密既有数据)
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

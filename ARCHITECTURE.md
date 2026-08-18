@@ -45,9 +45,9 @@
 │   ├── lib/                    # 第三方单文件库(无子依赖的纯 JS 库)
 │   └── modules/                # 业务模块(6个)
 │       ├── dashboard/          # 仪表盘(路由 /)
-│       ├── channels/           # 渠道(路由 /channels)
-│       ├── tokens/             # 令牌(路由 /tokens)
-│       ├── logs/               # 日志(路由 /logs)
+│       ├── tasks/              # 任务(路由 /tasks,数据表格)
+│       ├── apps/               # 应用集成(路由 /apps)
+│       ├── chats/              # 聊天(路由 /chats)
 │       ├── docs/               # 文档(含4个子模块)
 │       └── settings/           # 设置(含5个子模块:个人资料/账号/外观/通知/显示)
 ├── server/                     # 服务端代码(按域组织)
@@ -105,7 +105,7 @@ index.html
        │     logger → i18n → icons-data → icons → settings → api → auth → ui → shell → app → interactions
        │
        ├─ 2. 加载模块清单(js/modules/*/manifest.js)
-       │     dashboard, channels, tokens, logs, docs, settings
+       │     dashboard, tasks, apps, chats, docs, settings
        │
        └─ 3. App.start()
              ├─ 鉴权门禁:App.auth.isAuthed()?

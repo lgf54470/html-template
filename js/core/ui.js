@@ -389,9 +389,47 @@
     document.head.appendChild(style);
   })();
 
+  // ---------- Toast(轻提示,类 shadcn sonner 风格;各模块共用) ----------
+  function toast(message, type) {
+    if (!document.body) return;
+    var holder = document.querySelector('[data-toast-region]');
+    if (!holder) {
+      holder = document.createElement('div');
+      holder.setAttribute('data-toast-region', '');
+      holder.className =
+        'fixed top-4 right-4 z-[100] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2';
+      document.body.appendChild(holder);
+    }
+    var el = document.createElement('div');
+    el.setAttribute('data-toast', '');
+    el.setAttribute('data-variant', type === 'error' ? 'error' : 'default');
+    el.className =
+      'flex items-start gap-2 rounded-lg border bg-popover p-3 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10';
+    el.innerHTML =
+      '<svg class="mt-0.5 size-4 shrink-0 ' +
+      (type === 'error' ? 'text-destructive' : 'text-primary') +
+      '" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>' +
+      '<span class="flex-1 leading-5">' +
+      String(message == null ? '' : message)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;') +
+      '</span>';
+    holder.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-4px)';
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 200);
+    }, 2600);
+  }
+
   window.App = window.App || {};
   App.ui = {
     cn: cn,
+    toast: toast,
     buttonClass: buttonClass,
     buttonIcon: buttonIcon,
     badgeClass: badgeClass,

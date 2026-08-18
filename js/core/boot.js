@@ -33,7 +33,7 @@
   ];
 
   /** 模块目录清单:侧边栏每个一级菜单对应一个模块 */
-  var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'settings'];
+  var MODULE_DIRS = ['dashboard', 'tasks', 'apps', 'chats', 'docs', 'settings'];
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {

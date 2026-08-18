@@ -8,5 +8,6 @@ App.registerModule({
   icon: 'layout-dashboard',
   route: '/',
   load: 'module.js',
+  css: 'module.css',
   i18nFile: 'i18n.js',
 });

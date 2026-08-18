@@ -1,0 +1,629 @@
+/* ============================================================
+ * tasks 模块 — 私有样式(懒加载)
+ * 全部使用设计系统 CSS 变量,跟随深浅主题。
+ * ============================================================ */
+
+/* ---------- 页头 ---------- */
+.tk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.tk-header h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.tk-header p {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-top: 0.25rem;
+}
+
+/* ---------- 工具栏 ---------- */
+.tk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.tk-toolbar-left,
+.tk-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.tk-search-input {
+  display: flex;
+  height: 2.25rem;
+  width: 16rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+.tk-search-input::placeholder {
+  color: var(--muted-foreground);
+}
+.tk-search-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 0;
+  border-color: var(--ring);
+}
+.tk-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.tk-filter-btn:hover,
+.tk-filter-btn[aria-expanded='true'] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.tk-filter-btn-active {
+  border-color: var(--ring);
+}
+
+/* ---------- 下拉内容 ---------- */
+.tk-filter-list {
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+.tk-filter-search {
+  margin: 0.25rem 0.5rem 0.5rem;
+  width: calc(100% - 1rem);
+  display: flex;
+  height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+.tk-filter-search:focus-visible {
+  outline: 2px solid var(--ring);
+}
+.tk-filter-opt {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+.tk-filter-opt:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.tk-filter-empty {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* ---------- 表格 ---------- */
+.tk-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: auto;
+  background: var(--card);
+}
+.tk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.tk-th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--card);
+}
+.tk-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.tk-th-sortable:hover {
+  color: var(--foreground);
+}
+.tk-td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.tk-table tbody tr:last-child .tk-td {
+  border-bottom: none;
+}
+.tk-table tbody tr:hover {
+  background: var(--accent);
+}
+.tk-table tbody tr[data-selected='true'] {
+  background: var(--accent);
+}
+.tk-row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.tk-row-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.tk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+.tk-badge[data-variant='outline'] {
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+.tk-badge[data-variant='secondary'] {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+.tk-badge[data-variant='default'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.tk-badge[data-variant='destructive'] {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+.tk-badge[data-variant='outline-priority'] {
+  border-color: var(--border);
+}
+.tk-status-dot {
+  border-radius: 9999px;
+}
+.tk-status-dot[data-state='done'] {
+  color: var(--primary);
+}
+.tk-status-dot[data-state='canceled'] {
+  color: var(--muted-foreground);
+}
+.tk-status-dot[data-state='todo'],
+.tk-status-dot[data-state='backlog'] {
+  color: var(--muted-foreground);
+}
+.tk-status-dot[data-state='in progress'] {
+  color: var(--primary);
+}
+
+/* ---------- 复选框 ---------- */
+.tk-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  flex: none;
+}
+.tk-checkbox[data-checked='true'],
+.tk-checkbox[data-indeterminate='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.tk-checkbox:hover {
+  border-color: var(--ring);
+}
+.tk-check-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- 分页 ---------- */
+.tk-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.tk-pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tk-pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.tk-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  min-width: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.tk-page-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.tk-page-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tk-page-btn[data-active='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+.tk-page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  color: var(--muted-foreground);
+}
+
+/* ---------- 批量操作栏(悬浮) ---------- */
+.tk-bulk-bar {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  padding: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+.tk-bulk-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.tk-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ---------- 通用按钮 ---------- */
+.tk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+  border: 1px solid transparent;
+}
+.tk-btn[data-variant='default'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.tk-btn[data-variant='default']:hover {
+  opacity: 0.9;
+}
+.tk-btn[data-variant='outline'] {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.tk-btn[data-variant='outline']:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.tk-btn[data-variant='ghost'] {
+  background: transparent;
+  color: var(--foreground);
+}
+.tk-btn[data-variant='ghost']:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.tk-btn[data-variant='destructive'] {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+.tk-btn[data-variant='destructive']:hover {
+  opacity: 0.9;
+}
+.tk-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+.tk-btn-icon {
+  width: 2.25rem;
+  padding: 0;
+  flex: none;
+}
+.tk-btn-sm {
+  height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* ---------- 抽屉(新建/编辑) ---------- */
+.tk-overlay-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgb(0 0 0 / 0.5);
+  display: flex;
+  justify-content: flex-end;
+}
+.tk-drawer {
+  width: 100%;
+  max-width: 25rem;
+  height: 100%;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 32px rgb(0 0 0 / 0.15);
+}
+.tk-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.tk-drawer-head h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.tk-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.tk-drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.tk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.tk-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.tk-input,
+.tk-select-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+.tk-input:focus-visible,
+.tk-select-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 0;
+}
+.tk-select-trigger {
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+.tk-select-trigger[aria-expanded='true'] {
+  border-color: var(--ring);
+}
+.tk-error {
+  font-size: 0.8125rem;
+  color: var(--destructive);
+}
+
+/* ---------- 单选(抽屉内) ---------- */
+.tk-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.tk-radio:hover {
+  background: var(--accent);
+}
+.tk-radio-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.tk-radio[data-checked='true'] .tk-radio-dot {
+  border-color: var(--primary);
+}
+.tk-radio[data-checked='true'] .tk-radio-dot::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+/* ---------- 弹窗 ---------- */
+.tk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgb(0 0 0 / 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.tk-dialog {
+  width: 100%;
+  max-width: 26rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.2);
+}
+.tk-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+.tk-dialog-head h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.tk-dialog-head p {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-top: 0.25rem;
+}
+.tk-dialog-body {
+  padding: 0 1.25rem 1rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.tk-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.tk-alert {
+  display: flex;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--muted);
+  padding: 0.75rem;
+  color: var(--muted-foreground);
+}
+.tk-alert svg {
+  color: var(--destructive);
+  flex: none;
+}
+.tk-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.tk-file-hint {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+.tk-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+/* ---------- 行菜单(复用 App.ui 下拉) ---------- */
+[data-dropdown][data-task-row-menu] + [data-dropdown-content] {
+  min-width: 11rem;
+}
+.tk-indeterminate {
+  position: relative;
+}

@@ -15,6 +15,7 @@
 - **工作空间**:侧边栏顶部工作空间切换(默认/工作/学习/生活/娱乐/旅游),支持新增/编辑/删除(双语名称 + 备注 + 图标 + 强调色);业务数据按工作空间隔离
 - **配置文件**(VSCode 风格):头像下拉菜单可新建 / 重命名 / 删除 / 切换配置文件,每个配置文件保存一组 外观/通知/显示 设置(域表驱动,后续可扩展新域)
 - **用户头像**:个人资料页可设置头像(用户名首字母 / 预设图标 / Emoji / 上传图片),上传图片限 200KB 以内并自动居中裁切压缩为 256×256 方形;侧边栏用户菜单同步展示
+- **参考项目复刻**:侧边栏四大页面换为 shadcn-admin 的 Dashboard / Tasks / Apps / Chats —— 仪表盘(统计卡 + 标签页 + 自绘图表 + 最近销售)、任务(**数据表格**:模糊搜索 + 状态/优先级分面过滤 + 字段显隐下拉 + 排序 + 行选择 + 批量操作 + 分页 + 新建/编辑抽屉 + 导入/删除弹窗)、应用集成(15 个品牌图标 + 筛选/排序)、聊天(会话列表 + 按日期分组气泡 + 新建消息弹窗)
 
 ## 快速开始
 
@@ -92,9 +93,9 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
     │   └── interactions.js   # 交互层:拖拽调宽 + 移动端抽屉(自包含,依赖 App 公开 API)
     └── modules/              # 业务模块:一级菜单 = 一个目录
         ├── dashboard/        # 仪表盘(路由 /)
-        ├── channels/         # 渠道(路由 /channels)
-        ├── tokens/           # 令牌(路由 /tokens)
-        ├── logs/             # 日志(路由 /logs)
+        ├── tasks/            # 任务(路由 /tasks,数据表格:过滤/搜索/字段显隐/分页)
+        ├── apps/             # 应用集成(路由 /apps,品牌图标网格)
+        ├── chats/            # 聊天(路由 /chats,会话列表 + 聊天面板)
         ├── docs/             # 文档:含 4 个子模块(二级菜单)
             ├── manifest.js   # 模块清单(元信息 + children + i18n)
             ├── module.css    # 模块私有样式(懒加载)
@@ -185,7 +186,7 @@ App.defineModule({
 在 `js/core/boot.js` 的 `MODULE_DIRS` 数组中追加目录名:
 
 ```js
-var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
+var MODULE_DIRS = ['dashboard', 'tasks', 'apps', 'chats', 'docs', 'mymod'];
 ```
 
 **新增一个模块不需要修改 `index.html` 或任何核心文件** —— 侧边栏、路由、懒加载全部由模块注册表自动推导。

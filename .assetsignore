@@ -19,7 +19,7 @@ wrangler.toml
 .assetsignore
 README.md
 AGENTS.md
-docs/
+/docs/
 dev-server.js
 Dockerfile
 docker-compose.yml

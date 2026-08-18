@@ -161,6 +161,22 @@
 .sp-switch.is-on { background: var(--primary); }
 .sp-switch.is-on::after { transform: translateX(1.25rem); }
 .sp-switch.is-disabled { opacity: 0.5; cursor: not-allowed; }
+/* 真实 checkbox 隐藏,视觉用 span(label 包裹点击即切换) */
+.sp-switch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+/* 原生复选框(通知页 移动端):accent-color 跟随主题 */
+.sp-native-check {
+  accent-color: var(--primary);
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin: 0.125rem 0 0 0;
+}
 
 /* ---------- 复选框 ---------- */
 .sp-checkbox {

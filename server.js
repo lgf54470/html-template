@@ -28,6 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { getDb, isLocalSqlite, localDbPath } = require('./server/db');
+const { encrypt, decrypt } = require('./server/crypto');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = process.cwd();
@@ -109,13 +110,18 @@ async function bootstrap() {
   return db;
 }
 
-/* ---------- 会话 ---------- */
+/* ---------- 会话(数据库只存令牌哈希,不存明文) ---------- */
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
 function getSession(token) {
   if (!token) return null;
-  const row = db.get('SELECT * FROM auth_sessions WHERE token = ?', [token]);
+  const hash = sha256(token);
+  const row = db.get('SELECT * FROM auth_sessions WHERE token_hash = ?', [hash]);
   if (!row) return null;
   if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) {
-    db.run('DELETE FROM auth_sessions WHERE token = ?', [token]);
+    db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [hash]);
     return null;
   }
   return row;
@@ -154,6 +160,16 @@ function authed(req, res) {
 
 const RESERVED_SETTINGS_PREFIX = 'settings:auth:'; // 鉴权相关键禁止通过通用 KV 接口写入
 
+/* ---------- 敏感键值:落库前 AES-256-GCM 加密,读取时解密 ---------- */
+const SENSITIVE_WORDS = ['password', 'email', 'apikey', 'api_key', 'secret', 'token', 'credential', 'access_key'];
+
+/** 键名含敏感词,或整体为含敏感字段的配置块(如 settings:profile 含邮箱) */
+function isSensitiveKey(key) {
+  if (key === 'settings:profile') return true;
+  const lower = String(key).toLowerCase();
+  return SENSITIVE_WORDS.some(function (w) { return lower.indexOf(w) !== -1; });
+}
+
 /* ---------- API 路由 ---------- */
 async function handleApi(req, res, pathname) {
   const method = req.method;
@@ -173,7 +189,8 @@ async function handleApi(req, res, pathname) {
     }
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();
-    db.run('INSERT INTO auth_sessions (token, expires_at, note) VALUES (?, ?, ?)', [token, expiresAt, expiry]);
+    // 数据库仅存 SHA-256 哈希,明文令牌只在响应中返回给客户端
+    db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
     return sendJson(res, 200, { token, expiresAt, expiry });
   }
 
@@ -187,7 +204,7 @@ async function handleApi(req, res, pathname) {
 
   // POST /api/auth/logout
   if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
-    db.run('DELETE FROM auth_sessions WHERE token = ?', [req.headers['x-auth-token']]);
+    db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(req.headers['x-auth-token'])]);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -210,13 +227,13 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { ok: true });
   }
 
-  // GET /api/settings(保留键 settings:auth:* 不返回,密码哈希不出库)
+  // GET /api/settings(保留键 settings:auth:* 不返回;敏感键解密后返回)
   if (method === 'GET' && parts[1] === 'settings') {
     const rows = db.query('SELECT key, value FROM app_settings ORDER BY key');
     const out = {};
     rows.forEach((r) => {
       if (r.key.indexOf(RESERVED_SETTINGS_PREFIX) === 0) return;
-      out[r.key] = r.value;
+      out[r.key] = isSensitiveKey(r.key) ? (decrypt(r.value) || '') : r.value;
     });
     return sendJson(res, 200, out);
   }
@@ -235,7 +252,9 @@ async function handleApi(req, res, pathname) {
     }
     const now = new Date().toISOString();
     for (const k of keys) {
-      const v = typeof entries[k] === 'string' ? entries[k] : JSON.stringify(entries[k]);
+      let v = typeof entries[k] === 'string' ? entries[k] : JSON.stringify(entries[k]);
+      // 敏感键:落库前加密,数据库不以明文存放
+      if (isSensitiveKey(k)) v = encrypt(v);
       db.run(
         'INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
         [k, v, now],

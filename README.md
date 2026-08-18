@@ -36,7 +36,7 @@ AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
 - **密码**:首次启动自动生成并打印,或由 `AUTH_PASSWORD` 预置;scrypt 加盐哈希后存于 `settings:auth:password`(不经过通用 KV 接口,读写均受保护)。
 - **修改密码**:`POST /api/auth/password` 校验当前密码后更新,并**吊销全部既有会话**。
 - **登出**:顶栏/侧边栏用户菜单的登出按钮 → 删除服务端会话并清除本地令牌,回到登录页;任何接口返回 401 也会自动回到登录页。
-- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度…)防抖 400ms 写回数据库。
+- **设置双向同步**:登录成功后从数据库拉取设置(服务端为准)并应用;本地任何修改(主题/外观/显示页开关/拖拽宽度…)防抖 400ms 写回数据库。**侧边栏 设置 的全部子菜单选项、右上角主题切换与主题设置面板均同步**到 `app_settings`(个人资料 → `settings:profile`、账号 → `settings:account`、外观/主题面板 → `settings:appearance`、通知 → `settings:notifications`、显示 → `settings:display`)。
 
 > 纯静态方式(双击 `index.html`)不经过鉴权,登录页会提示需要服务器 —— 这是预期行为:鉴权与持久化依赖 `server.js`。
 
@@ -87,10 +87,11 @@ AUTH_PASSWORD=admin123 node server.js   # 可用环境变量预置初始密码
 
 ## 从 mpages 移植的 Settings 页面
 
-`js/modules/settings/` 移植自 `/home/kubuntu/projects/mpages/apps/web` 的侧边栏二级子菜单 Settings(个人资料 / 账号 / 外观 / 通知 / 显示)。表单页仅移植**页面内容**(无提交/校验,控件为本地原生 select / date / radio);**外观页与显示页为可交互功能**:
+`js/modules/settings/` 移植自 `/home/kubuntu/projects/mpages/apps/web` 的侧边栏二级子菜单 Settings(个人资料 / 账号 / 外观 / 通知 / 显示)。**五个子页全部可交互并与数据库双向同步**(通过 `data-setting` 表单字段绑定 + 事件委托,改动即写 localStorage 并防抖写入 `app_settings`):
 
 - **外观页 ↔ 主题设置面板双向同步**:与右上角主题设置弹框同源,两侧读写同一份 `App.settings`(localStorage + html 类)。任一侧点击主题/侧边栏/布局/色板/风格/字体/圆角/菜单选项,另一侧立即同步更新,改动持久化。`重置外观` 仅重置主题/布局/外观(不清语言与宽度);右上角面板底部 `重置全部` 仍为全量重置。
 - **显示页 = 侧边栏菜单可见性控制**:点击菜单项即实时隐藏/显示对应侧边栏菜单(勾选状态持久化于 `hidden-nav`),侧边栏立即刷新;`设置` 项锁定不可隐藏(与 mpages `LOCKED_ITEM_ID` 一致)。
+- **个人资料/账号/通知页**:表单控件(输入框/下拉/日期/开关/单选/复选)均绑定真实状态并同步 `settings:profile` / `settings:account` / `settings:notifications`;个人资料含邮箱 → 落库前自动加密。`提交` 按钮保持移植原样(数据为实时同步,无需提交)。
 
 **主题设置样式已与 mpages 对齐**:顶部主题切换为胶囊式 radio group(选中项反白填充);设置面板与 Settings → 外观页均使用 radio-group 卡片(选中项 `ring-primary` 描边 + 阴影 + 对勾徽标;色板/风格/字体/圆角为描边卡片,卡片等宽填满网格单元)。样式实现在 `assets/css/app.css`(`.theme-switch` / `.ts-*`)与设置模块 `module.css`(`.sp-opt-*`)。
 
@@ -154,6 +155,18 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 
 **新增一个模块不需要修改 `index.html` 或任何核心文件** —— 侧边栏、路由、懒加载全部由模块注册表自动推导。
 
+## 敏感数据保护
+
+数据库**不以明文存放任何敏感数据**,两条防线:
+
+1. **会话令牌**:`auth_sessions` 只存令牌的 **SHA-256 哈希**(`token_hash` 列),明文令牌仅在登录响应中返回给客户端;登录/校验/登出均按哈希匹配。
+2. **敏感键值加密**:写库前对敏感键用 **AES-256-GCM** 加密(存储格式 `enc:v1:<iv>:<tag>:<密文>`,12 字节随机 IV + 16 字节认证标签,每次加密 IV 随机),读取时由服务端解密后返回给已登录客户端。
+   - 加密密钥:`ENCRYPTION_KEY` 环境变量(64 位 hex);本地开发未设置时首次启动自动生成并保存到 `server/.secret-key`(已 gitignore)。**生产环境务必显式设置,丢失/更换将无法解密既有数据**。
+   - 判定为敏感键的规则:键名含 `password / email / apikey / api_key / secret / token / credential / access_key` 之一,或整体为含敏感字段的配置块(`settings:profile` 含邮箱)。
+   - `settings:auth:*` 保留键(如 `settings:auth:password` 的 scrypt 哈希)另有防线:通用 KV 接口读写均拒绝、GET 不返回。
+
+**模块数据表同样适用**:任何模块表(如笔记 `notes_data`)的敏感列(邮箱/apikey/token/密钥)必须用同样方案加密落库,禁止明文;密钥管理统一走 `server/crypto.js`。
+
 ## 数据库设计
 
 数据库驱动采用**统一接口**(`query` / `run` 两个方法),通过环境变量切换,业务代码零改动:
@@ -163,6 +176,7 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 | `DB_DRIVER` | `sqlite`(默认) | 本地 SQLite,`node:sqlite` 内置模块(需 Node ≥ 22.5,推荐 ≥ 23.4),零第三方依赖 |
 | `DB_DRIVER` | `turso` | 远程 Turso / libSQL HTTP API(需 `DATABASE_URL` + `DATABASE_AUTH_TOKEN`) |
 | `DB_DRIVER` | `d1` | Cloudflare D1(REST API;接口相同,按 `server/db-turso.js` 的示例新增适配器即可) |
+| `ENCRYPTION_KEY` | 64 位 hex | 敏感数据 AES-256-GCM 加密密钥(生产必设;缺省时自动生成到 `server/.secret-key`) |
 | `SQLITE_PATH` | 路径 | 本地 sqlite 文件位置(默认 `sqlite.db`,已加入 .gitignore) |
 | `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | — | turso 远程数据库连接信息 |
 
@@ -177,8 +191,9 @@ CREATE TABLE app_settings (
 );
 
 -- 会话表:登录成功后写入,登出/过期/改密时删除
+-- 只存令牌 SHA-256 哈希,绝不存明文令牌
 CREATE TABLE auth_sessions (
-  token      TEXT PRIMARY KEY,          -- 随机 24 字节 base64url,由请求头 x-auth-token 携带
+  token_hash TEXT PRIMARY KEY,          -- sha256(令牌),由请求头 x-auth-token 携带并哈希匹配
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   expires_at TEXT,                      -- ISO 时间;过期即失效
   note       TEXT                       -- 失效选项标记(如 '24h' / 'browser')
@@ -199,8 +214,8 @@ CREATE TABLE auth_sessions (
 | GET | `/api/auth/verify` | 校验会话有效性 |
 | POST | `/api/auth/logout` | 删除当前会话 |
 | POST | `/api/auth/password` | `{ currentPassword, newPassword }` 修改密码并吊销全部会话 |
-| GET | `/api/settings` | 返回全部 `app_settings`(不含 `settings:auth:*`)| 
-| PUT | `/api/settings` | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`)| 
+| GET | `/api/settings` | 返回全部 `app_settings`(不含 `settings:auth:*`;敏感键解密后返回)| 
+| PUT | `/api/settings` | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库)| 
 | DELETE | `/api/settings` | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`) |
 
 除登录外,所有 `/api/*` 均要求请求头 `x-auth-token`。
@@ -216,6 +231,7 @@ CREATE TABLE auth_sessions (
 ## 解耦与安全约定
 
 1. **模块之间禁止互相引用**;只允许依赖核心层(`App.ui` / `App.icon` / `App.i18n` / `App.settings` / `ctx`)
+1. **数据库不以明文存敏感数据**:会话令牌存哈希;邮箱/apikey/token/secret 等敏感键值 AES-256-GCM 加密落库(见「敏感数据保护」)
 2. 文案遵循 **模块内聚**:模块文案放各自懒加载的 `i18n.js`(manifest 仅声明 `i18nFile`),只有 App Shell / 设置面板等公共文案进核心词典
 3. **存储值白名单校验**:`settings.js` 对 localStorage 读入值一律校验,非法值回退默认
 4. **事件委托**:全部交互挂在 `document` 上,内容区重渲染后无需重新绑定

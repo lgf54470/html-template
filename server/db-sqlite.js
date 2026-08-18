@@ -37,6 +37,7 @@ function init(opts) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL;');
   if (opts.schema) db.exec(opts.schema);
+  migrateAuthSessions(db);
 
   return {
     name: 'sqlite',
@@ -62,6 +63,24 @@ function init(opts) {
       db.close();
     },
   };
+}
+
+/** 旧版 auth_sessions(token 明文列)迁移:检测到旧结构则重建为 token_hash 列 */
+function migrateAuthSessions(db) {
+  const cols = db.prepare('PRAGMA table_info(auth_sessions)').all();
+  const hasToken = cols.some(function (c) { return c.name === 'token'; });
+  const hasHash = cols.some(function (c) { return c.name === 'token_hash'; });
+  if (!hasToken || hasHash) return; // 新结构或表不存在
+  // 会话是短生命周期数据,直接重建(旧会话全部失效,需重新登录)
+  db.exec('DROP TABLE IF EXISTS auth_sessions');
+  db.exec(
+    "CREATE TABLE auth_sessions (" +
+    "  token_hash TEXT PRIMARY KEY," +
+    "  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))," +
+    "  expires_at TEXT," +
+    "  note TEXT" +
+    ')'
+  );
 }
 
 module.exports = { init };

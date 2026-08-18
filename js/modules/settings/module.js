@@ -31,38 +31,54 @@
       '</div>';
   }
 
-  /* ---------- 个人资料 ---------- */
+  /* ---------- 个人资料(数据实时同步数据库 settings:profile,邮箱落库前加密) ---------- */
   function pageProfile(ctx) {
     var t = ctx.t;
+    var p = ctx.settings.profile || {};
+    var emailOptions = [p.email, 'm@example.com', 'm@google.com', 'm@support.com']
+      .filter(function (v, i, arr) { return v && arr.indexOf(v) === i; })
+      .map(function (v) {
+        return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v === p.email ? ' selected' : '') + '>' + v + '</option>';
+      }).join('');
+    var links = Array.isArray(p.links) && p.links.length ? p.links : ['', ''];
     var body =
       '<form class="sp-form">' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('profile.username.label') + '</label>' +
-      '<input class="sp-input" type="text" value="shadcn" placeholder="' + t('profile.username.placeholder') + '" />' +
+      '<input class="sp-input" type="text" data-setting="profile.username" value="' + escAttr(p.username) + '" placeholder="' + t('profile.username.placeholder') + '" />' +
       '<p class="sp-field-desc">' + t('profile.username.description') + '</p>' +
       '</div>' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('profile.email.label') + '</label>' +
-      '<select class="sp-select"><option>m@example.com</option><option>m@google.com</option><option>m@support.com</option></select>' +
+      '<select class="sp-select" data-setting="profile.email">' + emailOptions + '</select>' +
       '<p class="sp-field-desc">' + t('profile.email.descriptionBefore') +
       ' <a href="#/settings" data-link="/settings">' + t('profile.email.emailSettings') + '</a>.</p>' +
       '</div>' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('profile.bio.label') + '</label>' +
-      '<textarea class="sp-textarea" placeholder="' + t('profile.bio.placeholder') + '">I own a computer.</textarea>' +
+      '<textarea class="sp-textarea" data-setting="profile.bio" placeholder="' + t('profile.bio.placeholder') + '">' + escHtml(p.bio || '') + '</textarea>' +
       '<p class="sp-field-desc">' + t('profile.bio.descriptionBefore') +
       ' <span>' + t('profile.bio.mention') + '</span> ' + t('profile.bio.descriptionAfter') + '</p>' +
       '</div>' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('profile.urls.label') + '</label>' +
       '<p class="sp-field-desc">' + t('profile.urls.description') + '</p>' +
-      '<input class="sp-input" type="url" value="https://shadcn.com" />' +
-      '<input class="sp-input" type="url" value="http://twitter.com/shadcn" />' +
+      '<input class="sp-input" type="url" data-setting="profile.links.0" value="' + escAttr(links[0]) + '" />' +
+      '<input class="sp-input" type="url" data-setting="profile.links.1" value="' + escAttr(links[1]) + '" />' +
       '<button type="button" class="' + App.ui.buttonClass('outline', 'sm') + '">' + t('profile.urls.add') + '</button>' +
       '</div>' +
       '<button type="button" class="' + App.ui.buttonClass('default') + '">' + t('profile.submit') + '</button>' +
       '</form>';
     return contentSection(t, 'profile.title', 'profile.description', body);
+  }
+
+  function escAttr(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function escHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   /* ---------- 账号 ---------- */
@@ -80,25 +96,26 @@
 
   function pageAccount(ctx) {
     var t = ctx.t;
-    var langOptions = '<option value="" disabled selected>' + t('account.language.selectPlaceholder') + '</option>' +
+    var ac = ctx.settings.account || {};
+    var langOptions = '<option value=""' + (ac.language ? '' : ' selected') + '>' + t('account.language.selectPlaceholder') + '</option>' +
       ACCOUNT_LANGUAGES.map(function (l) {
-        return '<option value="' + l.value + '">' + l.label + '</option>';
+        return '<option value="' + l.value + '"' + (ac.language === l.value ? ' selected' : '') + '>' + l.label + '</option>';
       }).join('');
     var body =
       '<form class="sp-form">' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('account.name.label') + '</label>' +
-      '<input class="sp-input" type="text" placeholder="' + t('account.name.placeholder') + '" />' +
+      '<input class="sp-input" type="text" data-setting="account.name" value="' + escAttr(ac.name) + '" placeholder="' + t('account.name.placeholder') + '" />' +
       '<p class="sp-field-desc">' + t('account.name.description') + '</p>' +
       '</div>' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('account.dob.label') + '</label>' +
-      '<input class="sp-date" type="date" />' +
+      '<input class="sp-date" type="date" data-setting="account.dob" value="' + escAttr(ac.dob) + '" />' +
       '<p class="sp-field-desc">' + t('account.dob.description') + '</p>' +
       '</div>' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('account.language.label') + '</label>' +
-      '<select class="sp-select">' + langOptions + '</select>' +
+      '<select class="sp-select" data-setting="account.language">' + langOptions + '</select>' +
       '<p class="sp-field-desc">' + t('account.language.description') + '</p>' +
       '</div>' +
       '<button type="button" class="' + App.ui.buttonClass('default') + '">' + t('account.submit') + '</button>' +
@@ -166,22 +183,26 @@
     return contentSection(t, 'appearance.title', 'appearance.description', body);
   }
 
-  /* ---------- 通知 ---------- */
-  function switchRow(t, labelKey, descKey, on, disabled) {
-    return '<div class="sp-switch-row">' +
+  /* ---------- 通知(数据实时同步数据库 settings:notifications) ---------- */
+  /** 胶囊开关:视觉 span + 真实 checkbox(label 包裹点击切换,change 事件委托更新) */
+  function switchRow(t, labelKey, descKey, on, disabled, setting) {
+    return '<label class="sp-switch-row">' +
       '<div class="sp-switch-info">' +
-      '<label class="sp-label">' + t(labelKey) + '</label>' +
+      '<span class="sp-label">' + t(labelKey) + '</span>' +
       '<p class="sp-field-desc">' + t(descKey) + '</p>' +
       '</div>' +
       '<span role="switch" aria-checked="' + on + '" class="sp-switch' + (on ? ' is-on' : '') + (disabled ? ' is-disabled' : '') + '"></span>' +
-      '</div>';
+      '<input type="checkbox" class="sp-switch-input" data-setting="' + setting + '"' +
+      (on ? ' checked' : '') + (disabled ? ' disabled' : '') + ' />' +
+      '</label>';
   }
 
   function pageNotifications(ctx) {
     var t = ctx.t;
-    var radioItem = function (value, labelKey, checked) {
+    var n = ctx.settings.notifications || {};
+    var radioItem = function (value, labelKey) {
       return '<label class="sp-radio">' +
-        '<input type="radio" name="notify-type" value="' + value + '"' + (checked ? ' checked' : '') + ' />' +
+        '<input type="radio" name="notify-type" data-setting="notifications.type" value="' + value + '"' + (n.type === value ? ' checked' : '') + ' />' +
         '<span class="sp-label">' + t(labelKey) + '</span>' +
         '</label>';
     };
@@ -189,20 +210,20 @@
       '<form class="sp-form">' +
       '<div class="sp-field">' +
       '<label class="sp-label">' + t('notifications.notifyLabel') + '</label>' +
-      radioItem('all', 'notifications.type.all', true) +
-      radioItem('mentions', 'notifications.type.mentions', false) +
-      radioItem('none', 'notifications.type.none', false) +
+      radioItem('all', 'notifications.type.all') +
+      radioItem('mentions', 'notifications.type.mentions') +
+      radioItem('none', 'notifications.type.none') +
       '</div>' +
       '<div>' +
       '<h3 class="mb-4 text-lg font-medium" style="font-family:var(--font-heading-base,inherit)">' + t('notifications.emailSection') + '</h3>' +
       '<div style="display:flex;flex-direction:column;gap:1rem">' +
-      switchRow(t, 'notifications.communication.label', 'notifications.communication.description', false, false) +
-      switchRow(t, 'notifications.marketing.label', 'notifications.marketing.description', false, false) +
-      switchRow(t, 'notifications.social.label', 'notifications.social.description', true, false) +
-      switchRow(t, 'notifications.security.label', 'notifications.security.description', true, true) +
+      switchRow(t, 'notifications.communication.label', 'notifications.communication.description', !!n.communication, false, 'notifications.communication') +
+      switchRow(t, 'notifications.marketing.label', 'notifications.marketing.description', !!n.marketing, false, 'notifications.marketing') +
+      switchRow(t, 'notifications.social.label', 'notifications.social.description', !!n.social, false, 'notifications.social') +
+      switchRow(t, 'notifications.security.label', 'notifications.security.description', true, true, 'notifications.security') +
       '</div></div>' +
       '<div class="sp-radio" style="align-items:flex-start">' +
-      '<span class="sp-checkbox"></span>' +
+      '<input type="checkbox" class="sp-native-check" data-setting="notifications.mobile"' + (n.mobile ? ' checked' : '') + ' />' +
       '<div class="sp-switch-info" style="gap:0.25rem">' +
       '<label class="sp-label" style="line-height:1.5">' + t('notifications.mobile.label') + '</label>' +
       '<p class="sp-field-desc">' + t('notifications.mobile.descriptionBefore') +

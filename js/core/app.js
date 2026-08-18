@@ -252,7 +252,12 @@
   }
 
   // ---------- 设置更新 ----------
-  function updateSettings(patch) {
+  /**
+   * @param {object} patch 部分设置(浅合并;子对象需整体替换,如 { profile: {...} })
+   * @param {object} [opts] { noRerender: true } 用于输入框逐键更新时避免重渲染抢焦点
+   */
+  function updateSettings(patch, opts) {
+    opts = opts || {};
     settings = Object.assign({}, settings, patch);
     App.settings.applySettings(settings);
     App.settings.persistSettings(settings);
@@ -261,11 +266,45 @@
     refreshSidebar(); // 菜单项可见性/侧边栏样式随设置变化
     if (sheetOpen) App.shell.rerenderSheetContent(settings, tFor(settings.locale));
     // 设置页与右上角面板同源:任一侧修改,当前设置页内容同步刷新(双向同步)
-    if (currentPath().indexOf('/settings') === 0) rerenderContent();
+    if (!opts.noRerender && currentPath().indexOf('/settings') === 0) rerenderContent();
   }
 
+  /* ---------- 设置表单字段(个人资料/账号/通知)数据绑定 ---------- */
+  /** data-setting="domain.field[.index]" → 更新嵌套值并同步数据库 */
+  function applySettingField(el, noRerender) {
+    var parts = (el.getAttribute('data-setting') || '').split('.');
+    if (parts.length < 2) return;
+    var domain = parts[0];
+    if (domain !== 'profile' && domain !== 'account' && domain !== 'notifications') return;
+    var fields = parts.slice(1);
+    var value = el.type === 'checkbox' ? !!el.checked : el.value;
+    var current = Object.assign({}, settings[domain]);
+    var target = current;
+    for (var i = 0; i < fields.length - 1; i++) {
+      var seg = fields[i];
+      if (!target[seg] || typeof target[seg] !== 'object') target[seg] = {};
+      target = target[seg];
+    }
+    target[fields[fields.length - 1]] = value;
+    var patch = {};
+    patch[domain] = current;
+    updateSettings(patch, noRerender ? { noRerender: true } : undefined);
+  }
+
+  // change:选择/复选/单选/失焦(可重渲染同步 UI);input:逐键输入(不重渲染,避免抢焦点)
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-setting')) {
+      applySettingField(e.target, false);
+    }
+  });
+  document.addEventListener('input', function (e) {
+    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-setting')) {
+      applySettingField(e.target, true);
+    }
+  });
+
   /* ---------- 数据库 app_settings 双向同步 ---------- */
-  /** 本地设置 → 数据库 KV(键遵循 README 命名规范:settings:appearance / settings:display) */
+  /** 本地设置 → 数据库 KV(键遵循 README 命名规范:settings:* 全局设置) */
   function serverSettingsPayload() {
     var a = settings.appearance;
     return {
@@ -286,6 +325,9 @@
         sidebarWidth: settings.sidebarWidth,
         hiddenNav: settings.hiddenNav || [],
       }),
+      'settings:profile': JSON.stringify(settings.profile || {}),
+      'settings:account': JSON.stringify(settings.account || {}),
+      'settings:notifications': JSON.stringify(settings.notifications || {}),
     };
   }
 
@@ -339,6 +381,15 @@
       if (display.sidebarWidth != null) set(K('sidebar-width'), String(display.sidebarWidth));
       if (Array.isArray(display.hiddenNav)) set(K('hidden-nav'), JSON.stringify(display.hiddenNav));
     }
+    // 设置子页数据(profile/account/notifications):合法 JSON 直接写存储键,readSettings 会做形状校验
+    ['profile', 'account', 'notifications'].forEach(function (domain) {
+      var rawKey = 'settings:' + domain;
+      if (typeof raw[rawKey] !== 'string' || !raw[rawKey]) return;
+      try {
+        JSON.parse(raw[rawKey]);
+        set(K(domain), raw[rawKey]);
+      } catch (e) { /* 脏数据忽略,保持本地值 */ }
+    });
     return App.settings.readSettings();
   }
 
@@ -746,6 +797,7 @@
   App.buildNavItems = buildNavItems;
   App.buildAllNavItems = buildAllNavItems;
   App.currentPath = currentPath;
+  App.updateSettings = updateSettings; // 设置表单字段/模块改动统一入口(自动持久化 + 同步数据库)
   App.setSidebarWidth = setSidebarWidth; // 拖拽调宽收尾持久化(interactions.js 使用)
   App.getShellContext = function () {  // 移动端抽屉构建侧边栏所需上下文(interactions.js 使用)
     return { settings: settings, navItems: buildNavItems(settings.locale), pathname: currentPath(), openSubmenus: openSubmenus };

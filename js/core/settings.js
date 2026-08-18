@@ -47,6 +47,31 @@
     menuAppearance: 'solid',
   };
 
+  /** 设置子页数据默认值(同步到数据库 settings:profile / settings:account / settings:notifications) */
+  var PROFILE_DEFAULTS = { username: '', email: '', bio: '', links: ['', ''] };
+  var ACCOUNT_DEFAULTS = { name: '', dob: '', language: '' };
+  var NOTIFICATIONS_DEFAULTS = { type: 'all', communication: false, marketing: false, social: true, security: true, mobile: false };
+
+  /** 读取 JSON 存储值(白名单形状校验:对象则合并默认,数组/字符串按类型) */
+  function readJsonObject(key, defaults, listKeys) {
+    var stored = readStorage(K(key));
+    if (!stored) return Object.assign({}, defaults);
+    try {
+      var parsed = JSON.parse(stored);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return Object.assign({}, defaults);
+      var out = Object.assign({}, defaults, parsed);
+      if (listKeys) {
+        listKeys.forEach(function (lk) {
+          if (!Array.isArray(out[lk])) out[lk] = defaults[lk].slice();
+          else out[lk] = out[lk].filter(function (x) { return typeof x === 'string'; });
+        });
+      }
+      return out;
+    } catch (e) {
+      return Object.assign({}, defaults);
+    }
+  }
+
   /** 外观 radio-group 选项(设置面板与 Settings → 外观页共用) */
   var THEME_ITEMS = [
     { value: 'system', icon: 'theme-system', labelKey: 'header.system' },
@@ -157,6 +182,9 @@
       sidebarCollapsible: sidebarCollapsible,
       sidebarWidth: sidebarWidth,
       hiddenNav: hiddenNav,
+      profile: readJsonObject('profile', PROFILE_DEFAULTS, ['links']),
+      account: readJsonObject('account', ACCOUNT_DEFAULTS),
+      notifications: readJsonObject('notifications', NOTIFICATIONS_DEFAULTS),
     };
   }
 
@@ -224,6 +252,9 @@
       [K('sidebar-width'), String(s.sidebarWidth)],
     ];
     writeStorage(K('hidden-nav'), JSON.stringify(s.hiddenNav || []));
+    writeStorage(K('profile'), JSON.stringify(s.profile || PROFILE_DEFAULTS));
+    writeStorage(K('account'), JSON.stringify(s.account || ACCOUNT_DEFAULTS));
+    writeStorage(K('notifications'), JSON.stringify(s.notifications || NOTIFICATIONS_DEFAULTS));
     writes.forEach(function (w) { if (w[1]) writeStorage(w[0], w[1]); });
   }
 
@@ -233,6 +264,7 @@
       App.i18n.LOCALE_KEY, K('theme'), K('style'), K('base'), K('chart'), K('radius'), K('font'),
       K('heading-font'), K('menu-color'), K('menu-appearance'), K('sidebar-variant'),
       K('sidebar-collapsible'), K('sidebar-width'), K('sidebar-open'), K('hidden-nav'),
+      K('profile'), K('account'), K('notifications'),
     ].forEach(removeStorage);
     return {
       locale: App.i18n.DEFAULT_LOCALE,
@@ -242,6 +274,9 @@
       sidebarCollapsible: 'icon',
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
       hiddenNav: [],
+      profile: Object.assign({}, PROFILE_DEFAULTS),
+      account: Object.assign({}, ACCOUNT_DEFAULTS),
+      notifications: Object.assign({}, NOTIFICATIONS_DEFAULTS),
     };
   }
 
@@ -258,6 +293,9 @@
     STORAGE_PREFIX: STORAGE_PREFIX,
     K: K,
     APPEARANCE_DEFAULTS: APPEARANCE_DEFAULTS,
+    PROFILE_DEFAULTS: PROFILE_DEFAULTS,
+    ACCOUNT_DEFAULTS: ACCOUNT_DEFAULTS,
+    NOTIFICATIONS_DEFAULTS: NOTIFICATIONS_DEFAULTS,
     THEME_ITEMS: THEME_ITEMS,
     SIDEBAR_ITEMS: SIDEBAR_ITEMS,
     LAYOUT_ITEMS: LAYOUT_ITEMS,

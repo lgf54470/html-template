@@ -42,7 +42,10 @@ let db = null;
 function getDb() {
   if (db) return db;
   const adapter = loadAdapter();
-  db = adapter.init({ schema: SCHEMA, dbPath: process.env.SQLITE_PATH || path.join(process.cwd(), 'sqlite.db') });
+  db = adapter.init({
+    schema: SCHEMA,
+    dbPath: process.env.SQLITE_PATH || path.join(process.cwd(), 'sqlite.db'),
+  });
   return db;
 }
 

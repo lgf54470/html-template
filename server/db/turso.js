@@ -11,7 +11,7 @@
  * ============================================================ */
 'use strict';
 
-function init(opts) {
+function init(_opts) {
   let baseUrl = (process.env.DATABASE_URL || '').trim().replace(/\/+$/, '');
   const token = process.env.DATABASE_AUTH_TOKEN || '';
   if (!baseUrl) {
@@ -92,9 +92,7 @@ function init(opts) {
     path: baseUrl,
 
     async query(sql, params) {
-      const results = await pipeline([
-        { type: 'execute', stmt: { sql, args: bindArgs(params) } },
-      ]);
+      const results = await pipeline([{ type: 'execute', stmt: { sql, args: bindArgs(params) } }]);
       return rowsFrom(results[0]);
     },
 
@@ -104,9 +102,7 @@ function init(opts) {
     },
 
     async run(sql, params) {
-      const results = await pipeline([
-        { type: 'execute', stmt: { sql, args: bindArgs(params) } },
-      ]);
+      const results = await pipeline([{ type: 'execute', stmt: { sql, args: bindArgs(params) } }]);
       let resp = results[0] && results[0].response;
       if (resp && resp.result) resp = resp.result; // 新版形状
       return {

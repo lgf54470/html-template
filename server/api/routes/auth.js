@@ -31,7 +31,11 @@ function clientIp(req) {
 function authRoutes({ db, verifyPassword }) {
   async function login(req, res) {
     let body;
-    try { body = await readBody(req); } catch (e) { return sendJson(res, 400, { error: 'bad_json' }); }
+    try {
+      body = await readBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { error: 'bad_json' });
+    }
     const password = typeof body.password === 'string' ? body.password : '';
     const expiry = typeof body.expiry === 'string' ? body.expiry : '24h';
     const ttl = EXPIRY_MS[expiry];
@@ -39,14 +43,20 @@ function authRoutes({ db, verifyPassword }) {
 
     const ip = clientIp(req);
     if (loginThrottle.isBlocked(ip)) {
-      return sendJson(res, 429, { error: 'too_many_attempts', message: '登录尝试过于频繁,请稍后再试' });
+      return sendJson(res, 429, {
+        error: 'too_many_attempts',
+        message: '登录尝试过于频繁,请稍后再试',
+      });
     }
 
     let ok;
     try {
       ok = verifyPassword(password); // 与 AUTH_PASSWORD 环境变量常量时间比较
     } catch (e) {
-      return sendJson(res, 500, { error: 'no_auth_password', message: String((e && e.message) || e) });
+      return sendJson(res, 500, {
+        error: 'no_auth_password',
+        message: String((e && e.message) || e),
+      });
     }
     if (!ok) {
       loginThrottle.recordFailure(ip);
@@ -57,7 +67,11 @@ function authRoutes({ db, verifyPassword }) {
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();
     // 数据库仅存 SHA-256 哈希,明文令牌只在响应中返回给客户端
-    await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
+    await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [
+      sha256(token),
+      expiresAt,
+      expiry,
+    ]);
     return sendJson(res, 200, { token, expiresAt, expiry });
   }
 
@@ -74,7 +88,9 @@ function authRoutes({ db, verifyPassword }) {
       method: 'POST',
       path: '/api/auth/logout',
       async handler(req, res) {
-        await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(req.headers['x-auth-token'])]);
+        await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [
+          sha256(req.headers['x-auth-token']),
+        ]);
         return sendJson(res, 200, { ok: true });
       },
     },

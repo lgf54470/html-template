@@ -36,13 +36,13 @@ turso db tokens create html-template-db  # 生成长期访问令牌(或 turso db
 
 ### 2. 需要配置的环境变量(在 Deno Deploy 应用 Settings → Environment variables 中设置)
 
-| 变量 | 值 | 说明 |
-|---|---|---|
-| `DB_DRIVER` | `turso` | 驱动选择(**必填**;未设置时代码默认 `turso`,但建议显式配置,勿写 `sqlite` —— Deno 无 `node:sqlite`) |
-| `DATABASE_URL` | `https://<db>-<org>.turso.io` | Turso 数据库地址;`libsql://` 形式会自动归一化为 `https://`,两种都可用 |
-| `DATABASE_AUTH_TOKEN` | 上一步生成的令牌 | Turso 访问令牌(建议标记为 Secret) |
-| `AUTH_PASSWORD` | 自定 | 登录密码(**必设**;登录时直接与该环境变量校验,未配置会报错) |
-| `ENCRYPTION_KEY` | 64 位 hex | 敏感数据加密密钥,`openssl rand -hex 32` 生成;请固定并妥善保管 |
+| 变量                  | 值                            | 说明                                                                                              |
+| --------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| `DB_DRIVER`           | `turso`                       | 驱动选择(**必填**;未设置时代码默认 `turso`,但建议显式配置,勿写 `sqlite` —— Deno 无 `node:sqlite`) |
+| `DATABASE_URL`        | `https://<db>-<org>.turso.io` | Turso 数据库地址;`libsql://` 形式会自动归一化为 `https://`,两种都可用                             |
+| `DATABASE_AUTH_TOKEN` | 上一步生成的令牌              | Turso 访问令牌(建议标记为 Secret)                                                                 |
+| `AUTH_PASSWORD`       | 自定                          | 登录密码(**必设**;登录时直接与该环境变量校验,未配置会报错)                                        |
+| `ENCRYPTION_KEY`      | 64 位 hex                     | 敏感数据加密密钥,`openssl rand -hex 32` 生成;请固定并妥善保管                                     |
 
 > 新平台支持 **Production / Development(Preview / 分支)** 独立上下文(各自独立的环境变量与数据库隔离)。建议两个上下文都添加(Preview 可换独立 Turso 库),勾选变量生效的上下文后保存。
 
@@ -64,11 +64,11 @@ turso db tokens create html-template-db  # 生成长期访问令牌(或 turso db
 
 仓库已内置工作流 `.github/workflows/deploy-deno.yml`,在 GitHub 仓库 Settings → Secrets and variables → Actions 配置后即可用:
 
-| GitHub Secret / Variable | 值 |
-|---|---|
+| GitHub Secret / Variable    | 值                                                                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DENO_DEPLOY_TOKEN`(Secret) | Deno Deploy 访问令牌:console.deno.com → 账号 → **Access Tokens** → New Access Token(组织令牌亦可,均通过 `DENO_DEPLOY_TOKEN` 环境变量传给 CLI) |
-| `DENO_DEPLOY_ORG`(Variable) | 组织名(console.deno.com 网址路径中的名称) |
-| `DENO_DEPLOY_APP`(Variable) | 应用名(**必须先存在**:首次用方式一或方式三创建) |
+| `DENO_DEPLOY_ORG`(Variable) | 组织名(console.deno.com 网址路径中的名称)                                                                                                     |
+| `DENO_DEPLOY_APP`(Variable) | 应用名(**必须先存在**:首次用方式一或方式三创建)                                                                                               |
 
 **触发**:push `v*` 标签(如 `git tag v1.0.0 && git push --tags`)自动部署,或 Actions 页面手动 `Run workflow`。
 
@@ -169,9 +169,9 @@ A:三套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 
 ## 文件清单
 
-| 文件 | 作用 |
-|---|---|
-| `deno/main.js` | Deno Deploy 入口(dynamic 模式:静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api/index.js`) |
-| `deno.json` | `deploy` 配置(dynamic + 入口 `deno/main.js`,源码优先于控制台;`deploy.org` / `deploy.app` 由 `deno deploy switch` 或首次 CLI 部署自动写入) |
-| `.github/workflows/deploy-deno.yml` | GitHub Actions 自动部署(方式二) |
-| `docs/deploy/deno.md` | 本文档 |
+| 文件                                | 作用                                                                                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `deno/main.js`                      | Deno Deploy 入口(dynamic 模式:静态资源 + 全部 `/api/*`,经 `createRequire` 复用 `server/api/index.js`)                                     |
+| `deno.json`                         | `deploy` 配置(dynamic + 入口 `deno/main.js`,源码优先于控制台;`deploy.org` / `deploy.app` 由 `deno deploy switch` 或首次 CLI 部署自动写入) |
+| `.github/workflows/deploy-deno.yml` | GitHub Actions 自动部署(方式二)                                                                                                           |
+| `docs/deploy/deno.md`               | 本文档                                                                                                                                    |

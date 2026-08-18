@@ -21,23 +21,35 @@
     default: 'bg-primary text-primary-foreground hover:bg-primary/80',
     outline:
       'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
-    ghost: 'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
+    ghost:
+      'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
     destructive:
       'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
   };
   var BUTTON_SIZES = {
-    default: 'h-8 gap-1.5 rounded-lg px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
+    default:
+      'h-8 gap-1.5 rounded-lg px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
     sm: 'h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*="size-"])]:size-3.5',
     lg: 'h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
     icon: 'size-8',
     'icon-sm': 'size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
   };
   function buttonClass(variant, size, extra) {
-    return cn(BUTTON_BASE, BUTTON_VARIANTS[variant] || BUTTON_VARIANTS.default, BUTTON_SIZES[size] || BUTTON_SIZES.default, extra);
+    return cn(
+      BUTTON_BASE,
+      BUTTON_VARIANTS[variant] || BUTTON_VARIANTS.default,
+      BUTTON_SIZES[size] || BUTTON_SIZES.default,
+      extra
+    );
   }
   function buttonIcon(variant, size, icon, extra) {
-    return '<button type="button" data-slot="button" class="' + buttonClass(variant, size, extra) + '">' +
-      App.icon.iconSvg(icon, { class: 'size-4' }) + '</button>';
+    return (
+      '<button type="button" data-slot="button" class="' +
+      buttonClass(variant, size, extra) +
+      '">' +
+      App.icon.iconSvg(icon, { class: 'size-4' }) +
+      '</button>'
+    );
   }
 
   // ---------- Badge ----------
@@ -45,7 +57,8 @@
     'group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!';
   var BADGE_VARIANTS = {
     default: 'border-transparent bg-primary text-primary-foreground [a]:hover:bg-primary/80',
-    secondary: 'border-transparent bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80',
+    secondary:
+      'border-transparent bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80',
     outline: 'border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground',
   };
   function badgeClass(variant, extra) {
@@ -61,11 +74,14 @@
   function cardHeaderClass(extra) {
     return cn(
       'group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)',
-      extra,
+      extra
     );
   }
   function cardTitleClass(extra) {
-    return cn('font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm', extra);
+    return cn(
+      'font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm',
+      extra
+    );
   }
   function cardContentClass(extra) {
     return cn('px-(--card-spacing)', extra);
@@ -77,7 +93,7 @@
       'group/toggle inline-flex items-center justify-center gap-1 text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
       'border border-input bg-transparent hover:bg-muted',
       pressed ? 'bg-muted' : '',
-      extra,
+      extra
     );
   }
 
@@ -85,19 +101,19 @@
   function dropdownTriggerClass(extra) {
     return cn(
       'group/dropdown-menu-trigger inline-flex items-center justify-center rounded-lg outline-none select-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
-      extra,
+      extra
     );
   }
   function dropdownContentClass(width) {
     return cn(
       'hidden absolute z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95',
-      width,
+      width
     );
   }
   function dropdownItemClass(extra) {
     return cn(
       'group/dropdown-menu-item flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus-visible:bg-accent focus-visible:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
-      extra,
+      extra
     );
   }
   function dropdownLabelClass(extra) {
@@ -110,32 +126,72 @@
   // ---------- 通用页面渲染 ----------
   /** 子页面占位卡(渠道/令牌/日志/系统等模块共用) */
   function placeholderCard(t, icon, title, desc) {
-    return '<div class="mx-auto flex max-w-3xl flex-col gap-6">' +
-      '<div data-slot="card" data-size="default" class="' + cardClass('') + '">' +
-      '<div class="' + cardContentClass('flex flex-col items-center gap-4 py-16 text-center') + '">' +
-      '<div class="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">' + App.icon.iconSvg(icon, { class: 'size-8' }) + '</div>' +
-      '<h1 class="font-heading text-2xl font-semibold tracking-tight">' + title + '</h1>' +
-      '<p class="max-w-md text-sm text-muted-foreground">' + desc + '</p>' +
-      '<span data-slot="badge" data-variant="secondary" class="' + badgeClass('secondary') + '">' + t('placeholder.wip') + '</span>' +
-      '<a href="#/" data-link="/" class="mt-2"><button type="button" class="' + buttonClass('outline') + '">' +
-      App.icon.iconSvg('arrow-left', { class: 'size-4' }) + t('placeholder.back') + '</button></a>' +
-      '</div></div></div>';
+    return (
+      '<div class="mx-auto flex max-w-3xl flex-col gap-6">' +
+      '<div data-slot="card" data-size="default" class="' +
+      cardClass('') +
+      '">' +
+      '<div class="' +
+      cardContentClass('flex flex-col items-center gap-4 py-16 text-center') +
+      '">' +
+      '<div class="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">' +
+      App.icon.iconSvg(icon, { class: 'size-8' }) +
+      '</div>' +
+      '<h1 class="font-heading text-2xl font-semibold tracking-tight">' +
+      title +
+      '</h1>' +
+      '<p class="max-w-md text-sm text-muted-foreground">' +
+      desc +
+      '</p>' +
+      '<span data-slot="badge" data-variant="secondary" class="' +
+      badgeClass('secondary') +
+      '">' +
+      t('placeholder.wip') +
+      '</span>' +
+      '<a href="#/" data-link="/" class="mt-2"><button type="button" class="' +
+      buttonClass('outline') +
+      '">' +
+      App.icon.iconSvg('arrow-left', { class: 'size-4' }) +
+      t('placeholder.back') +
+      '</button></a>' +
+      '</div></div></div>'
+    );
   }
 
   /** 未知路由 404 兜底 */
   function notFound(t) {
-    return '<div class="mx-auto flex max-w-3xl flex-col gap-6">' +
-      '<div data-slot="card" data-size="default" class="' + cardClass('') + '">' +
-      '<div class="' + cardContentClass('flex flex-col items-center gap-4 py-16 text-center') + '">' +
-      '<div class="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">' + App.icon.iconSvg('file-question', { class: 'size-8' }) + '</div>' +
+    return (
+      '<div class="mx-auto flex max-w-3xl flex-col gap-6">' +
+      '<div data-slot="card" data-size="default" class="' +
+      cardClass('') +
+      '">' +
+      '<div class="' +
+      cardContentClass('flex flex-col items-center gap-4 py-16 text-center') +
+      '">' +
+      '<div class="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">' +
+      App.icon.iconSvg('file-question', { class: 'size-8' }) +
+      '</div>' +
       '<h1 class="font-heading text-2xl font-semibold tracking-tight">404</h1>' +
-      '<p class="max-w-md text-sm text-muted-foreground">' + t('notFound.desc') + '</p>' +
-      '<a href="#/" data-link="/" class="mt-2"><button type="button" class="' + buttonClass('outline') + '">' + t('placeholder.back') + '</button></a>' +
-      '</div></div></div>';
+      '<p class="max-w-md text-sm text-muted-foreground">' +
+      t('notFound.desc') +
+      '</p>' +
+      '<a href="#/" data-link="/" class="mt-2"><button type="button" class="' +
+      buttonClass('outline') +
+      '">' +
+      t('placeholder.back') +
+      '</button></a>' +
+      '</div></div></div>'
+    );
   }
 
   // ---------- Radio-group 卡片(设置面板与外观页共用,样式见 app.css .rg-*) ----------
-  var RG_GRID_COLS = { 2: 'rg-cols-2', 3: 'rg-cols-3', 4: 'rg-cols-4', 6: 'rg-cols-6', 7: 'rg-cols-7' };
+  var RG_GRID_COLS = {
+    2: 'rg-cols-2',
+    3: 'rg-cols-3',
+    4: 'rg-cols-4',
+    6: 'rg-cols-6',
+    7: 'rg-cols-7',
+  };
   function rgGridClass(cols) {
     return 'rg-grid ' + (RG_GRID_COLS[cols] || 'rg-cols-3');
   }
@@ -143,52 +199,114 @@
     return '<div class="rg-section-title"><span>' + label + '</span></div>';
   }
   function radioCheck(selected) {
-    return selected ? '<span class="rg-opt-check">' + App.icon.iconSvg('circle-check') + '</span>' : '';
+    return selected
+      ? '<span class="rg-opt-check">' + App.icon.iconSvg('circle-check') + '</span>'
+      : '';
   }
   /** 图标预览卡(主题/侧边栏/布局):选中描边 ring-primary + 阴影 + 对勾徽标 */
   function radioIconCard(iconName, label, selected, isTheme, extra) {
-    var fill = isTheme ? '' : selected ? 'fill-primary stroke-primary' : 'fill-muted-foreground stroke-muted-foreground';
-    return '<button type="button" data-settings-card="' + extra + '" aria-pressed="' + selected + '" class="rg-opt' + (selected ? ' is-active' : '') + '">' +
+    var fill = isTheme
+      ? ''
+      : selected
+        ? 'fill-primary stroke-primary'
+        : 'fill-muted-foreground stroke-muted-foreground';
+    return (
+      '<button type="button" data-settings-card="' +
+      extra +
+      '" aria-pressed="' +
+      selected +
+      '" class="rg-opt' +
+      (selected ? ' is-active' : '') +
+      '">' +
       '<span class="rg-opt-frame">' +
       radioCheck(selected) +
       App.icon.previewIcon(iconName, fill) +
       '</span>' +
-      '<span class="rg-opt-label">' + label + '</span>' +
-      '</button>';
+      '<span class="rg-opt-label">' +
+      label +
+      '</span>' +
+      '</button>'
+    );
   }
   /** 色板卡(基础色/强调色):bordered 卡片 + 对勾徽标 */
   function radioSwatchPicker(current, options, cols, kind) {
-    return '<div class="' + rgGridClass(cols) + '">' +
-      options.map(function (c) {
-        var sel = current === c;
-        return '<button type="button" data-swatch="' + kind + '" data-value="' + c + '" aria-pressed="' + sel + '" class="rg-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="rg-opt-swatch">' +
-          radioCheck(sel) +
-          '<span class="rg-opt-dot swatch-' + c + '"></span>' +
-          '<span class="rg-opt-swatch-label">' + c + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
+    return (
+      '<div class="' +
+      rgGridClass(cols) +
+      '">' +
+      options
+        .map(function (c) {
+          var sel = current === c;
+          return (
+            '<button type="button" data-swatch="' +
+            kind +
+            '" data-value="' +
+            c +
+            '" aria-pressed="' +
+            sel +
+            '" class="rg-opt' +
+            (sel ? ' is-active' : '') +
+            '">' +
+            '<span class="rg-opt-swatch">' +
+            radioCheck(sel) +
+            '<span class="rg-opt-dot swatch-' +
+            c +
+            '"></span>' +
+            '<span class="rg-opt-swatch-label">' +
+            c +
+            '</span>' +
+            '</span>' +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
   }
   /** 文本卡(风格/字体/圆角/菜单):h-14 描边卡片 + 对勾徽标 */
   function radioSegmented(options, current, cols, kind) {
-    return '<div class="' + rgGridClass(cols) + '">' +
-      options.map(function (o) {
-        var sel = current === o.value;
-        return '<button type="button" data-segmented="' + kind + '" data-value="' + o.value + '" aria-pressed="' + sel + '" class="rg-opt' + (sel ? ' is-active' : '') + '">' +
-          '<span class="rg-opt-text">' +
-          radioCheck(sel) +
-          '<span class="text-sm font-medium">' + o.label + '</span>' +
-          '</span>' +
-          '</button>';
-      }).join('') + '</div>';
+    return (
+      '<div class="' +
+      rgGridClass(cols) +
+      '">' +
+      options
+        .map(function (o) {
+          var sel = current === o.value;
+          return (
+            '<button type="button" data-segmented="' +
+            kind +
+            '" data-value="' +
+            o.value +
+            '" aria-pressed="' +
+            sel +
+            '" class="rg-opt' +
+            (sel ? ' is-active' : '') +
+            '">' +
+            '<span class="rg-opt-text">' +
+            radioCheck(sel) +
+            '<span class="text-sm font-medium">' +
+            o.label +
+            '</span>' +
+            '</span>' +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
   }
   /** 只读信息行(图标库/菜单强调色等) */
   function radioReadonlyRow(label, value) {
-    return '<div class="flex items-center justify-between">' +
-      '<span class="text-sm font-semibold text-muted-foreground">' + label + '</span>' +
-      '<span class="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">' + value + '</span>' +
-      '</div>';
+    return (
+      '<div class="flex items-center justify-between">' +
+      '<span class="text-sm font-semibold text-muted-foreground">' +
+      label +
+      '</span>' +
+      '<span class="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">' +
+      value +
+      '</span>' +
+      '</div>'
+    );
   }
 
   window.App = window.App || {};

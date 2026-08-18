@@ -33,24 +33,36 @@
   }
 
   function safeGet(store, key) {
-    try { return store.getItem(key); } catch (e) { return null; }
+    try {
+      return store.getItem(key);
+    } catch (e) {
+      return null;
+    }
   }
   function safeSet(store, key, value) {
-    try { store.setItem(key, value); } catch (e) { /* ignore */ }
+    try {
+      store.setItem(key, value);
+    } catch (e) {
+      /* ignore */
+    }
   }
   function safeRemove(store, key) {
-    try { store.removeItem(key); } catch (e) { /* ignore */ }
+    try {
+      store.removeItem(key);
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function token() {
-    return safeGet(window.localStorage, TOKEN_KEY) || safeGet(window.sessionStorage, TOKEN_KEY) || null;
+    return (
+      safeGet(window.localStorage, TOKEN_KEY) || safeGet(window.sessionStorage, TOKEN_KEY) || null
+    );
   }
 
   function expiryDeadline() {
     return (
-      safeGet(window.localStorage, EXPIRY_KEY) ||
-      safeGet(window.sessionStorage, EXPIRY_KEY) ||
-      null
+      safeGet(window.localStorage, EXPIRY_KEY) || safeGet(window.sessionStorage, EXPIRY_KEY) || null
     );
   }
 
@@ -87,11 +99,22 @@
   function expiryItemMarkup(item, selected) {
     var cls = 'auth-expiry-item' + (selected ? ' is-selected' : '');
     var locked = item.locked;
-    return '<button type="button" data-auth-expiry="' + item.id + '"' +
-      (locked ? ' disabled' : '') + ' class="' + cls + '">' +
-      (selected ? '<span class="auth-expiry-check">' + App.icon.iconSvg('circle-check') + '</span>' : '') +
-      '<span>' + t()(item.labelKey) + '</span>' +
-      '</button>';
+    return (
+      '<button type="button" data-auth-expiry="' +
+      item.id +
+      '"' +
+      (locked ? ' disabled' : '') +
+      ' class="' +
+      cls +
+      '">' +
+      (selected
+        ? '<span class="auth-expiry-check">' + App.icon.iconSvg('circle-check') + '</span>'
+        : '') +
+      '<span>' +
+      t()(item.labelKey) +
+      '</span>' +
+      '</button>'
+    );
   }
 
   function renderLogin() {
@@ -99,7 +122,9 @@
     var tt = t();
     var grid =
       '<div class="auth-expiry-grid">' +
-      EXPIRY_ITEMS.map(function (it) { return expiryItemMarkup(it, pendingExpiry === it.id); }).join('') +
+      EXPIRY_ITEMS.map(function (it) {
+        return expiryItemMarkup(it, pendingExpiry === it.id);
+      }).join('') +
       '</div>' +
       '<div class="auth-expiry-grid auth-expiry-grid-browser">' +
       expiryItemMarkup(BROWSER_EXPIRY, pendingExpiry === 'browser') +
@@ -109,33 +134,54 @@
       '<div class="auth-wrap">' +
       '<div data-slot="card" data-size="default" class="auth-card">' +
       '<div class="auth-card-head">' +
-      '<div class="auth-logo">' + App.icon.iconSvg('lock', { class: 'size-6' }) + '</div>' +
-      '<h1>' + tt('auth.title') + '</h1>' +
-      '<p>' + tt('auth.description') + '</p>' +
+      '<div class="auth-logo">' +
+      App.icon.iconSvg('lock', { class: 'size-6' }) +
+      '</div>' +
+      '<h1>' +
+      tt('auth.title') +
+      '</h1>' +
+      '<p>' +
+      tt('auth.description') +
+      '</p>' +
       '</div>' +
       '<form data-auth-form class="auth-form" autocomplete="off">' +
       '<div class="auth-field">' +
-      '<label class="auth-label" for="auth-password">' + tt('auth.passwordLabel') + '</label>' +
+      '<label class="auth-label" for="auth-password">' +
+      tt('auth.passwordLabel') +
+      '</label>' +
       '<input id="auth-password" data-auth-password type="password" class="auth-input" ' +
-      'placeholder="' + tt('auth.passwordPlaceholder') + '" autocomplete="current-password" />' +
+      'placeholder="' +
+      tt('auth.passwordPlaceholder') +
+      '" autocomplete="current-password" />' +
       '</div>' +
       '<div class="auth-field">' +
-      '<span class="auth-label">' + tt('auth.expiryLabel') + '</span>' +
+      '<span class="auth-label">' +
+      tt('auth.expiryLabel') +
+      '</span>' +
       grid +
       '</div>' +
       '<p data-auth-error class="auth-error" role="alert"></p>' +
       '<button type="submit" data-auth-login class="auth-submit">' +
-      App.icon.iconSvg('log-in', { class: 'size-4' }) + '<span>' + tt('auth.login') + '</span>' +
+      App.icon.iconSvg('log-in', { class: 'size-4' }) +
+      '<span>' +
+      tt('auth.login') +
+      '</span>' +
       '</button>' +
       '</form>' +
       '</div>' +
-      '<p class="auth-footer">' + tt('auth.footer') + '</p>' +
+      '<p class="auth-footer">' +
+      tt('auth.footer') +
+      '</p>' +
       '</div>';
 
     document.getElementById('app').innerHTML = html;
     var input = document.querySelector('[data-auth-password]');
     if (input) {
-      try { input.focus(); } catch (e) { /* ignore */ }
+      try {
+        input.focus();
+      } catch (e) {
+        /* ignore */
+      }
     }
   }
 
@@ -170,12 +216,14 @@
     }
     var btn = document.querySelector('[data-auth-login]');
     if (btn) btn.disabled = true;
-    App.api.post('/api/auth/login', { password: password, expiry: pendingExpiry })
+    App.api
+      .post('/api/auth/login', { password: password, expiry: pendingExpiry })
       .then(function (res) {
         storeToken(res.token, res.expiresAt, res.expiry || pendingExpiry);
         authViewShown = false;
         setError('');
-        if (App.logger) App.logger.info('auth', '登录成功(会话有效期: ' + (res.expiry || pendingExpiry) + ')');
+        if (App.logger)
+          App.logger.info('auth', '登录成功(会话有效期: ' + (res.expiry || pendingExpiry) + ')');
         App.start();
       })
       .catch(function (err) {
@@ -195,7 +243,10 @@
   document.addEventListener('click', function (e) {
     if (!authViewShown || !e.target || !e.target.closest) return;
     var exp = e.target.closest('[data-auth-expiry]');
-    if (exp) { selectExpiry(exp.dataset.authExpiry); return; }
+    if (exp) {
+      selectExpiry(exp.dataset.authExpiry);
+      return;
+    }
     if (e.target.closest('[data-auth-login]')) {
       e.preventDefault();
       doLogin();
@@ -221,7 +272,9 @@
     logout: function () {
       var tok = token();
       if (tok) {
-        App.api.post('/api/auth/logout').catch(function () { /* ignore */ });
+        App.api.post('/api/auth/logout').catch(function () {
+          /* ignore */
+        });
       }
       clearToken();
       authViewShown = true;

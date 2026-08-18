@@ -1,0 +1,21 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# VCS
+.git/
+
+# CI 配置(不参与代码格式化)
+.github/
+
+# 生成/第三方文件(体积大或非手写,格式化无意义且有风险)
+assets/css/app.css
+js/core/icons-data.js
+js/lib/
+
+# 自动生成与特殊格式文件
+package-lock.json
+Dockerfile
+AGENTS.md
+.env.example
+.dev.vars.example

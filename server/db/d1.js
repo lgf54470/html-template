@@ -39,18 +39,29 @@ function initBinding(opts) {
 
     /** 查询 → 行数组(对象) */
     async query(sql, params) {
-      const res = await binding.prepare(sql).bind(...normalizeParams(params)).all();
+      const res = await binding
+        .prepare(sql)
+        .bind(...normalizeParams(params))
+        .all();
       return res.results || [];
     },
 
     /** 单行查询 → 对象或 null */
     async get(sql, params) {
-      return (await binding.prepare(sql).bind(...normalizeParams(params)).first()) || null;
+      return (
+        (await binding
+          .prepare(sql)
+          .bind(...normalizeParams(params))
+          .first()) || null
+      );
     },
 
     /** 写操作 → { changes, lastInsertRowid } */
     async run(sql, params) {
-      const res = await binding.prepare(sql).bind(...normalizeParams(params)).run();
+      const res = await binding
+        .prepare(sql)
+        .bind(...normalizeParams(params))
+        .run();
       const meta = res.meta || {};
       return {
         changes: Number(meta.changes || 0),
@@ -60,7 +71,10 @@ function initBinding(opts) {
 
     /** 建表(逐条执行;CREATE TABLE IF NOT EXISTS 幂等,可反复调用) */
     async initSchema(schema) {
-      const statements = schema.split(';').map((s) => s.trim()).filter(Boolean);
+      const statements = schema
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean);
       for (const sql of statements) await this.run(sql + ';');
     },
   };

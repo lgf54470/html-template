@@ -15,7 +15,7 @@ services:
     container_name: html-template
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - '${PORT:-3000}:3000'
     environment:
       # 登录密码(必设:compose 会读取宿主机同名环境变量或 .env 文件,
       # 未设置时启动直接报错,不会生成随机密码)

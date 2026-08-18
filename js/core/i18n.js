@@ -61,7 +61,8 @@
       'settings.bodyFont': 'Body font',
       'settings.headingFont': 'Heading font',
       'settings.layout': 'Layout',
-      'settings.layoutDesc': 'Sidebar variant and collapsible mode are fixed to inset / icon (same as the reference defaults).',
+      'settings.layoutDesc':
+        'Sidebar variant and collapsible mode are fixed to inset / icon (same as the reference defaults).',
       'settings.resetWidth': 'Reset sidebar width',
       'settings.close': 'Close',
       'settings.theme': 'Theme mode',
@@ -243,7 +244,10 @@
     var de = dict[DEFAULT_LOCALE];
     var text = null;
     if (extra) {
-      text = (extra[locale] && extra[locale][key]) || (extra[DEFAULT_LOCALE] && extra[DEFAULT_LOCALE][key]) || null;
+      text =
+        (extra[locale] && extra[locale][key]) ||
+        (extra[DEFAULT_LOCALE] && extra[DEFAULT_LOCALE][key]) ||
+        null;
     }
     if (text == null) text = d[key] || de[key] || key;
     return arg !== undefined ? String(text).replace('{n}', String(arg)) : text;

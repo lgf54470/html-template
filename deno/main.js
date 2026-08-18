@@ -173,15 +173,23 @@ async function serveStatic(request, pathname) {
       headers: Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS),
     });
   }
-  const headers = Object.assign({
-    'Content-Type': MIME[extname(filePath).toLowerCase()] || 'application/octet-stream',
-    'Cache-Control': cacheControl(pathname),
-    'ETag': etag(st),
-  }, SECURITY_HEADERS);
+  const headers = Object.assign(
+    {
+      'Content-Type': MIME[extname(filePath).toLowerCase()] || 'application/octet-stream',
+      'Cache-Control': cacheControl(pathname),
+      ETag: etag(st),
+    },
+    SECURITY_HEADERS
+  );
   const lm = st.mtime ? new Date(st.mtime.getTime()).toUTCString() : null;
   if (lm) headers['Last-Modified'] = lm;
   const inm = request.headers.get('if-none-match');
-  if (inm && inm.split(',').some(function (t) { return t.trim() === headers['ETag']; })) {
+  if (
+    inm &&
+    inm.split(',').some(function (t) {
+      return t.trim() === headers['ETag'];
+    })
+  ) {
     return new Response(null, { status: 304, headers });
   }
   const data = await Deno.readFile(filePath);

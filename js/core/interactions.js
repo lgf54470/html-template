@@ -25,7 +25,9 @@
     document.body.classList.add('sidebar-resizing');
     try {
       handle.setPointerCapture(e.pointerId);
-    } catch (err) { /* ignore */ }
+    } catch (err) {
+      /* ignore */
+    }
   });
 
   function applyDragWidth() {
@@ -33,7 +35,10 @@
     var wrapper = app.querySelector('[data-slot="sidebar-wrapper"]');
     if (!wrapper) return;
     var left = wrapper.getBoundingClientRect().left;
-    dragWidth = Math.min(App.settings.SIDEBAR_MAX_WIDTH, Math.max(App.settings.SIDEBAR_MIN_WIDTH, Math.round(lastX - left)));
+    dragWidth = Math.min(
+      App.settings.SIDEBAR_MAX_WIDTH,
+      Math.max(App.settings.SIDEBAR_MIN_WIDTH, Math.round(lastX - left))
+    );
     wrapper.style.setProperty('--sidebar-width', dragWidth + 'px');
   }
 
@@ -69,13 +74,22 @@
     overlay.addEventListener('click', closeMobileSidebar);
     var sheet = document.createElement('div');
     sheet.dataset.mobileSidebar = '';
-    sheet.className = 'fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-lg';
+    sheet.className =
+      'fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-lg';
     var ctx = App.getShellContext();
-    sheet.innerHTML = App.shell.sidebarHtml(ctx.navItems, ctx.settings, App.i18n.makeT(ctx.settings.locale), ctx.pathname, ctx.openSubmenus);
+    sheet.innerHTML = App.shell.sidebarHtml(
+      ctx.navItems,
+      ctx.settings,
+      App.i18n.makeT(ctx.settings.locale),
+      ctx.pathname,
+      ctx.openSubmenus
+    );
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'absolute top-3 right-3 flex size-7 items-center justify-center rounded-lg hover:bg-sidebar-accent';
-    closeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
+    closeBtn.className =
+      'absolute top-3 right-3 flex size-7 items-center justify-center rounded-lg hover:bg-sidebar-accent';
+    closeBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
     closeBtn.setAttribute('aria-label', 'Close sidebar');
     closeBtn.addEventListener('click', closeMobileSidebar);
     sheet.append(closeBtn);
@@ -96,7 +110,9 @@
 
   window.App = window.App || {};
   App.interactions = {
-    isMobile: function () { return isMobile; },
+    isMobile: function () {
+      return isMobile;
+    },
     openMobileSidebar: openMobileSidebar,
     closeMobileSidebar: closeMobileSidebar,
   };

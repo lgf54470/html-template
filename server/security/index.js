@@ -34,12 +34,16 @@ function getEncryptionKey() {
     const stored = fs.readFileSync(KEY_FILE, 'utf8').trim();
     const buf = Buffer.from(stored, 'hex');
     if (buf.length === 32) return buf;
-  } catch (e) { /* 不存在则生成 */ }
+  } catch (e) {
+    /* 不存在则生成 */
+  }
   const fresh = crypto.randomBytes(32);
   try {
     fs.writeFileSync(KEY_FILE, fresh.toString('hex') + '\n', { mode: 0o600 });
     log.warn('crypto', '已生成加密密钥并保存到 ' + KEY_FILE + '(生产环境请改用 ENCRYPTION_KEY)');
-  } catch (e) { /* 目录不可写时仅内存持有,重启后无法解密旧数据 */ }
+  } catch (e) {
+    /* 目录不可写时仅内存持有,重启后无法解密旧数据 */
+  }
   return fresh;
 }
 

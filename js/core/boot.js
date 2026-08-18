@@ -15,7 +15,19 @@
   'use strict';
 
   /** 核心运行时加载顺序(依赖顺序,勿乱序) */
-  var CORE = ['logger', 'i18n', 'icons-data', 'icons', 'settings', 'api', 'auth', 'ui', 'shell', 'app', 'interactions'];
+  var CORE = [
+    'logger',
+    'i18n',
+    'icons-data',
+    'icons',
+    'settings',
+    'api',
+    'auth',
+    'ui',
+    'shell',
+    'app',
+    'interactions',
+  ];
 
   /** 模块目录清单:侧边栏每个一级菜单对应一个模块 */
   var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'settings'];
@@ -25,20 +37,32 @@
       var s = document.createElement('script');
       s.src = src;
       s.onload = resolve;
-      s.onerror = function () { reject(new Error('脚本加载失败: ' + src)); };
+      s.onerror = function () {
+        reject(new Error('脚本加载失败: ' + src));
+      };
       document.head.appendChild(s);
     });
   }
 
   function loadScripts(list) {
     return list.reduce(function (p, src) {
-      return p.then(function () { return loadScript(src); });
+      return p.then(function () {
+        return loadScript(src);
+      });
     }, Promise.resolve());
   }
 
-  loadScripts(CORE.map(function (f) { return 'js/core/' + f + '.js'; }))
+  loadScripts(
+    CORE.map(function (f) {
+      return 'js/core/' + f + '.js';
+    })
+  )
     .then(function () {
-      return loadScripts(MODULE_DIRS.map(function (d) { return 'js/modules/' + d + '/manifest.js'; }));
+      return loadScripts(
+        MODULE_DIRS.map(function (d) {
+          return 'js/modules/' + d + '/manifest.js';
+        })
+      );
     })
     .then(function () {
       if (App.logger) App.logger.info('boot', '核心运行时 + 模块清单加载完成,启动应用');
@@ -50,8 +74,11 @@
       else console.error('[boot] 启动失败', e);
       var app = document.getElementById('app');
       if (app) {
-        app.innerHTML = '<div style="padding:40px;font-family:monospace;color:var(--destructive)">' +
-          'Boot failed: ' + e.message + '</div>';
+        app.innerHTML =
+          '<div style="padding:40px;font-family:monospace;color:var(--destructive)">' +
+          'Boot failed: ' +
+          e.message +
+          '</div>';
       }
     });
 })();

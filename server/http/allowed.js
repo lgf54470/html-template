@@ -19,7 +19,12 @@ function isPublicAsset(pathname) {
   if (pathname.indexOf('\0') !== -1 || pathname.indexOf('\\') !== -1) return false;
   // 拒绝 . / .. 片段:白名单前缀匹配前先阻断目录穿越(如 /js/../server/...),
   // 否则 path.resolve 归一化后会重新落入根目录内,绕过前缀限制。
-  if (pathname.split('/').some(function (s) { return s === '.' || s === '..'; })) return false;
+  if (
+    pathname.split('/').some(function (s) {
+      return s === '.' || s === '..';
+    })
+  )
+    return false;
   return ALLOWED_PREFIXES.some(function (p) {
     return pathname === p || pathname.indexOf(p) === 0;
   });

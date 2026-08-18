@@ -21,16 +21,28 @@
       (function () {
         try {
           function get(key) {
-            try { return localStorage.getItem(key); } catch (e) { return null; }
+            try {
+              return localStorage.getItem(key);
+            } catch (e) {
+              return null;
+            }
           }
           var root = document.documentElement;
           var loc = get('html-template-locale');
           root.lang = loc === 'zh-CN' || loc === 'zh-TW' || loc === 'en' ? loc : 'zh-CN';
           var stored = get('html-template-theme');
-          var dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
           root.classList.toggle('dark', dark);
           root.style.colorScheme = dark ? 'dark' : 'light';
-          var ap = { style: 'nova', base: 'zinc', chart: 'zinc', 'menu-color': 'default', 'menu-appearance': 'solid' };
+          var ap = {
+            style: 'nova',
+            base: 'zinc',
+            chart: 'zinc',
+            'menu-color': 'default',
+            'menu-appearance': 'solid',
+          };
           Object.keys(ap).forEach(function (k) {
             var v = get('html-template-' + k);
             root.classList.add(k + '-' + (v || ap[k]));
@@ -41,8 +53,14 @@
           if (font) root.style.setProperty('--font-sans-base', font);
           var headingFont = get('html-template-heading-font');
           if (headingFont) root.style.setProperty('--font-heading-base', headingFont);
-          root.setAttribute('data-sidebar-variant', get('html-template-sidebar-variant') || 'inset');
-          root.setAttribute('data-sidebar-collapsible', get('html-template-sidebar-collapsible') || 'icon');
+          root.setAttribute(
+            'data-sidebar-variant',
+            get('html-template-sidebar-variant') || 'inset'
+          );
+          root.setAttribute(
+            'data-sidebar-collapsible',
+            get('html-template-sidebar-collapsible') || 'icon'
+          );
         } catch (e) {}
       })();
     </script>

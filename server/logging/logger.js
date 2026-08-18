@@ -27,7 +27,6 @@ const COLORS = {
 };
 
 const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 };
-const ORDER = ['debug', 'info', 'warn', 'error'];
 const STYLE = {
   debug: { fg: COLORS.cyan, bg: COLORS.bgGray },
   info: { fg: COLORS.green, bg: COLORS.bgGreen },
@@ -43,8 +42,19 @@ function threshold() {
 function ts() {
   const d = new Date();
   const p = (n, w) => String(n).padStart(w || 2, '0');
-  return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
-    p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p(d.getMilliseconds(), 3);
+  return (
+    p(d.getMonth() + 1) +
+    '-' +
+    p(d.getDate()) +
+    ' ' +
+    p(d.getHours()) +
+    ':' +
+    p(d.getMinutes()) +
+    ':' +
+    p(d.getSeconds()) +
+    '.' +
+    p(d.getMilliseconds(), 3)
+  );
 }
 
 /** 记录一条日志(自动带时间戳、彩色等级徽标、作用域) */
@@ -52,10 +62,21 @@ function write(level, scope, message, extra) {
   if (LEVELS[level] == null || LEVELS[level] < threshold()) return;
   const st = STYLE[level];
   // [时间] 等级徽标(背景+前景色+加粗) [scope] message
-  const badge = st.bg + st.fg + COLORS.bold + ' ' + level.toUpperCase().padEnd(5) + ' ' + COLORS.reset;
+  const badge =
+    st.bg + st.fg + COLORS.bold + ' ' + level.toUpperCase().padEnd(5) + ' ' + COLORS.reset;
   const line =
-    COLORS.dim + ts() + COLORS.reset + ' ' + badge + ' ' +
-    COLORS.dim + '[' + scope + ']' + COLORS.reset + ' ' +
+    COLORS.dim +
+    ts() +
+    COLORS.reset +
+    ' ' +
+    badge +
+    ' ' +
+    COLORS.dim +
+    '[' +
+    scope +
+    ']' +
+    COLORS.reset +
+    ' ' +
     message;
   const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
   fn(line);
@@ -76,9 +97,22 @@ function request(method, pathname, status, ms, opts) {
   const statusStr = COLORS.bold + color + String(status) + COLORS.reset;
   const isApi = !!(opts && opts.api);
   const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : isApi ? 'info' : 'debug';
-  write(level, isApi ? 'api' : 'http',
-    COLORS.cyan + String(method).padEnd(6) + COLORS.reset + ' ' + pathname +
-    '  ' + statusStr + COLORS.dim + ' ' + ms + 'ms' + COLORS.reset);
+  write(
+    level,
+    isApi ? 'api' : 'http',
+    COLORS.cyan +
+      String(method).padEnd(6) +
+      COLORS.reset +
+      ' ' +
+      pathname +
+      '  ' +
+      statusStr +
+      COLORS.dim +
+      ' ' +
+      ms +
+      'ms' +
+      COLORS.reset
+  );
 }
 
 const logger = {

@@ -35,13 +35,13 @@ turso db tokens create html-template-db  # 生成长期访问令牌(或 turso db
 
 ### 2. 需要配置的环境变量(在 Vercel 项目 Settings → Environment Variables 中设置)
 
-| 变量 | 值 | 说明 |
-|---|---|---|
-| `DB_DRIVER` | `turso` | 驱动选择(**必填**;不设会回退到 sqlite,在 serverless 只读文件系统上报 `unable to open database file`。`api/index.js` 未显式设置时会自动默认 `turso`,但建议显式配置) |
-| `DATABASE_URL` | `https://<db>-<org>.turso.io` | Turso 数据库地址;`libsql://` 形式会自动归一化为 `https://`,两种都可用 |
-| `DATABASE_AUTH_TOKEN` | 上一步生成的令牌 | Turso 访问令牌 |
-| `AUTH_PASSWORD` | 自定 | 登录密码(**必设**;登录时直接与该环境变量校验,未配置会报错) |
-| `ENCRYPTION_KEY` | 64 位 hex | 敏感数据加密密钥,`openssl rand -hex 32` 生成;请固定并妥善保管 |
+| 变量                  | 值                            | 说明                                                                                                                                                               |
+| --------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DB_DRIVER`           | `turso`                       | 驱动选择(**必填**;不设会回退到 sqlite,在 serverless 只读文件系统上报 `unable to open database file`。`api/index.js` 未显式设置时会自动默认 `turso`,但建议显式配置) |
+| `DATABASE_URL`        | `https://<db>-<org>.turso.io` | Turso 数据库地址;`libsql://` 形式会自动归一化为 `https://`,两种都可用                                                                                              |
+| `DATABASE_AUTH_TOKEN` | 上一步生成的令牌              | Turso 访问令牌                                                                                                                                                     |
+| `AUTH_PASSWORD`       | 自定                          | 登录密码(**必设**;登录时直接与该环境变量校验,未配置会报错)                                                                                                         |
+| `ENCRYPTION_KEY`      | 64 位 hex                     | 敏感数据加密密钥,`openssl rand -hex 32` 生成;请固定并妥善保管                                                                                                      |
 
 > 全部为运行期环境变量,建议 Production 与 Preview 环境都添加(Preview 可换独立 Turso 库)。
 
@@ -75,11 +75,11 @@ npx vercel --prod                      # 构建并发布(自动执行 npm run bu
 
 仓库已内置工作流 `.github/workflows/deploy-vercel.yml`,在 GitHub 仓库配置 Secrets 后即可用:
 
-| GitHub Secret | 值 |
-|---|---|
-| `VERCEL_TOKEN` | Vercel 账号令牌(Account Settings → Tokens → Create) |
-| `VERCEL_ORG_ID` | Vercel 项目 Settings → General 里的 **Vercel org id**(或 `npx vercel whoami` 后查看) |
-| `VERCEL_PROJECT_ID` | 项目 Settings → General 里的 **Vercel project id** |
+| GitHub Secret       | 值                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `VERCEL_TOKEN`      | Vercel 账号令牌(Account Settings → Tokens → Create)                                  |
+| `VERCEL_ORG_ID`     | Vercel 项目 Settings → General 里的 **Vercel org id**(或 `npx vercel whoami` 后查看) |
+| `VERCEL_PROJECT_ID` | 项目 Settings → General 里的 **Vercel project id**                                   |
 
 **触发**:push `v*` 标签(如 `git tag v1.0.0 && git push --tags`)自动部署,或 Actions 页面手动 `Run workflow`。
 
@@ -143,13 +143,13 @@ A:两套独立方案,任选其一即可;数据可通过同一 `ENCRYPTION_KEY` �
 
 ## 文件清单
 
-| 文件 | 作用 |
-|---|---|
-| `api/index.js` | Vercel 函数入口(全部 `/api/*`,经 rewrites 转发),复用 `server/api/index.js` |
-| `vercel.json` | `framework=null` + Build Command(`npm run build`)+ Output Directory(`dist`)+ rewrites(`/api/:path*` → `/api/index`) |
-| `package.json` | 声明 `build` / `start` 脚本与 Node 版本要求(Vercel 构建依赖) |
-| `scripts/vercel-build.js` | 零依赖构建脚本:把 `index.html` / `js` / `assets` 复制到 `dist/` |
-| `dev-server.js` | 本地 / 自托管服务器(已改名:不能叫 `server.js`,否则会被 Vercel 捕获为自定义服务器入口) |
-| `.vercelignore` | 阻止本地敏感文件(数据库、密钥、`.env`)上传到构建环境 |
-| `.github/workflows/deploy-vercel.yml` | GitHub Actions 自动部署 |
-| `docs/deploy/vercel.md` | 本文档 |
+| 文件                                  | 作用                                                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `api/index.js`                        | Vercel 函数入口(全部 `/api/*`,经 rewrites 转发),复用 `server/api/index.js`                                          |
+| `vercel.json`                         | `framework=null` + Build Command(`npm run build`)+ Output Directory(`dist`)+ rewrites(`/api/:path*` → `/api/index`) |
+| `package.json`                        | 声明 `build` / `start` 脚本与 Node 版本要求(Vercel 构建依赖)                                                        |
+| `scripts/vercel-build.js`             | 零依赖构建脚本:把 `index.html` / `js` / `assets` 复制到 `dist/`                                                     |
+| `dev-server.js`                       | 本地 / 自托管服务器(已改名:不能叫 `server.js`,否则会被 Vercel 捕获为自定义服务器入口)                               |
+| `.vercelignore`                       | 阻止本地敏感文件(数据库、密钥、`.env`)上传到构建环境                                                                |
+| `.github/workflows/deploy-vercel.yml` | GitHub Actions 自动部署                                                                                             |
+| `docs/deploy/vercel.md`               | 本文档                                                                                                              |

@@ -6,12 +6,7 @@
   'use strict';
 
   function render(route, ctx) {
-    return App.ui.placeholderCard(
-      ctx.t,
-      'route',
-      ctx.t('channels.title'),
-      ctx.t('channels.desc'),
-    );
+    return App.ui.placeholderCard(ctx.t, 'route', ctx.t('channels.title'), ctx.t('channels.desc'));
   }
 
   App.defineModule({ id: 'channels', render: render });

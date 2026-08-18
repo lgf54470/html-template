@@ -9,26 +9,48 @@
 (function () {
   'use strict';
 
-  var S = function () { return App.settings; };
-  var icon = function () { return App.icon; };
+  var S = function () {
+    return App.settings;
+  };
+  var icon = function () {
+    return App.icon;
+  };
 
   /* ---------- 页内子导航(与主侧边栏二级菜单一致) ---------- */
   var NAV = [
     { id: 'profile', route: '/settings', icon: 'user-cog', titleKey: 'profile.title' },
     { id: 'account', route: '/settings/account', icon: 'wrench', titleKey: 'account.title' },
-    { id: 'appearance', route: '/settings/appearance', icon: 'palette', titleKey: 'appearance.title' },
-    { id: 'notifications', route: '/settings/notifications', icon: 'bell', titleKey: 'notifications.title' },
+    {
+      id: 'appearance',
+      route: '/settings/appearance',
+      icon: 'palette',
+      titleKey: 'appearance.title',
+    },
+    {
+      id: 'notifications',
+      route: '/settings/notifications',
+      icon: 'bell',
+      titleKey: 'notifications.title',
+    },
     { id: 'display', route: '/settings/display', icon: 'monitor', titleKey: 'display.title' },
   ];
 
   /* ---------- 通用布局 ---------- */
   function contentSection(t, titleKey, descKey, body) {
-    return '<div class="sp-section">' +
-      '<h3>' + t(titleKey) + '</h3>' +
-      '<p class="sp-section-desc">' + t(descKey) + '</p>' +
+    return (
+      '<div class="sp-section">' +
+      '<h3>' +
+      t(titleKey) +
+      '</h3>' +
+      '<p class="sp-section-desc">' +
+      t(descKey) +
+      '</p>' +
       '<div class="sp-sep"></div>' +
-      '<div class="sp-section-body"><div class="sp-section-inner">' + body + '</div></div>' +
-      '</div>';
+      '<div class="sp-section-body"><div class="sp-section-inner">' +
+      body +
+      '</div></div>' +
+      '</div>'
+    );
   }
 
   /* ---------- 个人资料(数据实时同步数据库 settings:profile,邮箱落库前加密) ---------- */
@@ -36,49 +58,107 @@
     var t = ctx.t;
     var p = ctx.settings.profile || {};
     var emailOptions = [p.email, 'm@example.com', 'm@google.com', 'm@support.com']
-      .filter(function (v, i, arr) { return v && arr.indexOf(v) === i; })
+      .filter(function (v, i, arr) {
+        return v && arr.indexOf(v) === i;
+      })
       .map(function (v) {
-        return '<option value="' + escAttr(v) + '"' + (v === p.email ? ' selected' : '') + '>' + escHtml(v) + '</option>';
-      }).join('');
+        return (
+          '<option value="' +
+          escAttr(v) +
+          '"' +
+          (v === p.email ? ' selected' : '') +
+          '>' +
+          escHtml(v) +
+          '</option>'
+        );
+      })
+      .join('');
     var links = Array.isArray(p.links) && p.links.length ? p.links : ['', ''];
     var body =
       '<form class="sp-form">' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('profile.username.label') + '</label>' +
-      '<input class="sp-input" type="text" data-setting="profile.username" value="' + escAttr(p.username) + '" placeholder="' + t('profile.username.placeholder') + '" />' +
-      '<p class="sp-field-desc">' + t('profile.username.description') + '</p>' +
+      '<label class="sp-label">' +
+      t('profile.username.label') +
+      '</label>' +
+      '<input class="sp-input" type="text" data-setting="profile.username" value="' +
+      escAttr(p.username) +
+      '" placeholder="' +
+      t('profile.username.placeholder') +
+      '" />' +
+      '<p class="sp-field-desc">' +
+      t('profile.username.description') +
+      '</p>' +
       '</div>' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('profile.email.label') + '</label>' +
-      '<select class="sp-select" data-setting="profile.email">' + emailOptions + '</select>' +
-      '<p class="sp-field-desc">' + t('profile.email.descriptionBefore') +
-      ' <a href="#/settings" data-link="/settings">' + t('profile.email.emailSettings') + '</a>.</p>' +
+      '<label class="sp-label">' +
+      t('profile.email.label') +
+      '</label>' +
+      '<select class="sp-select" data-setting="profile.email">' +
+      emailOptions +
+      '</select>' +
+      '<p class="sp-field-desc">' +
+      t('profile.email.descriptionBefore') +
+      ' <a href="#/settings" data-link="/settings">' +
+      t('profile.email.emailSettings') +
+      '</a>.</p>' +
       '</div>' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('profile.bio.label') + '</label>' +
-      '<textarea class="sp-textarea" data-setting="profile.bio" placeholder="' + t('profile.bio.placeholder') + '">' + escHtml(p.bio || '') + '</textarea>' +
-      '<p class="sp-field-desc">' + t('profile.bio.descriptionBefore') +
-      ' <span>' + t('profile.bio.mention') + '</span> ' + t('profile.bio.descriptionAfter') + '</p>' +
+      '<label class="sp-label">' +
+      t('profile.bio.label') +
+      '</label>' +
+      '<textarea class="sp-textarea" data-setting="profile.bio" placeholder="' +
+      t('profile.bio.placeholder') +
+      '">' +
+      escHtml(p.bio || '') +
+      '</textarea>' +
+      '<p class="sp-field-desc">' +
+      t('profile.bio.descriptionBefore') +
+      ' <span>' +
+      t('profile.bio.mention') +
+      '</span> ' +
+      t('profile.bio.descriptionAfter') +
+      '</p>' +
       '</div>' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('profile.urls.label') + '</label>' +
-      '<p class="sp-field-desc">' + t('profile.urls.description') + '</p>' +
-      '<input class="sp-input" type="url" data-setting="profile.links.0" value="' + escAttr(links[0]) + '" />' +
-      '<input class="sp-input" type="url" data-setting="profile.links.1" value="' + escAttr(links[1]) + '" />' +
-      '<button type="button" class="' + App.ui.buttonClass('outline', 'sm') + '">' + t('profile.urls.add') + '</button>' +
+      '<label class="sp-label">' +
+      t('profile.urls.label') +
+      '</label>' +
+      '<p class="sp-field-desc">' +
+      t('profile.urls.description') +
+      '</p>' +
+      '<input class="sp-input" type="url" data-setting="profile.links.0" value="' +
+      escAttr(links[0]) +
+      '" />' +
+      '<input class="sp-input" type="url" data-setting="profile.links.1" value="' +
+      escAttr(links[1]) +
+      '" />' +
+      '<button type="button" class="' +
+      App.ui.buttonClass('outline', 'sm') +
+      '">' +
+      t('profile.urls.add') +
+      '</button>' +
       '</div>' +
-      '<button type="button" class="' + App.ui.buttonClass('default') + '">' + t('profile.submit') + '</button>' +
+      '<button type="button" class="' +
+      App.ui.buttonClass('default') +
+      '">' +
+      t('profile.submit') +
+      '</button>' +
       '</form>';
     return contentSection(t, 'profile.title', 'profile.description', body);
   }
 
   function escAttr(v) {
     return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
   function escHtml(v) {
     return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   /* ---------- 账号 ---------- */
@@ -97,37 +177,72 @@
   function pageAccount(ctx) {
     var t = ctx.t;
     var ac = ctx.settings.account || {};
-    var langOptions = '<option value=""' + (ac.language ? '' : ' selected') + '>' + t('account.language.selectPlaceholder') + '</option>' +
+    var langOptions =
+      '<option value=""' +
+      (ac.language ? '' : ' selected') +
+      '>' +
+      t('account.language.selectPlaceholder') +
+      '</option>' +
       ACCOUNT_LANGUAGES.map(function (l) {
-        return '<option value="' + l.value + '"' + (ac.language === l.value ? ' selected' : '') + '>' + l.label + '</option>';
+        return (
+          '<option value="' +
+          l.value +
+          '"' +
+          (ac.language === l.value ? ' selected' : '') +
+          '>' +
+          l.label +
+          '</option>'
+        );
       }).join('');
     var body =
       '<form class="sp-form">' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('account.name.label') + '</label>' +
-      '<input class="sp-input" type="text" data-setting="account.name" value="' + escAttr(ac.name) + '" placeholder="' + t('account.name.placeholder') + '" />' +
-      '<p class="sp-field-desc">' + t('account.name.description') + '</p>' +
+      '<label class="sp-label">' +
+      t('account.name.label') +
+      '</label>' +
+      '<input class="sp-input" type="text" data-setting="account.name" value="' +
+      escAttr(ac.name) +
+      '" placeholder="' +
+      t('account.name.placeholder') +
+      '" />' +
+      '<p class="sp-field-desc">' +
+      t('account.name.description') +
+      '</p>' +
       '</div>' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('account.dob.label') + '</label>' +
-      '<input class="sp-date" type="date" data-setting="account.dob" value="' + escAttr(ac.dob) + '" />' +
-      '<p class="sp-field-desc">' + t('account.dob.description') + '</p>' +
+      '<label class="sp-label">' +
+      t('account.dob.label') +
+      '</label>' +
+      '<input class="sp-date" type="date" data-setting="account.dob" value="' +
+      escAttr(ac.dob) +
+      '" />' +
+      '<p class="sp-field-desc">' +
+      t('account.dob.description') +
+      '</p>' +
       '</div>' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('account.language.label') + '</label>' +
-      '<select class="sp-select" data-setting="account.language">' + langOptions + '</select>' +
-      '<p class="sp-field-desc">' + t('account.language.description') + '</p>' +
+      '<label class="sp-label">' +
+      t('account.language.label') +
+      '</label>' +
+      '<select class="sp-select" data-setting="account.language">' +
+      langOptions +
+      '</select>' +
+      '<p class="sp-field-desc">' +
+      t('account.language.description') +
+      '</p>' +
       '</div>' +
-      '<button type="button" class="' + App.ui.buttonClass('default') + '">' + t('account.submit') + '</button>' +
+      '<button type="button" class="' +
+      App.ui.buttonClass('default') +
+      '">' +
+      t('account.submit') +
+      '</button>' +
       '</form>';
     return contentSection(t, 'account.title', 'account.description', body);
   }
 
   /* ---------- 外观(mpages radio-group 风格):卡片统一用 App.ui.radio(样式 app.css .rg-*) ---------- */
   function optSection(t, titleKey, inner) {
-    return '<div class="sp-opt-group">' +
-      App.ui.radio.sectionTitle(t(titleKey)) + inner +
-      '</div>';
+    return '<div class="sp-opt-group">' + App.ui.radio.sectionTitle(t(titleKey)) + inner + '</div>';
   }
 
   function pageAppearance(ctx) {
@@ -137,48 +252,166 @@
     var st = S();
     var radio = App.ui.radio;
 
-    var layout = s.sidebarVariant === 'inset' ? 'default' : s.sidebarCollapsible === 'offcanvas' ? 'offcanvas' : 'icon';
+    var layout =
+      s.sidebarVariant === 'inset'
+        ? 'default'
+        : s.sidebarCollapsible === 'offcanvas'
+          ? 'offcanvas'
+          : 'icon';
     var themeItems = st.THEME_ITEMS;
     var sidebarItems = st.SIDEBAR_ITEMS;
     var layoutItems = st.LAYOUT_ITEMS;
 
     var body =
       '<div class="sp-form">' +
-      optSection(t, 'settings.theme',
-        '<div class="' + radio.gridClass(3) + '">' +
-        themeItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), s.theme === it.value, true, 'theme:' + it.value); }).join('') +
-        '</div>') +
-      optSection(t, 'settings.sidebar',
-        '<div class="' + radio.gridClass(3) + '">' +
-        sidebarItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), s.sidebarVariant === it.value, false, 'sidebar:' + it.value); }).join('') +
-        '</div>') +
-      optSection(t, 'settings.layout',
-        '<div class="' + radio.gridClass(3) + '">' +
-        layoutItems.map(function (it) { return radio.iconCard(it.icon, t(it.labelKey), layout === it.value, false, 'layout:' + it.value); }).join('') +
-        '</div>') +
-      optSection(t, 'settings.baseColor', radio.swatchPicker(ap.baseColor, st.BASE_COLORS, 7, 'base')) +
-      optSection(t, 'settings.chartColor', radio.swatchPicker(ap.chartColor, [ap.baseColor].concat(st.CHART_COLORS), 6, 'chart')) +
-      optSection(t, 'settings.style',
-        radio.segmented(st.STYLES.map(function (v) { return { value: v, label: v }; }), ap.style, 4, 'style')) +
-      optSection(t, 'settings.bodyFont',
-        radio.segmented(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.bodyFont, 3, 'body-font')) +
-      optSection(t, 'settings.headingFont',
-        radio.segmented(st.FONTS.map(function (f) { return { value: f.value, label: f.label }; }), ap.headingFont, 3, 'heading-font')) +
+      optSection(
+        t,
+        'settings.theme',
+        '<div class="' +
+          radio.gridClass(3) +
+          '">' +
+          themeItems
+            .map(function (it) {
+              return radio.iconCard(
+                it.icon,
+                t(it.labelKey),
+                s.theme === it.value,
+                true,
+                'theme:' + it.value
+              );
+            })
+            .join('') +
+          '</div>'
+      ) +
+      optSection(
+        t,
+        'settings.sidebar',
+        '<div class="' +
+          radio.gridClass(3) +
+          '">' +
+          sidebarItems
+            .map(function (it) {
+              return radio.iconCard(
+                it.icon,
+                t(it.labelKey),
+                s.sidebarVariant === it.value,
+                false,
+                'sidebar:' + it.value
+              );
+            })
+            .join('') +
+          '</div>'
+      ) +
+      optSection(
+        t,
+        'settings.layout',
+        '<div class="' +
+          radio.gridClass(3) +
+          '">' +
+          layoutItems
+            .map(function (it) {
+              return radio.iconCard(
+                it.icon,
+                t(it.labelKey),
+                layout === it.value,
+                false,
+                'layout:' + it.value
+              );
+            })
+            .join('') +
+          '</div>'
+      ) +
+      optSection(
+        t,
+        'settings.baseColor',
+        radio.swatchPicker(ap.baseColor, st.BASE_COLORS, 7, 'base')
+      ) +
+      optSection(
+        t,
+        'settings.chartColor',
+        radio.swatchPicker(ap.chartColor, [ap.baseColor].concat(st.CHART_COLORS), 6, 'chart')
+      ) +
+      optSection(
+        t,
+        'settings.style',
+        radio.segmented(
+          st.STYLES.map(function (v) {
+            return { value: v, label: v };
+          }),
+          ap.style,
+          4,
+          'style'
+        )
+      ) +
+      optSection(
+        t,
+        'settings.bodyFont',
+        radio.segmented(
+          st.FONTS.map(function (f) {
+            return { value: f.value, label: f.label };
+          }),
+          ap.bodyFont,
+          3,
+          'body-font'
+        )
+      ) +
+      optSection(
+        t,
+        'settings.headingFont',
+        radio.segmented(
+          st.FONTS.map(function (f) {
+            return { value: f.value, label: f.label };
+          }),
+          ap.headingFont,
+          3,
+          'heading-font'
+        )
+      ) +
       radio.readonlyRow(t('settings.iconLibrary'), t('settings.lucide')) +
-      optSection(t, 'settings.radius',
-        radio.segmented(st.RADII.map(function (r) { return { value: r.value, label: t(r.labelKey) }; }), ap.radius, 3, 'radius')) +
-      optSection(t, 'settings.menuColor',
-        radio.segmented([
-          { value: 'default', label: t('settings.menuColorOptions.default') },
-          { value: 'inverted', label: t('settings.menuColorOptions.inverted') },
-        ], ap.menuColor, 2, 'menu-color')) +
-      optSection(t, 'settings.menuAppearance',
-        radio.segmented([
-          { value: 'solid', label: t('settings.menuAppearanceOptions.solid') },
-          { value: 'translucent', label: t('settings.menuAppearanceOptions.translucent') },
-        ], ap.menuAppearance, 2, 'menu-appearance')) +
+      optSection(
+        t,
+        'settings.radius',
+        radio.segmented(
+          st.RADII.map(function (r) {
+            return { value: r.value, label: t(r.labelKey) };
+          }),
+          ap.radius,
+          3,
+          'radius'
+        )
+      ) +
+      optSection(
+        t,
+        'settings.menuColor',
+        radio.segmented(
+          [
+            { value: 'default', label: t('settings.menuColorOptions.default') },
+            { value: 'inverted', label: t('settings.menuColorOptions.inverted') },
+          ],
+          ap.menuColor,
+          2,
+          'menu-color'
+        )
+      ) +
+      optSection(
+        t,
+        'settings.menuAppearance',
+        radio.segmented(
+          [
+            { value: 'solid', label: t('settings.menuAppearanceOptions.solid') },
+            { value: 'translucent', label: t('settings.menuAppearanceOptions.translucent') },
+          ],
+          ap.menuAppearance,
+          2,
+          'menu-appearance'
+        )
+      ) +
       radio.readonlyRow(t('settings.menuAccent'), t('settings.subtle')) +
-      '<button type="button" data-reset-appearance class="' + App.ui.buttonClass('destructive') + '">' + t('appearance.reset') + '</button>' +
+      '<button type="button" data-reset-appearance class="' +
+      App.ui.buttonClass('destructive') +
+      '">' +
+      t('appearance.reset') +
+      '</button>' +
       '</div>';
     return contentSection(t, 'appearance.title', 'appearance.description', body);
   }
@@ -186,51 +419,118 @@
   /* ---------- 通知(数据实时同步数据库 settings:notifications) ---------- */
   /** 胶囊开关:视觉 span + 真实 checkbox(label 包裹点击切换,change 事件委托更新) */
   function switchRow(t, labelKey, descKey, on, disabled, setting) {
-    return '<label class="sp-switch-row">' +
+    return (
+      '<label class="sp-switch-row">' +
       '<div class="sp-switch-info">' +
-      '<span class="sp-label">' + t(labelKey) + '</span>' +
-      '<p class="sp-field-desc">' + t(descKey) + '</p>' +
+      '<span class="sp-label">' +
+      t(labelKey) +
+      '</span>' +
+      '<p class="sp-field-desc">' +
+      t(descKey) +
+      '</p>' +
       '</div>' +
-      '<span role="switch" aria-checked="' + on + '" class="sp-switch' + (on ? ' is-on' : '') + (disabled ? ' is-disabled' : '') + '"></span>' +
-      '<input type="checkbox" class="sp-switch-input" data-setting="' + setting + '"' +
-      (on ? ' checked' : '') + (disabled ? ' disabled' : '') + ' />' +
-      '</label>';
+      '<span role="switch" aria-checked="' +
+      on +
+      '" class="sp-switch' +
+      (on ? ' is-on' : '') +
+      (disabled ? ' is-disabled' : '') +
+      '"></span>' +
+      '<input type="checkbox" class="sp-switch-input" data-setting="' +
+      setting +
+      '"' +
+      (on ? ' checked' : '') +
+      (disabled ? ' disabled' : '') +
+      ' />' +
+      '</label>'
+    );
   }
 
   function pageNotifications(ctx) {
     var t = ctx.t;
     var n = ctx.settings.notifications || {};
     var radioItem = function (value, labelKey) {
-      return '<label class="sp-radio">' +
-        '<input type="radio" name="notify-type" data-setting="notifications.type" value="' + value + '"' + (n.type === value ? ' checked' : '') + ' />' +
-        '<span class="sp-label">' + t(labelKey) + '</span>' +
-        '</label>';
+      return (
+        '<label class="sp-radio">' +
+        '<input type="radio" name="notify-type" data-setting="notifications.type" value="' +
+        value +
+        '"' +
+        (n.type === value ? ' checked' : '') +
+        ' />' +
+        '<span class="sp-label">' +
+        t(labelKey) +
+        '</span>' +
+        '</label>'
+      );
     };
     var body =
       '<form class="sp-form">' +
       '<div class="sp-field">' +
-      '<label class="sp-label">' + t('notifications.notifyLabel') + '</label>' +
+      '<label class="sp-label">' +
+      t('notifications.notifyLabel') +
+      '</label>' +
       radioItem('all', 'notifications.type.all') +
       radioItem('mentions', 'notifications.type.mentions') +
       radioItem('none', 'notifications.type.none') +
       '</div>' +
       '<div>' +
-      '<h3 class="mb-4 text-lg font-medium" style="font-family:var(--font-heading-base,inherit)">' + t('notifications.emailSection') + '</h3>' +
+      '<h3 class="mb-4 text-lg font-medium" style="font-family:var(--font-heading-base,inherit)">' +
+      t('notifications.emailSection') +
+      '</h3>' +
       '<div style="display:flex;flex-direction:column;gap:1rem">' +
-      switchRow(t, 'notifications.communication.label', 'notifications.communication.description', !!n.communication, false, 'notifications.communication') +
-      switchRow(t, 'notifications.marketing.label', 'notifications.marketing.description', !!n.marketing, false, 'notifications.marketing') +
-      switchRow(t, 'notifications.social.label', 'notifications.social.description', !!n.social, false, 'notifications.social') +
-      switchRow(t, 'notifications.security.label', 'notifications.security.description', true, true, 'notifications.security') +
+      switchRow(
+        t,
+        'notifications.communication.label',
+        'notifications.communication.description',
+        !!n.communication,
+        false,
+        'notifications.communication'
+      ) +
+      switchRow(
+        t,
+        'notifications.marketing.label',
+        'notifications.marketing.description',
+        !!n.marketing,
+        false,
+        'notifications.marketing'
+      ) +
+      switchRow(
+        t,
+        'notifications.social.label',
+        'notifications.social.description',
+        !!n.social,
+        false,
+        'notifications.social'
+      ) +
+      switchRow(
+        t,
+        'notifications.security.label',
+        'notifications.security.description',
+        true,
+        true,
+        'notifications.security'
+      ) +
       '</div></div>' +
       '<div class="sp-radio" style="align-items:flex-start">' +
-      '<input type="checkbox" class="sp-native-check" data-setting="notifications.mobile"' + (n.mobile ? ' checked' : '') + ' />' +
+      '<input type="checkbox" class="sp-native-check" data-setting="notifications.mobile"' +
+      (n.mobile ? ' checked' : '') +
+      ' />' +
       '<div class="sp-switch-info" style="gap:0.25rem">' +
-      '<label class="sp-label" style="line-height:1.5">' + t('notifications.mobile.label') + '</label>' +
-      '<p class="sp-field-desc">' + t('notifications.mobile.descriptionBefore') +
-      ' <a href="#/settings" data-link="/settings">' + t('notifications.mobile.mobileSettings') + '</a> ' +
-      t('notifications.mobile.descriptionAfter') + '</p>' +
+      '<label class="sp-label" style="line-height:1.5">' +
+      t('notifications.mobile.label') +
+      '</label>' +
+      '<p class="sp-field-desc">' +
+      t('notifications.mobile.descriptionBefore') +
+      ' <a href="#/settings" data-link="/settings">' +
+      t('notifications.mobile.mobileSettings') +
+      '</a> ' +
+      t('notifications.mobile.descriptionAfter') +
+      '</p>' +
       '</div></div>' +
-      '<button type="button" class="' + App.ui.buttonClass('default') + '">' + t('notifications.submit') + '</button>' +
+      '<button type="button" class="' +
+      App.ui.buttonClass('default') +
+      '">' +
+      t('notifications.submit') +
+      '</button>' +
       '</form>';
     return contentSection(t, 'notifications.title', 'notifications.description', body);
   }
@@ -241,24 +541,47 @@
     var hidden = ctx.settings.hiddenNav || [];
     // 用不过滤的完整列表,隐藏项也要能在此重新显示
     var items = App.buildAllNavItems(ctx.settings.locale);
-    var rows = items.map(function (item) {
-      var locked = item.id === 'settings';
-      var checked = hidden.indexOf(item.id) === -1;
-      return '<button type="button" data-nav-toggle="' + item.id + '" class="sp-display-item' +
-        (locked ? ' is-locked' : '') + (checked ? '' : ' is-hidden') + '">' +
-        '<span class="sp-checkbox' + (checked ? ' is-checked' : '') + '">' +
-        (checked ? icon().iconSvg('check', { class: 'size-3' }) : '') + '</span>' +
-        '<span class="sp-item-icon">' + icon().iconSvg(item.icon) + '</span>' +
-        '<span class="sp-item-title">' + item.title + '</span>' +
-        (locked ? '<span class="sp-lock">' + icon().iconSvg('lock') + t('display.locked') + '</span>' : '') +
-        '</button>';
-    }).join('');
+    var rows = items
+      .map(function (item) {
+        var locked = item.id === 'settings';
+        var checked = hidden.indexOf(item.id) === -1;
+        return (
+          '<button type="button" data-nav-toggle="' +
+          item.id +
+          '" class="sp-display-item' +
+          (locked ? ' is-locked' : '') +
+          (checked ? '' : ' is-hidden') +
+          '">' +
+          '<span class="sp-checkbox' +
+          (checked ? ' is-checked' : '') +
+          '">' +
+          (checked ? icon().iconSvg('check', { class: 'size-3' }) : '') +
+          '</span>' +
+          '<span class="sp-item-icon">' +
+          icon().iconSvg(item.icon) +
+          '</span>' +
+          '<span class="sp-item-title">' +
+          item.title +
+          '</span>' +
+          (locked
+            ? '<span class="sp-lock">' + icon().iconSvg('lock') + t('display.locked') + '</span>'
+            : '') +
+          '</button>'
+        );
+      })
+      .join('');
     var body =
       '<div class="sp-display-group">' +
-      '<h4>' + t('display.sidebar.label') + '</h4>' +
-      '<div class="sp-display-items">' + rows + '</div>' +
+      '<h4>' +
+      t('display.sidebar.label') +
+      '</h4>' +
+      '<div class="sp-display-items">' +
+      rows +
       '</div>' +
-      '<p class="sp-display-hint">' + t('display.lockHint') + '</p>';
+      '</div>' +
+      '<p class="sp-display-hint">' +
+      t('display.lockHint') +
+      '</p>';
     return contentSection(t, 'display.title', 'display.description', body);
   }
 
@@ -280,23 +603,43 @@
 
     var navHtml = NAV.map(function (n) {
       var active = n.id === pageId;
-      return '<a href="#' + n.route + '" data-link="' + n.route + '" class="sp-nav-link' + (active ? ' is-active' : '') + '">' +
+      return (
+        '<a href="#' +
+        n.route +
+        '" data-link="' +
+        n.route +
+        '" class="sp-nav-link' +
+        (active ? ' is-active' : '') +
+        '">' +
         icon().iconSvg(n.icon, { class: 'size-4' }) +
-        '<span>' + t(n.titleKey) + '</span>' +
-        '</a>';
+        '<span>' +
+        t(n.titleKey) +
+        '</span>' +
+        '</a>'
+      );
     }).join('');
 
-    return '<div class="sp-page">' +
+    return (
+      '<div class="sp-page">' +
       '<div class="sp-page-head">' +
-      '<h1>' + t('settings.title') + '</h1>' +
-      '<p>' + t('settings.description') + '</p>' +
+      '<h1>' +
+      t('settings.title') +
+      '</h1>' +
+      '<p>' +
+      t('settings.description') +
+      '</p>' +
       '</div>' +
       '<div class="sp-sep"></div>' +
       '<div class="sp-body">' +
-      '<aside class="sp-nav-col"><nav class="sp-nav">' + navHtml + '</nav></aside>' +
-      '<div class="sp-content">' + bodyHtml + '</div>' +
+      '<aside class="sp-nav-col"><nav class="sp-nav">' +
+      navHtml +
+      '</nav></aside>' +
+      '<div class="sp-content">' +
+      bodyHtml +
       '</div>' +
-      '</div>';
+      '</div>' +
+      '</div>'
+    );
   }
 
   App.defineModule({ id: 'settings', render: render });

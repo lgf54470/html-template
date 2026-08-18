@@ -83,14 +83,14 @@ docker run -d --name html-template --restart unless-stopped \
 
 ## 环境变量
 
-| 变量 | 值 | 说明 |
-|---|---|---|
-| `AUTH_PASSWORD` | 自定 | 登录密码(**必设**;登录时与该环境变量常量时间比较,不落库、无随机初始密码) |
-| `ENCRYPTION_KEY` | 64 位 hex | 敏感数据加密密钥,`openssl rand -hex 32` 生成;**生产必设**(见下方安全说明) |
-| `DB_DRIVER` | `sqlite`(默认) | 本地 SQLite;设 `turso` + `DATABASE_URL` / `DATABASE_AUTH_TOKEN` 可改用远程 Turso |
-| `SQLITE_PATH` | `/app/data/sqlite.db` | 本地 sqlite 文件位置(compose 已默认指向数据卷) |
-| `PORT` | `3000` | HTTP 端口(compose 已默认映射) |
-| `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | — | 仅 `DB_DRIVER=turso` 时需要 |
+| 变量                                   | 值                    | 说明                                                                             |
+| -------------------------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| `AUTH_PASSWORD`                        | 自定                  | 登录密码(**必设**;登录时与该环境变量常量时间比较,不落库、无随机初始密码)         |
+| `ENCRYPTION_KEY`                       | 64 位 hex             | 敏感数据加密密钥,`openssl rand -hex 32` 生成;**生产必设**(见下方安全说明)        |
+| `DB_DRIVER`                            | `sqlite`(默认)        | 本地 SQLite;设 `turso` + `DATABASE_URL` / `DATABASE_AUTH_TOKEN` 可改用远程 Turso |
+| `SQLITE_PATH`                          | `/app/data/sqlite.db` | 本地 sqlite 文件位置(compose 已默认指向数据卷)                                   |
+| `PORT`                                 | `3000`                | HTTP 端口(compose 已默认映射)                                                    |
+| `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | —                     | 仅 `DB_DRIVER=turso` 时需要                                                      |
 
 > 也可以复用项目根目录 `.env`(compose 的 `env_file` 已配置为可选加载;进程环境变量优先,`.env` 只补充缺失项)。
 
@@ -159,10 +159,10 @@ A:四套独立方案,任选其一;数据可通过同一 `ENCRYPTION_KEY` 互通�
 
 ## 文件清单
 
-| 文件 | 作用 |
-|---|---|
-| `Dockerfile` | 镜像构建(基础镜像 `debian:latest` + 官方 Node 22 LTS tarball;非 root 运行;健康检查) |
-| `.dockerignore` | 构建上下文排除(本地数据库 / `.env*` / CI / 其它平台代码 / 文档) |
-| `docker-compose.yml` | 一键启动:端口 / 环境变量 / 数据卷 / 自动重启 |
-| `.github/workflows/publish-docker-ghcr.yml` | GitHub Actions:自动构建并发布镜像到 GHCR |
-| `docs/deploy/docker.md` | 本文档 |
+| 文件                                        | 作用                                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `Dockerfile`                                | 镜像构建(基础镜像 `debian:latest` + 官方 Node 22 LTS tarball;非 root 运行;健康检查) |
+| `.dockerignore`                             | 构建上下文排除(本地数据库 / `.env*` / CI / 其它平台代码 / 文档)                     |
+| `docker-compose.yml`                        | 一键启动:端口 / 环境变量 / 数据卷 / 自动重启                                        |
+| `.github/workflows/publish-docker-ghcr.yml` | GitHub Actions:自动构建并发布镜像到 GHCR                                            |
+| `docs/deploy/docker.md`                     | 本文档                                                                              |

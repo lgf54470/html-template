@@ -17,11 +17,11 @@
 
 ## 三种部署方式一览
 
-| 方式 | 适用场景 | 自动化 | 章节 |
-|---|---|---|---|
-| GitHub Actions | 已有 GitHub 仓库,想要 push `v*` 标签即自动部署 | 全自动 | [方式一](#1-github-actions-自动部署推荐) |
-| 控制台 Git 集成 | 不想配置 CI,在 Cloudflare 后台连仓库 | 全自动 | [方式二](#2-cloudflare-控制台-git-集成免-ci) |
-| 本地 wrangler 命令 | 首次部署 / 手动发布 / 本地调试 | 手动 | [方式三](#3-本地-wrangler-命令) |
+| 方式               | 适用场景                                       | 自动化 | 章节                                         |
+| ------------------ | ---------------------------------------------- | ------ | -------------------------------------------- |
+| GitHub Actions     | 已有 GitHub 仓库,想要 push `v*` 标签即自动部署 | 全自动 | [方式一](#1-github-actions-自动部署推荐)     |
+| 控制台 Git 集成    | 不想配置 CI,在 Cloudflare 后台连仓库           | 全自动 | [方式二](#2-cloudflare-控制台-git-集成免-ci) |
+| 本地 wrangler 命令 | 首次部署 / 手动发布 / 本地调试                 | 手动   | [方式三](#3-本地-wrangler-命令)              |
 
 > 三种方式最终效果一致(同一个 Worker + 同一个 D1),可混合使用。建议先用方式三跑通,再启用 CI。
 
@@ -70,10 +70,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Worker 运行在无文件系统环境,**首次部署前必须设置**:
 
-| Secret | 作用 | 说明 |
-|---|---|---|
-| `AUTH_PASSWORD` | 登录密码(**必设**) | 登录时直接与 secret 比较;未设置时登录返回明确报错,绝不生成随机密码 |
-| `ENCRYPTION_KEY` | 敏感数据加密密钥 | 0.3 生成的 64 位 hex |
+| Secret           | 作用               | 说明                                                               |
+| ---------------- | ------------------ | ------------------------------------------------------------------ |
+| `AUTH_PASSWORD`  | 登录密码(**必设**) | 登录时直接与 secret 比较;未设置时登录返回明确报错,绝不生成随机密码 |
+| `ENCRYPTION_KEY` | 敏感数据加密密钥   | 0.3 生成的 64 位 hex                                               |
 
 设置方式(任选其一,与部署方式对应):
 
@@ -91,12 +91,12 @@ Worker 运行在无文件系统环境,**首次部署前必须设置**:
 
 仓库 **Settings → Secrets and variables → Actions → New repository secret**,共 4 个:
 
-| 名称 | 值 |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | API Token(创建方式见下) |
+| 名称                    | 值                          |
+| ----------------------- | --------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | API Token(创建方式见下)     |
 | `CLOUDFLARE_ACCOUNT_ID` | 账号 ID(控制台首页右侧可查) |
-| `AUTH_PASSWORD` | 首次登录管理员密码(自定义) |
-| `ENCRYPTION_KEY` | 0.3 生成的 64 位 hex |
+| `AUTH_PASSWORD`         | 首次登录管理员密码(自定义)  |
+| `ENCRYPTION_KEY`        | 0.3 生成的 64 位 hex        |
 
 **API Token 创建**:控制台右上角头像 → **My Profile → API Tokens → Create Token** → 模板选 **Edit Cloudflare Workers**,确认权限包含:
 
@@ -281,15 +281,15 @@ A:完全可以。本地 `node dev-server.js`(sqlite)与 Cloudflare(Worker + D1)�
 
 ## 9. 文件清单
 
-| 文件 | 作用 |
-|---|---|
-| `wrangler.toml` | Worker 配置:入口、静态资源绑定、D1 binding |
-| `worker.js` | Worker 入口:静态资源兜底 + `/api/*` 鉴权 API |
-| `server/db/d1.js` | D1 适配器:Worker 内原生 binding / 本地 REST 两种模式 |
-| `.assetsignore` | 静态资源排除清单(本地文件、文档、CI 不上传) |
-| `.github/workflows/deploy-cloudflare.yml` | GitHub Actions 自动部署 |
-| `.dev.vars.example` | `wrangler dev` 本地调试环境变量模板 |
-| `docs/deploy/cloudflare.md` | 本文档 |
+| 文件                                      | 作用                                                 |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `wrangler.toml`                           | Worker 配置:入口、静态资源绑定、D1 binding           |
+| `worker.js`                               | Worker 入口:静态资源兜底 + `/api/*` 鉴权 API         |
+| `server/db/d1.js`                         | D1 适配器:Worker 内原生 binding / 本地 REST 两种模式 |
+| `.assetsignore`                           | 静态资源排除清单(本地文件、文档、CI 不上传)          |
+| `.github/workflows/deploy-cloudflare.yml` | GitHub Actions 自动部署                              |
+| `.dev.vars.example`                       | `wrangler dev` 本地调试环境变量模板                  |
+| `docs/deploy/cloudflare.md`               | 本文档                                               |
 
 ## 10. 安全提示
 

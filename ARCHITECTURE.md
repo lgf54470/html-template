@@ -4,11 +4,11 @@
 
 这是一个**零外部依赖**的纯前端管理后台模板,由 SSR 项目模板转换而来。整个应用以单个 `index.html` 为入口,支持三种运行模式:
 
-| 模式 | 入口 | 鉴权 | 数据库 | 适用场景 |
-|------|------|------|--------|----------|
-| **纯静态** | 双击 `index.html` | ❌ | ❌ | 快速预览、无需服务器的场景 |
-| **本地服务器** | `node dev-server.js` | ✅ x-auth-password | ✅ SQLite/Turso/D1 | 本地开发、自托管 |
-| **部署模式** | 见下方 | ✅ | ✅ | 生产环境 |
+| 模式           | 入口                 | 鉴权               | 数据库             | 适用场景                   |
+| -------------- | -------------------- | ------------------ | ------------------ | -------------------------- |
+| **纯静态**     | 双击 `index.html`    | ❌                 | ❌                 | 快速预览、无需服务器的场景 |
+| **本地服务器** | `node dev-server.js` | ✅ x-auth-password | ✅ SQLite/Turso/D1 | 本地开发、自托管           |
+| **部署模式**   | 见下方               | ✅                 | ✅                 | 生产环境                   |
 
 ### 部署平台支持
 
@@ -136,9 +136,7 @@ App.registerModule({
   route: '/',
   load: 'module.js',
   i18nFile: 'i18n.js',
-  children: [
-    { id: 'sub', title: { en: 'Sub' }, route: '/dashboard/sub', load: 'sub/sub.js' },
-  ],
+  children: [{ id: 'sub', title: { en: 'Sub' }, route: '/dashboard/sub', load: 'sub/sub.js' }],
 });
 
 // module.js 示例
@@ -205,14 +203,14 @@ document.addEventListener('click', function (e) {
 
 所有平台共享同一份 API 逻辑:
 
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| POST | `/api/auth/login` | `{ password, expiry }` → `{ token, expiresAt }` | ❌ |
-| GET | `/api/auth/verify` | 校验会话有效性 | ✅ |
-| POST | `/api/auth/logout` | 删除服务端会话 | ✅ |
-| GET | `/api/settings` | 返回全部 `app_settings` | ✅ |
-| PUT | `/api/settings` | 批量写入 `{ settings: { key: value } }` | ✅ |
-| DELETE | `/api/settings` | 删除 `{ keys: [...] }` | ✅ |
+| 方法   | 路径               | 说明                                            | 鉴权 |
+| ------ | ------------------ | ----------------------------------------------- | ---- |
+| POST   | `/api/auth/login`  | `{ password, expiry }` → `{ token, expiresAt }` | ❌   |
+| GET    | `/api/auth/verify` | 校验会话有效性                                  | ✅   |
+| POST   | `/api/auth/logout` | 删除服务端会话                                  | ✅   |
+| GET    | `/api/settings`    | 返回全部 `app_settings`                         | ✅   |
+| PUT    | `/api/settings`    | 批量写入 `{ settings: { key: value } }`         | ✅   |
+| DELETE | `/api/settings`    | 删除 `{ keys: [...] }`                          | ✅   |
 
 ### 4.2 鉴权机制
 
@@ -254,6 +252,7 @@ CREATE TABLE auth_sessions (
 ```
 
 **键命名规范:**
+
 - `settings:appearance` — 外观设置
 - `settings:display` — 显示设置(侧边栏宽度/隐藏菜单)
 - `settings:profile` — 个人资料
@@ -278,18 +277,19 @@ CREATE TABLE auth_sessions (
 
 通过 `DB_DRIVER` 环境变量切换:
 
-| 驱动 | 文件 | 说明 |
-|------|------|------|
+| 驱动     | 文件                  | 说明                                       |
+| -------- | --------------------- | ------------------------------------------ |
 | `sqlite` | `server/db/sqlite.js` | 本地 SQLite(node:sqlite 内置, Node ≥ 22.5) |
-| `turso` | `server/db/turso.js` | 远程 Turso/libSQL HTTP API |
-| `d1` | `server/db/d1.js` | Cloudflare D1(binding + REST) |
+| `turso`  | `server/db/turso.js`  | 远程 Turso/libSQL HTTP API                 |
+| `d1`     | `server/db/d1.js`     | Cloudflare D1(binding + REST)              |
 
 统一接口:
+
 ```javascript
-db.query(sql, params)  // 查询 → 行数组
-db.get(sql, params)    // 单行查询 → 对象或 null
-db.run(sql, params)    // 写操作 → { changes, lastInsertRowid }
-db.initSchema(schema)  // 建表(幂等)
+db.query(sql, params); // 查询 → 行数组
+db.get(sql, params); // 单行查询 → 对象或 null
+db.run(sql, params); // 写操作 → { changes, lastInsertRowid }
+db.initSchema(schema); // 建表(幂等)
 ```
 
 ---
@@ -300,28 +300,28 @@ db.initSchema(schema)  // 建表(幂等)
 
 所有存储键以 `html-template-` 为前缀:
 
-| 键 | 说明 |
-|----|------|
-| `html-template-locale` | 语言(zh-CN/zh-TW/en) |
-| `html-template-theme` | 主题模式(system/light/dark) |
-| `html-template-style` | 风格(nova/vega/maia/lyra/mira/luma/sera/rhea) |
-| `html-template-base` | 基础色 |
-| `html-template-chart` | 强调色 |
-| `html-template-radius` | 圆角(px) |
-| `html-template-font` | 正文字体 |
-| `html-template-heading-font` | 标题字体 |
-| `html-template-menu-color` | 菜单颜色 |
-| `html-template-menu-appearance` | 菜单外观 |
-| `html-template-sidebar-variant` | 侧边栏变体(inset/floating/sidebar) |
-| `html-template-sidebar-collapsible` | 侧边栏折叠模式(icon/offcanvas) |
-| `html-template-sidebar-width` | 侧边栏宽度(px) |
-| `html-template-sidebar-open` | 侧边栏展开状态 |
-| `html-template-hidden-nav` | 隐藏的菜单项(JSON 数组) |
-| `html-template-auth-token` | 登录令牌 |
-| `html-template-auth-expiry` | 令牌过期时间 |
-| `html-template-profile` | 个人资料(JSON) |
-| `html-template-account` | 账号设置(JSON) |
-| `html-template-notifications` | 通知设置(JSON) |
+| 键                                  | 说明                                          |
+| ----------------------------------- | --------------------------------------------- |
+| `html-template-locale`              | 语言(zh-CN/zh-TW/en)                          |
+| `html-template-theme`               | 主题模式(system/light/dark)                   |
+| `html-template-style`               | 风格(nova/vega/maia/lyra/mira/luma/sera/rhea) |
+| `html-template-base`                | 基础色                                        |
+| `html-template-chart`               | 强调色                                        |
+| `html-template-radius`              | 圆角(px)                                      |
+| `html-template-font`                | 正文字体                                      |
+| `html-template-heading-font`        | 标题字体                                      |
+| `html-template-menu-color`          | 菜单颜色                                      |
+| `html-template-menu-appearance`     | 菜单外观                                      |
+| `html-template-sidebar-variant`     | 侧边栏变体(inset/floating/sidebar)            |
+| `html-template-sidebar-collapsible` | 侧边栏折叠模式(icon/offcanvas)                |
+| `html-template-sidebar-width`       | 侧边栏宽度(px)                                |
+| `html-template-sidebar-open`        | 侧边栏展开状态                                |
+| `html-template-hidden-nav`          | 隐藏的菜单项(JSON 数组)                       |
+| `html-template-auth-token`          | 登录令牌                                      |
+| `html-template-auth-expiry`         | 令牌过期时间                                  |
+| `html-template-profile`             | 个人资料(JSON)                                |
+| `html-template-account`             | 账号设置(JSON)                                |
+| `html-template-notifications`       | 通知设置(JSON)                                |
 
 ### 5.2 白名单校验
 
@@ -350,12 +350,15 @@ var FONTS = ['inter', 'manrope', 'system'];
 ### 6.2 类名系统
 
 ```html
-<html class="style-nova base-zinc chart-zinc menu-color-default menu-appearance-solid"
-      data-sidebar-variant="inset"
-      data-sidebar-collapsible="icon">
+<html
+  class="style-nova base-zinc chart-zinc menu-color-default menu-appearance-solid"
+  data-sidebar-variant="inset"
+  data-sidebar-collapsible="icon"
+></html>
 ```
 
 动态切换通过 `App.settings.applySettings()` 操作 DOM class:
+
 - 风格: `style-{name}`
 - 基础色: `base-{name}`
 - 强调色: `chart-{name}`
@@ -368,10 +371,10 @@ var FONTS = ['inter', 'manrope', 'system'];
 
 ```javascript
 // 渲染 lucide 图标
-App.icon.iconSvg('settings', { class: 'size-4' })
+App.icon.iconSvg('settings', { class: 'size-4' });
 
 // 渲染预览图标(主题/侧边栏/布局示意)
-App.icon.previewIcon('theme-dark', 'fill-primary')
+App.icon.previewIcon('theme-dark', 'fill-primary');
 ```
 
 ---
@@ -405,8 +408,8 @@ App.icon.previewIcon('theme-dark', 'fill-primary')
 var t = App.i18n.makeT(locale, moduleDict);
 
 // 使用
-t('settings.title')           // → "主题设置" 或 "Theme Settings"
-t('home.requestTitle', 5)     // → "请求 5 已完成" (支持 {n} 插值)
+t('settings.title'); // → "主题设置" 或 "Theme Settings"
+t('home.requestTitle', 5); // → "请求 5 已完成" (支持 {n} 插值)
 ```
 
 ---
@@ -416,37 +419,39 @@ t('home.requestTitle', 5)     // → "请求 5 已完成" (支持 {n} 插值)
 ### 8.1 CSP (Content Security Policy)
 
 ```html
-<meta http-equiv="Content-Security-Policy"
-  content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'" />
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'"
+/>
 ```
 
 ### 8.2 敏感数据保护
 
-| 防线 | 措施 |
-|------|------|
-| 会话令牌 | 服务端只存 SHA-256 哈希,明文仅在登录响应中返回 |
-| 敏感值加密 | AES-256-GCM 加密落库(邮箱/apikey/token/secret/...) |
-| 密码校验 | 与 `AUTH_PASSWORD` 环境变量常量时间比较,不落库 |
-| API 保护 | 除登录外,所有 `/api/*` 需 `x-auth-token` 请求头 |
-| 保留键保护 | `settings:auth:*` 禁止通过通用 KV 接口读写 |
-| 令牌过期 | 双端校验:客户端 localStorage/sessionStorage + 服务端 auth_sessions |
+| 防线       | 措施                                                               |
+| ---------- | ------------------------------------------------------------------ |
+| 会话令牌   | 服务端只存 SHA-256 哈希,明文仅在登录响应中返回                     |
+| 敏感值加密 | AES-256-GCM 加密落库(邮箱/apikey/token/secret/...)                 |
+| 密码校验   | 与 `AUTH_PASSWORD` 环境变量常量时间比较,不落库                     |
+| API 保护   | 除登录外,所有 `/api/*` 需 `x-auth-token` 请求头                    |
+| 保留键保护 | `settings:auth:*` 禁止通过通用 KV 接口读写                         |
+| 令牌过期   | 双端校验:客户端 localStorage/sessionStorage + 服务端 auth_sessions |
 
 ### 8.3 令牌存储策略
 
-| 失效选项 | 存储位置 | 说明 |
-|----------|----------|------|
-| 3h/6h/9h/12h/24h/7d/14d/30d | localStorage | 持久存储,关浏览器仍有效 |
-| 下一次浏览器打开 | sessionStorage | 关浏览器即失效 |
+| 失效选项                    | 存储位置       | 说明                    |
+| --------------------------- | -------------- | ----------------------- |
+| 3h/6h/9h/12h/24h/7d/14d/30d | localStorage   | 持久存储,关浏览器仍有效 |
+| 下一次浏览器打开            | sessionStorage | 关浏览器即失效          |
 
 ### 8.4 静态资源白名单与响应加固
 
-| 防线 | 措施 |
-|------|------|
-| 静态白名单 | 仅放行 `index.html` / `js/` / `assets/`(`server/http/allowed.js`),阻断 `server/`、`.env*`、`sqlite.db`、部署配置等 |
-| 登录限流 | 密码错误按 IP 计数,默认 1 分钟 8 次后返回 429(`server/auth/throttle.js`) |
+| 防线       | 措施                                                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 静态白名单 | 仅放行 `index.html` / `js/` / `assets/`(`server/http/allowed.js`),阻断 `server/`、`.env*`、`sqlite.db`、部署配置等     |
+| 登录限流   | 密码错误按 IP 计数,默认 1 分钟 8 次后返回 429(`server/auth/throttle.js`)                                               |
 | 安全响应头 | `X-Content-Type-Options: nosniff` / `X-Frame-Options: DENY` / `Referrer-Policy: no-referrer`(`server/http/headers.js`) |
-| 错误信息 | 500 只返回通用文案,不向前端泄露内部错误详情 |
-| 输出转义 | 个人资料邮箱等用户可控字段渲染时做 HTML 属性/文本双重转义 |
+| 错误信息   | 500 只返回通用文案,不向前端泄露内部错误详情                                                                            |
+| 输出转义   | 个人资料邮箱等用户可控字段渲染时做 HTML 属性/文本双重转义                                                              |
 
 ---
 
@@ -486,12 +491,12 @@ t('home.requestTitle', 5)     // → "请求 5 已完成" (支持 {n} 插值)
 services:
   app:
     build: .
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     environment:
       - AUTH_PASSWORD=your-password
       - DB_DRIVER=sqlite
       - SQLITE_PATH=/app/data/sqlite.db
-    volumes: ["./data:/app/data"]
+    volumes: ['./data:/app/data']
 ```
 
 ---
@@ -696,11 +701,11 @@ index.html
 
 项目默认零外部依赖,但支持引入**单文件、无子依赖**的第三方 JS 库:
 
-| 库类型 | 放置位置 | 说明 |
-|--------|----------|------|
-| 前端单文件库 | `js/lib/xxx.js` | 纯浏览器端使用 |
-| 后端单文件库 | `server/lib/xxx.js` | Node.js 服务端使用 |
-| 有 npm 依赖的库 | `package.json` + `node_modules/` | 走标准包管理 |
+| 库类型          | 放置位置                         | 说明               |
+| --------------- | -------------------------------- | ------------------ |
+| 前端单文件库    | `js/lib/xxx.js`                  | 纯浏览器端使用     |
+| 后端单文件库    | `server/lib/xxx.js`              | Node.js 服务端使用 |
+| 有 npm 依赖的库 | `package.json` + `node_modules/` | 走标准包管理       |
 
 **使用方式:**
 
@@ -728,5 +733,5 @@ const lib = require('./lib/some-library');
 
 ---
 
-*文档生成时间: 2026-08-18*
-*项目版本: 1.0.0*
+_文档生成时间: 2026-08-18_
+_项目版本: 1.0.0_

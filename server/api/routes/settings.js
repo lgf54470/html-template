@@ -18,21 +18,29 @@ function settingsRoutes({ db, encrypt, decrypt }) {
     const out = {};
     rows.forEach((r) => {
       if (r.key.indexOf(RESERVED_SETTINGS_PREFIX) === 0) return;
-      out[r.key] = isSensitiveKey(r.key) ? (decrypt(r.value) || '') : r.value;
+      out[r.key] = isSensitiveKey(r.key) ? decrypt(r.value) || '' : r.value;
     });
     return sendJson(res, 200, out);
   }
 
   async function putSettings(req, res) {
     let body;
-    try { body = await readBody(req); } catch (e) { return sendJson(res, 400, { error: 'bad_json' }); }
+    try {
+      body = await readBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { error: 'bad_json' });
+    }
     const entries = body && typeof body.settings === 'object' ? body.settings : null;
-    if (!entries) return sendJson(res, 400, { error: 'bad_body', message: '需要 { settings: {...} }' });
+    if (!entries)
+      return sendJson(res, 400, { error: 'bad_body', message: '需要 { settings: {...} }' });
 
     const keys = Object.keys(entries);
     for (const k of keys) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {
-        return sendJson(res, 403, { error: 'reserved_key', message: k + ' 为保留键,请走专用鉴权接口' });
+        return sendJson(res, 403, {
+          error: 'reserved_key',
+          message: k + ' 为保留键,请走专用鉴权接口',
+        });
       }
     }
 
@@ -43,7 +51,7 @@ function settingsRoutes({ db, encrypt, decrypt }) {
       if (isSensitiveKey(k)) v = encrypt(v);
       await db.run(
         'INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
-        [k, v, now],
+        [k, v, now]
       );
     }
     return sendJson(res, 200, { ok: true, written: keys.length });
@@ -51,7 +59,11 @@ function settingsRoutes({ db, encrypt, decrypt }) {
 
   async function deleteSettings(req, res) {
     let body;
-    try { body = await readBody(req); } catch (e) { return sendJson(res, 400, { error: 'bad_json' }); }
+    try {
+      body = await readBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { error: 'bad_json' });
+    }
     const keys = Array.isArray(body && body.keys) ? body.keys : [];
     for (const k of keys) {
       if (k.indexOf(RESERVED_SETTINGS_PREFIX) === 0) {

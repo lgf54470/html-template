@@ -32,13 +32,19 @@ function etag(st) {
 
 function serveStatic(req, res, pathname, root) {
   if (!isPublicAsset(pathname)) {
-    res.writeHead(404, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
+    res.writeHead(
+      404,
+      Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS)
+    );
     return res.end('Not Found');
   }
   const rel = pathname === '/' ? '/index.html' : pathname;
   let filePath = path.resolve(root, '.' + rel);
   if (filePath !== root && !filePath.startsWith(root + path.sep)) {
-    res.writeHead(403, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
+    res.writeHead(
+      403,
+      Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS)
+    );
     return res.end('Forbidden');
   }
   fs.stat(filePath, (err, st) => {
@@ -48,23 +54,39 @@ function serveStatic(req, res, pathname, root) {
     // 二次 stat 拿到真实文件(目录→index.html 后)的 mtime/size
     fs.stat(filePath, (err2, st2) => {
       if (err2 || !st2.isFile()) {
-        res.writeHead(404, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
+        res.writeHead(
+          404,
+          Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS)
+        );
         return res.end('Not Found');
       }
-      const headers = Object.assign({
-        'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': cacheControl(pathname),
-        'ETag': etag(st2),
-        'Last-Modified': new Date(st2.mtimeMs).toUTCString(),
-      }, SECURITY_HEADERS);
+      const headers = Object.assign(
+        {
+          'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
+          'Cache-Control': cacheControl(pathname),
+          ETag: etag(st2),
+          'Last-Modified': new Date(st2.mtimeMs).toUTCString(),
+        },
+        SECURITY_HEADERS
+      );
       const inm = req.headers['if-none-match'];
-      if (inm && String(inm).split(',').some(function (t) { return t.trim() === headers['ETag']; })) {
+      if (
+        inm &&
+        String(inm)
+          .split(',')
+          .some(function (t) {
+            return t.trim() === headers['ETag'];
+          })
+      ) {
         res.writeHead(304, headers);
         return res.end();
       }
       fs.readFile(filePath, (err3, data) => {
         if (err3) {
-          res.writeHead(404, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
+          res.writeHead(
+            404,
+            Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS)
+          );
           return res.end('Not Found');
         }
         res.writeHead(200, headers);

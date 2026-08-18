@@ -39,9 +39,11 @@ function normalizePath(pathname) {
  */
 function createApiHandler(ctx) {
   const routes = {};
-  authRoutes(ctx).concat(settingsRoutes(ctx)).forEach((r) => {
-    routes[r.method + ' ' + r.path] = r;
-  });
+  authRoutes(ctx)
+    .concat(settingsRoutes(ctx))
+    .forEach((r) => {
+      routes[r.method + ' ' + r.path] = r;
+    });
 
   return async function handleApi(req, res, pathname) {
     const route = routes[req.method + ' ' + normalizePath(pathname)];

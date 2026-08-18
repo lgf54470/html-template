@@ -11,20 +11,33 @@ const { SECURITY_HEADERS } = require('./headers');
 
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
-  res.writeHead(status, Object.assign({
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-  }, SECURITY_HEADERS));
+  res.writeHead(
+    status,
+    Object.assign(
+      {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+      SECURITY_HEADERS
+    )
+  );
   res.end(body);
 }
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (c) => { data += c; if (data.length > 1e6) reject(new Error('body too large')); });
+    req.on('data', (c) => {
+      data += c;
+      if (data.length > 1e6) reject(new Error('body too large'));
+    });
     req.on('end', () => {
       if (!data) return resolve({});
-      try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      try {
+        resolve(JSON.parse(data));
+      } catch (e) {
+        reject(e);
+      }
     });
     req.on('error', reject);
   });

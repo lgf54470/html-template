@@ -38,9 +38,9 @@
     var t = String(line).trim();
     var m = t.match(/at\s+(.*?)\s*\((.*?):(\d+):(\d+)\)\s*$/); // at fn (url:l:c)
     if (m) return { fn: m[1], file: m[2], line: +m[3], col: +m[4] };
-    m = t.match(/at\s+(.*?):(\d+):(\d+)\s*$/);                   // at url:l:c
+    m = t.match(/at\s+(.*?):(\d+):(\d+)\s*$/); // at url:l:c
     if (m) return { fn: '', file: m[1], line: +m[2], col: +m[3] };
-    m = t.match(/^(.*?)@(.*?):(\d+):(\d+)$/);                    // Firefox: fn@url:l:c
+    m = t.match(/^(.*?)@(.*?):(\d+):(\d+)$/); // Firefox: fn@url:l:c
     if (m) return { fn: m[1], file: m[2], line: +m[3], col: +m[4] };
     return null;
   }
@@ -77,14 +77,17 @@
     var caller = callerFrame();
     var loc = caller ? ' ' + caller.file + '#' + caller.fn + ':' + caller.line : '';
     var prefix =
-      '%c[' + PROJECT + ']%c %c' + level.toUpperCase() + '%c %c[' + moduleId + ']%c' + loc +
-      ' ' + message;
-    var args = [
-      prefix,
-      STYLES.project, '',
-      STYLES.badge[level], '',
-      STYLES.module, '',
-    ];
+      '%c[' +
+      PROJECT +
+      ']%c %c' +
+      level.toUpperCase() +
+      '%c %c[' +
+      moduleId +
+      ']%c' +
+      loc +
+      ' ' +
+      message;
+    var args = [prefix, STYLES.project, '', STYLES.badge[level], '', STYLES.module, ''];
     var fn = console[METHOD[level]] || console.log;
     fn.apply(console, args);
     // 附加数据:Error 直接交给控制台渲染(完整可点击堆栈);对象打印明细
@@ -97,12 +100,24 @@
 
   var logger = {
     log: log,
-    debug: function (m, msg, data) { log('debug', m, msg, data); },
-    info: function (m, msg, data) { log('info', m, msg, data); },
-    warn: function (m, msg, data) { log('warn', m, msg, data); },
-    error: function (m, msg, data) { log('error', m, msg, data); },
-    setLevel: function (lv) { if (LEVELS.indexOf(lv) !== -1) currentLevel = lv; },
-    getLevel: function () { return currentLevel; },
+    debug: function (m, msg, data) {
+      log('debug', m, msg, data);
+    },
+    info: function (m, msg, data) {
+      log('info', m, msg, data);
+    },
+    warn: function (m, msg, data) {
+      log('warn', m, msg, data);
+    },
+    error: function (m, msg, data) {
+      log('error', m, msg, data);
+    },
+    setLevel: function (lv) {
+      if (LEVELS.indexOf(lv) !== -1) currentLevel = lv;
+    },
+    getLevel: function () {
+      return currentLevel;
+    },
     /** 暴露解析/定位能力,便于模块自定义输出 */
     parseStackLine: parseStackLine,
     callerFrame: callerFrame,
@@ -112,9 +127,16 @@
   /* ---------- 全局错误捕获 ---------- */
   window.addEventListener('error', function (ev) {
     var err = ev.error || null;
-    var detail = err instanceof Error && err.stack
-      ? err
-      : { message: ev.message, file: displayFile(ev.filename), line: ev.lineno, col: ev.colno, stack: err && err.stack };
+    var detail =
+      err instanceof Error && err.stack
+        ? err
+        : {
+            message: ev.message,
+            file: displayFile(ev.filename),
+            line: ev.lineno,
+            col: ev.colno,
+            stack: err && err.stack,
+          };
     logger.error('global', '未捕获异常: ' + (ev.message || 'unknown'), detail);
   });
 

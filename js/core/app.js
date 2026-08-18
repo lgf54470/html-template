@@ -28,11 +28,19 @@
   /** 加载脚本(纯 <script> 注入,兼容 file://) */
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
-      if (loadedScripts[src]) { resolve(); return; }
+      if (loadedScripts[src]) {
+        resolve();
+        return;
+      }
       var s = document.createElement('script');
       s.src = src;
-      s.onload = function () { loadedScripts[src] = true; resolve(); };
-      s.onerror = function () { reject(new Error('模块脚本加载失败: ' + src)); };
+      s.onload = function () {
+        loadedScripts[src] = true;
+        resolve();
+      };
+      s.onerror = function () {
+        reject(new Error('模块脚本加载失败: ' + src));
+      };
       document.head.appendChild(s);
     });
   }
@@ -44,8 +52,13 @@
       var l = document.createElement('link');
       l.rel = 'stylesheet';
       l.href = href;
-      l.onload = function () { loadedCss[href] = true; resolve(); };
-      l.onerror = function () { reject(new Error('模块样式加载失败: ' + href)); };
+      l.onload = function () {
+        loadedCss[href] = true;
+        resolve();
+      };
+      l.onerror = function () {
+        reject(new Error('模块样式加载失败: ' + href));
+      };
       document.head.appendChild(l);
     });
   }
@@ -67,7 +80,7 @@
         id: meta.id,
         title: meta.title || {},
         icon: meta.icon || 'circle-check',
-        route: meta.route || ('/' + meta.id),
+        route: meta.route || '/' + meta.id,
         load: meta.load || 'module.js',
         css: meta.css || null,
         i18n: meta.i18n || null,
@@ -76,7 +89,7 @@
           return {
             id: c.id,
             title: c.title || {},
-            route: c.route || ('/' + meta.id + '/' + c.id),
+            route: c.route || '/' + meta.id + '/' + c.id,
             load: c.load || meta.load || 'module.js',
             css: c.css || null,
           };
@@ -132,28 +145,38 @@
     if (child && child.css) tasks.push(loadCss(moduleDir(meta.id) + child.css));
     // 模块词典懒加载(manifest 仅声明 i18nFile,不内联文案)
     if (meta.i18nFile && !meta.i18n) {
-      tasks.push(loadScript(moduleDir(meta.id) + meta.i18nFile).then(function () {
-        meta.i18n = window.__moduleI18n[meta.id] || null;
-      }));
+      tasks.push(
+        loadScript(moduleDir(meta.id) + meta.i18nFile).then(function () {
+          meta.i18n = window.__moduleI18n[meta.id] || null;
+        })
+      );
     }
 
     if (child) {
       var ckey = meta.id + ':' + child.id;
       // 子模块实现未定义时才加载子模块文件(父模块可能已统一实现)
       if (!subImpls[ckey] && !impls[meta.id]) {
-        tasks.push(loadScript(moduleDir(meta.id) + child.load).then(function () {
-          if (!subImpls[ckey] && !impls[meta.id]) {
-            return waitFor(ckey).then(function () { return undefined; });
-          }
-        }));
+        tasks.push(
+          loadScript(moduleDir(meta.id) + child.load).then(function () {
+            if (!subImpls[ckey] && !impls[meta.id]) {
+              return waitFor(ckey).then(function () {
+                return undefined;
+              });
+            }
+          })
+        );
       }
     } else if (!impls[meta.id]) {
-      tasks.push(loadScript(moduleDir(meta.id) + meta.load).then(function () {
-        m.loaded = true;
-        if (!impls[meta.id]) {
-          return waitFor(meta.id).then(function () { return undefined; });
-        }
-      }));
+      tasks.push(
+        loadScript(moduleDir(meta.id) + meta.load).then(function () {
+          m.loaded = true;
+          if (!impls[meta.id]) {
+            return waitFor(meta.id).then(function () {
+              return undefined;
+            });
+          }
+        })
+      );
     } else {
       m.loaded = true;
     }
@@ -164,7 +187,10 @@
   function resolveRoute(path, settings) {
     var hit = findRoute(path);
     if (!hit) {
-      return Promise.resolve({ html: App.ui.notFound(App.i18n.makeT(settings.locale)), status: 404 });
+      return Promise.resolve({
+        html: App.ui.notFound(App.i18n.makeT(settings.locale)),
+        status: 404,
+      });
     }
     var m = hit.module;
     var meta = m.meta;
@@ -177,7 +203,9 @@
         def = impls[meta.id] || null;
       }
       if (!def || typeof def.render !== 'function') {
-        throw new Error('模块 ' + meta.id + (hit.child ? '/' + hit.child.id : '') + ' 未定义 render');
+        throw new Error(
+          '模块 ' + meta.id + (hit.child ? '/' + hit.child.id : '') + ' 未定义 render'
+        );
       }
       var ctx = {
         path: path,
@@ -258,7 +286,9 @@
    */
   /** 判断 patch 是否触及某类设置(避免每次击键都重建整棵侧边栏/顶栏) */
   function patchTouches(patch, keys) {
-    return keys.some(function (k) { return Object.prototype.hasOwnProperty.call(patch, k); });
+    return keys.some(function (k) {
+      return Object.prototype.hasOwnProperty.call(patch, k);
+    });
   }
 
   function updateSettings(patch, opts) {
@@ -270,7 +300,16 @@
     // 仅在相关设置变化时刷新顶栏/侧边栏:profile/account/notifications 等
     // 表单击键不重建侧边栏,避免高频输入触发不必要的整树 DOM 重建。
     if (patchTouches(patch, ['theme'])) syncHeaderThemeButtons();
-    if (patchTouches(patch, ['locale', 'sidebarVariant', 'sidebarCollapsible', 'sidebarWidth', 'hiddenNav'])) refreshSidebar();
+    if (
+      patchTouches(patch, [
+        'locale',
+        'sidebarVariant',
+        'sidebarCollapsible',
+        'sidebarWidth',
+        'hiddenNav',
+      ])
+    )
+      refreshSidebar();
     if (sheetOpen) App.shell.rerenderSheetContent(settings, tFor(settings.locale));
     // 设置页与右上角面板同源:任一侧修改,当前设置页内容同步刷新(双向同步)
     if (!opts.noRerender && currentPath().indexOf('/settings') === 0) rerenderContent();
@@ -345,10 +384,9 @@
     if (serverSyncTimer) clearTimeout(serverSyncTimer);
     serverSyncTimer = setTimeout(function () {
       serverSyncTimer = null;
-      App.api.put('/api/settings', { settings: serverSettingsPayload() })
-        .catch(function (e) {
-          if (e && e.status !== 401) App.logger.warn('core', '设置同步到数据库失败', e);
-        });
+      App.api.put('/api/settings', { settings: serverSettingsPayload() }).catch(function (e) {
+        if (e && e.status !== 401) App.logger.warn('core', '设置同步到数据库失败', e);
+      });
     }, 400);
   }
 
@@ -357,8 +395,16 @@
     if (!raw || typeof raw !== 'object') return null;
     var appearance = null;
     var display = null;
-    try { appearance = JSON.parse(raw['settings:appearance'] || 'null'); } catch (e) { appearance = null; }
-    try { display = JSON.parse(raw['settings:display'] || 'null'); } catch (e) { display = null; }
+    try {
+      appearance = JSON.parse(raw['settings:appearance'] || 'null');
+    } catch (e) {
+      appearance = null;
+    }
+    try {
+      display = JSON.parse(raw['settings:display'] || 'null');
+    } catch (e) {
+      display = null;
+    }
     if (!appearance && !display) return null;
     var K = App.settings.K;
     var set = App.settings.writeStorage;
@@ -368,15 +414,21 @@
       if (appearance.baseColor) set(K('base'), String(appearance.baseColor));
       if (appearance.chartColor) set(K('chart'), String(appearance.chartColor));
       if (appearance.radius) {
-        var r = App.settings.RADII.find(function (x) { return x.value === appearance.radius; });
+        var r = App.settings.RADII.find(function (x) {
+          return x.value === appearance.radius;
+        });
         if (r) set(K('radius'), r.px);
       }
       if (appearance.bodyFont) {
-        var bf = App.settings.FONTS.find(function (x) { return x.value === appearance.bodyFont; });
+        var bf = App.settings.FONTS.find(function (x) {
+          return x.value === appearance.bodyFont;
+        });
         if (bf) set(K('font'), bf.stack);
       }
       if (appearance.headingFont) {
-        var hf = App.settings.FONTS.find(function (x) { return x.value === appearance.headingFont; });
+        var hf = App.settings.FONTS.find(function (x) {
+          return x.value === appearance.headingFont;
+        });
         if (hf) set(K('heading-font'), hf.stack);
       }
       if (appearance.menuColor) set(K('menu-color'), String(appearance.menuColor));
@@ -384,7 +436,8 @@
     }
     if (display && typeof display === 'object') {
       if (display.sidebarVariant) set(K('sidebar-variant'), String(display.sidebarVariant));
-      if (display.sidebarCollapsible) set(K('sidebar-collapsible'), String(display.sidebarCollapsible));
+      if (display.sidebarCollapsible)
+        set(K('sidebar-collapsible'), String(display.sidebarCollapsible));
       if (display.sidebarWidth != null) set(K('sidebar-width'), String(display.sidebarWidth));
       if (Array.isArray(display.hiddenNav)) set(K('hidden-nav'), JSON.stringify(display.hiddenNav));
     }
@@ -395,7 +448,9 @@
       try {
         JSON.parse(raw[rawKey]);
         set(K(domain), raw[rawKey]);
-      } catch (e) { /* 脏数据忽略,保持本地值 */ }
+      } catch (e) {
+        /* 脏数据忽略,保持本地值 */
+      }
     });
     return App.settings.readSettings();
   }
@@ -420,7 +475,8 @@
    *  与当前值不同才整页刷新,避免无变化时的重复渲染。 */
   function syncSettingsFromServer() {
     if (!App.auth || !App.auth.token()) return;
-    App.api.get('/api/settings')
+    App.api
+      .get('/api/settings')
       .then(function (raw) {
         var merged = mergeServerSettings(raw);
         if (!merged) return;
@@ -461,7 +517,10 @@
   }
 
   function setSidebarWidth(w) {
-    var clamped = Math.min(App.settings.SIDEBAR_MAX_WIDTH, Math.max(App.settings.SIDEBAR_MIN_WIDTH, Math.round(w)));
+    var clamped = Math.min(
+      App.settings.SIDEBAR_MAX_WIDTH,
+      Math.max(App.settings.SIDEBAR_MIN_WIDTH, Math.round(w))
+    );
     updateSettings({ sidebarWidth: clamped });
   }
 
@@ -490,13 +549,15 @@
     var contentArea = app.querySelector('[data-content-area]');
     var viewport = app.querySelector('[data-slot="scroll-area-viewport"]');
     var scrollTop = viewport ? viewport.scrollTop : 0;
-    resolveRoute(currentPath(), settings).then(function (result) {
-      if (contentArea) contentArea.innerHTML = result.html;
-      if (viewport) viewport.scrollTop = scrollTop;
-      updateNavActive(currentPath());
-    }).catch(function (e) {
-      App.logger.error('core', '设置同步重渲染失败', e);
-    });
+    resolveRoute(currentPath(), settings)
+      .then(function (result) {
+        if (contentArea) contentArea.innerHTML = result.html;
+        if (viewport) viewport.scrollTop = scrollTop;
+        updateNavActive(currentPath());
+      })
+      .catch(function (e) {
+        App.logger.error('core', '设置同步重渲染失败', e);
+      });
   }
 
   function resetSettings() {
@@ -528,7 +589,8 @@
     root.setAttribute('data-collapsible', sidebarOpen ? '' : settings.sidebarCollapsible);
     root.setAttribute('data-variant', settings.sidebarVariant);
     var container = app.querySelector('[data-slot="sidebar-container"]');
-    if (container) container.setAttribute('data-collapsible', sidebarOpen ? '' : settings.sidebarCollapsible);
+    if (container)
+      container.setAttribute('data-collapsible', sidebarOpen ? '' : settings.sidebarCollapsible);
     var sidebarEl = app.querySelector('[data-slot="sidebar"]');
     if (sidebarEl) sidebarEl.setAttribute('data-open', String(sidebarOpen));
   }
@@ -538,7 +600,13 @@
     if (!sidebarEl) return;
     var pathname = currentPath();
     var navItems = buildNavItems(settings.locale);
-    sidebarEl.outerHTML = App.shell.sidebarHtml(navItems, settings, tFor(settings.locale), pathname, openSubmenus);
+    sidebarEl.outerHTML = App.shell.sidebarHtml(
+      navItems,
+      settings,
+      tFor(settings.locale),
+      pathname,
+      openSubmenus
+    );
     syncSidebarState();
   }
 
@@ -579,7 +647,12 @@
         if (viewport) viewport.scrollTop = 0;
         var hit = findRoute(path);
         var opened = false;
-        if (hit && hit.module.meta.children && hit.module.meta.children.length && !openSubmenus[hit.module.meta.id]) {
+        if (
+          hit &&
+          hit.module.meta.children &&
+          hit.module.meta.children.length &&
+          !openSubmenus[hit.module.meta.id]
+        ) {
           openSubmenus[hit.module.meta.id] = true; // 导航进入父模块时自动展开其子菜单
           opened = true;
         }
@@ -613,7 +686,13 @@
     var viewport = app.querySelector('[data-slot="scroll-area-viewport"]');
     var scrollTop = viewport ? viewport.scrollTop : 0;
     var navItems = buildNavItems(settings.locale);
-    var html = App.shell.renderShell(settings, tFor(settings.locale), pathname, navItems, openSubmenus);
+    var html = App.shell.renderShell(
+      settings,
+      tFor(settings.locale),
+      pathname,
+      navItems,
+      openSubmenus
+    );
     app.innerHTML = html;
     var newViewport = app.querySelector('[data-slot="scroll-area-viewport"]');
     if (newViewport) newViewport.scrollTop = scrollTop;
@@ -724,7 +803,10 @@
       openSheet();
       return;
     }
-    if (target.closest && (target.closest('[data-sheet-close]') || target.closest('[data-sheet-overlay]'))) {
+    if (
+      target.closest &&
+      (target.closest('[data-sheet-close]') || target.closest('[data-sheet-overlay]'))
+    ) {
       closeSheet();
       return;
     }
@@ -765,12 +847,24 @@
     if (segmented) {
       var v = segmented.dataset.value || '';
       switch (segmented.dataset.segmented) {
-        case 'style': setAppearance({ style: v }); break;
-        case 'body-font': setAppearance({ bodyFont: v }); break;
-        case 'heading-font': setAppearance({ headingFont: v }); break;
-        case 'radius': setAppearance({ radius: v }); break;
-        case 'menu-color': setAppearance({ menuColor: v }); break;
-        case 'menu-appearance': setAppearance({ menuAppearance: v }); break;
+        case 'style':
+          setAppearance({ style: v });
+          break;
+        case 'body-font':
+          setAppearance({ bodyFont: v });
+          break;
+        case 'heading-font':
+          setAppearance({ headingFont: v });
+          break;
+        case 'radius':
+          setAppearance({ radius: v });
+          break;
+        case 'menu-color':
+          setAppearance({ menuColor: v });
+          break;
+        case 'menu-appearance':
+          setAppearance({ menuAppearance: v });
+          break;
       }
       return;
     }
@@ -829,8 +923,14 @@
   App.currentPath = currentPath;
   App.updateSettings = updateSettings; // 设置表单字段/模块改动统一入口(自动持久化 + 同步数据库)
   App.setSidebarWidth = setSidebarWidth; // 拖拽调宽收尾持久化(interactions.js 使用)
-  App.getShellContext = function () {  // 移动端抽屉构建侧边栏所需上下文(interactions.js 使用)
-    return { settings: settings, navItems: buildNavItems(settings.locale), pathname: currentPath(), openSubmenus: openSubmenus };
+  App.getShellContext = function () {
+    // 移动端抽屉构建侧边栏所需上下文(interactions.js 使用)
+    return {
+      settings: settings,
+      navItems: buildNavItems(settings.locale),
+      pathname: currentPath(),
+      openSubmenus: openSubmenus,
+    };
   };
   App.start = start;
 })();

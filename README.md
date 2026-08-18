@@ -104,19 +104,20 @@ AUTH_PASSWORD=admin123 node dev-server.js   # AUTH_PASSWORD 即登录密码(必�
 
 ```js
 App.registerModule({
-  id: 'mymod',                            // 模块 ID,须与目录名一致
+  id: 'mymod', // 模块 ID,须与目录名一致
   title: { 'zh-CN': '我的模块', 'zh-TW': '我的模組', en: 'My Module' },
-  icon: 'settings',                       // lucide 图标名(见 icons-data.js)
-  route: '/mymod',                        // 一级菜单路由(缺省 /<id>)
-  load: 'module.js',                      // 实现文件(缺省 module.js,懒加载)
-  css: 'module.css',                      // 可选:模块私有样式(懒加载)
-  i18nFile: 'i18n.js',                    // 可选:模块词典懒加载文件,文案不进核心词典
-  children: [                             // 可选:子模块(二级菜单)
+  icon: 'settings', // lucide 图标名(见 icons-data.js)
+  route: '/mymod', // 一级菜单路由(缺省 /<id>)
+  load: 'module.js', // 实现文件(缺省 module.js,懒加载)
+  css: 'module.css', // 可选:模块私有样式(懒加载)
+  i18nFile: 'i18n.js', // 可选:模块词典懒加载文件,文案不进核心词典
+  children: [
+    // 可选:子模块(二级菜单)
     {
       id: 'intro',
       title: { 'zh-CN': '简介', en: 'Intro' },
       route: '/mymod/intro',
-      load: 'sub/intro.js',               // 子模块独立实现文件
+      load: 'sub/intro.js', // 子模块独立实现文件
     },
   ],
 });
@@ -143,7 +144,13 @@ App.defineModule({
 子模块实现文件同理,多传一个 `sub` 字段:
 
 ```js
-App.defineModule({ id: 'docs', sub: 'intro', render: function (route, ctx) { /* ... */ } });
+App.defineModule({
+  id: 'docs',
+  sub: 'intro',
+  render: function (route, ctx) {
+    /* ... */
+  },
+});
 ```
 
 ### 3. 登记
@@ -172,14 +179,14 @@ var MODULE_DIRS = ['dashboard', 'channels', 'tokens', 'logs', 'docs', 'mymod'];
 
 数据库驱动采用**统一接口**(`query` / `run` 两个方法),通过环境变量切换,业务代码零改动:
 
-| 环境变量 | 值 | 说明 |
-|---|---|---|
-| `DB_DRIVER` | `sqlite`(默认) | 本地 SQLite,`node:sqlite` 内置模块(需 Node ≥ 22.5,推荐 ≥ 23.4),零第三方依赖 |
-| `DB_DRIVER` | `turso` | 远程 Turso / libSQL HTTP API(需 `DATABASE_URL` + `DATABASE_AUTH_TOKEN`) |
-| `DB_DRIVER` | `d1` | Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,需 `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`;详见 docs/deploy/cloudflare.md) |
-| `ENCRYPTION_KEY` | 64 位 hex | 敏感数据 AES-256-GCM 加密密钥(生产必设;缺省时自动生成到 `server/.secret-key`) |
-| `SQLITE_PATH` | 路径 | 本地 sqlite 文件位置(默认 `sqlite.db`,已加入 .gitignore) |
-| `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | — | turso 远程数据库连接信息 |
+| 环境变量                               | 值             | 说明                                                                                                                                            |
+| -------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB_DRIVER`                            | `sqlite`(默认) | 本地 SQLite,`node:sqlite` 内置模块(需 Node ≥ 22.5,推荐 ≥ 23.4),零第三方依赖                                                                     |
+| `DB_DRIVER`                            | `turso`        | 远程 Turso / libSQL HTTP API(需 `DATABASE_URL` + `DATABASE_AUTH_TOKEN`)                                                                         |
+| `DB_DRIVER`                            | `d1`           | Cloudflare D1(Worker 内用原生 binding;本地走 D1 REST API,需 `D1_ACCOUNT_ID` / `D1_DATABASE_ID` / `D1_API_TOKEN`;详见 docs/deploy/cloudflare.md) |
+| `ENCRYPTION_KEY`                       | 64 位 hex      | 敏感数据 AES-256-GCM 加密密钥(生产必设;缺省时自动生成到 `server/.secret-key`)                                                                   |
+| `SQLITE_PATH`                          | 路径           | 本地 sqlite 文件位置(默认 `sqlite.db`,已加入 .gitignore)                                                                                        |
+| `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | —              | turso 远程数据库连接信息                                                                                                                        |
 
 ### 表结构
 
@@ -209,14 +216,14 @@ CREATE TABLE auth_sessions (
 
 ### API 一览
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/auth/login` | `{ password, expiry }` → `{ token, expiresAt, expiry }`(无需鉴权) |
-| GET | `/api/auth/verify` | 校验会话有效性 |
-| POST | `/api/auth/logout` | 删除当前会话 |
-| GET | `/api/settings` | 返回全部 `app_settings`(不含 `settings:auth:*`;敏感键解密后返回)| 
-| PUT | `/api/settings` | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库)| 
-| DELETE | `/api/settings` | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`) |
+| 方法   | 路径               | 说明                                                                             |
+| ------ | ------------------ | -------------------------------------------------------------------------------- |
+| POST   | `/api/auth/login`  | `{ password, expiry }` → `{ token, expiresAt, expiry }`(无需鉴权)                |
+| GET    | `/api/auth/verify` | 校验会话有效性                                                                   |
+| POST   | `/api/auth/logout` | 删除当前会话                                                                     |
+| GET    | `/api/settings`    | 返回全部 `app_settings`(不含 `settings:auth:*`;敏感键解密后返回)                 |
+| PUT    | `/api/settings`    | `{ settings: { key: value } }` 批量写入(拒绝 `settings:auth:*`;敏感键加密后落库) |
+| DELETE | `/api/settings`    | `{ keys: [...] }` 删除(拒绝 `settings:auth:*`)                                   |
 
 除登录外,所有 `/api/*` 均要求请求头 `x-auth-token`。
 
@@ -259,11 +266,11 @@ CREATE TABLE auth_sessions (
 
 1. **模块之间禁止互相引用**;只允许依赖核心层(`App.ui` / `App.icon` / `App.i18n` / `App.settings` / `ctx`)
 1. **数据库不以明文存敏感数据**:会话令牌存哈希;邮箱/apikey/token/secret 等敏感键值 AES-256-GCM 加密落库(见「敏感数据保护」)
-2. 文案遵循 **模块内聚**:模块文案放各自懒加载的 `i18n.js`(manifest 仅声明 `i18nFile`),只有 App Shell / 设置面板等公共文案进核心词典
-3. **存储值白名单校验**:`settings.js` 对 localStorage 读入值一律校验,非法值回退默认
-4. **事件委托**:全部交互挂在 `document` 上,内容区重渲染后无需重新绑定
-5. 路由表有 404 兜底,未知路径渲染 404 页面
-6. `index.html` 内置 CSP 与首帧主题脚本,保证无闪烁、无外部请求
+1. 文案遵循 **模块内聚**:模块文案放各自懒加载的 `i18n.js`(manifest 仅声明 `i18nFile`),只有 App Shell / 设置面板等公共文案进核心词典
+1. **存储值白名单校验**:`settings.js` 对 localStorage 读入值一律校验,非法值回退默认
+1. **事件委托**:全部交互挂在 `document` 上,内容区重渲染后无需重新绑定
+1. 路由表有 404 兜底,未知路径渲染 404 页面
+1. `index.html` 内置 CSP 与首帧主题脚本,保证无闪烁、无外部请求
 
 ## 设计系统说明
 
@@ -273,10 +280,10 @@ CREATE TABLE auth_sessions (
 
 项目默认零外部依赖,但支持引入**单文件、无子依赖**的第三方 JS 库:
 
-| 库类型 | 放置位置 |
-|--------|----------|
-| 前端单文件库 | `js/lib/xxx.js` |
-| 后端单文件库 | `server/lib/xxx.js` |
+| 库类型          | 放置位置                         |
+| --------------- | -------------------------------- |
+| 前端单文件库    | `js/lib/xxx.js`                  |
+| 后端单文件库    | `server/lib/xxx.js`              |
 | 有 npm 依赖的库 | `package.json` + `node_modules/` |
 
 使用 `loadScript('js/lib/xxx.js')` 懒加载前端库;后端直接 `require('./lib/xxx')`。如果库依赖其他 npm 包,请使用 `package.json` 管理。

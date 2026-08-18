@@ -11,12 +11,35 @@
   var STYLES = ['nova', 'vega', 'maia', 'lyra', 'mira', 'luma', 'sera', 'rhea'];
   var BASE_COLORS = ['neutral', 'stone', 'zinc', 'mauve', 'olive', 'mist', 'taupe'];
   var CHART_COLORS = [
-    'amber', 'blue', 'cyan', 'emerald', 'fuchsia', 'green', 'indigo', 'lime', 'orange',
-    'pink', 'purple', 'red', 'rose', 'sky', 'teal', 'violet', 'yellow',
+    'amber',
+    'blue',
+    'cyan',
+    'emerald',
+    'fuchsia',
+    'green',
+    'indigo',
+    'lime',
+    'orange',
+    'pink',
+    'purple',
+    'red',
+    'rose',
+    'sky',
+    'teal',
+    'violet',
+    'yellow',
   ];
   var FONTS = [
-    { value: 'inter', label: 'Inter', stack: "'Inter Variable', ui-sans-serif, system-ui, sans-serif" },
-    { value: 'manrope', label: 'Manrope', stack: "'Manrope Variable', ui-sans-serif, system-ui, sans-serif" },
+    {
+      value: 'inter',
+      label: 'Inter',
+      stack: "'Inter Variable', ui-sans-serif, system-ui, sans-serif",
+    },
+    {
+      value: 'manrope',
+      label: 'Manrope',
+      stack: "'Manrope Variable', ui-sans-serif, system-ui, sans-serif",
+    },
     { value: 'system', label: 'System', stack: 'ui-sans-serif, system-ui, sans-serif' },
   ];
   var RADII = [
@@ -34,7 +57,9 @@
 
   /** 存储键前缀(独立命名空间) */
   var STORAGE_PREFIX = 'html-template';
-  var K = function (key) { return STORAGE_PREFIX + '-' + key; };
+  var K = function (key) {
+    return STORAGE_PREFIX + '-' + key;
+  };
 
   var APPEARANCE_DEFAULTS = {
     style: 'nova',
@@ -50,7 +75,14 @@
   /** 设置子页数据默认值(同步到数据库 settings:profile / settings:account / settings:notifications) */
   var PROFILE_DEFAULTS = { username: '', email: '', bio: '', links: ['', ''] };
   var ACCOUNT_DEFAULTS = { name: '', dob: '', language: '' };
-  var NOTIFICATIONS_DEFAULTS = { type: 'all', communication: false, marketing: false, social: true, security: true, mobile: false };
+  var NOTIFICATIONS_DEFAULTS = {
+    type: 'all',
+    communication: false,
+    marketing: false,
+    social: true,
+    security: true,
+    mobile: false,
+  };
 
   /** 读取 JSON 存储值(白名单形状校验:对象则合并默认,数组/字符串按类型) */
   function readJsonObject(key, defaults, listKeys) {
@@ -58,12 +90,16 @@
     if (!stored) return Object.assign({}, defaults);
     try {
       var parsed = JSON.parse(stored);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return Object.assign({}, defaults);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        return Object.assign({}, defaults);
       var out = Object.assign({}, defaults, parsed);
       if (listKeys) {
         listKeys.forEach(function (lk) {
           if (!Array.isArray(out[lk])) out[lk] = defaults[lk].slice();
-          else out[lk] = out[lk].filter(function (x) { return typeof x === 'string'; });
+          else
+            out[lk] = out[lk].filter(function (x) {
+              return typeof x === 'string';
+            });
         });
       }
       return out;
@@ -100,13 +136,17 @@
   function writeStorage(key, value) {
     try {
       window.localStorage.setItem(key, value);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function removeStorage(key) {
     try {
       window.localStorage.removeItem(key);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   /** 读取外观设置:全部白名单校验 */
@@ -121,48 +161,60 @@
     // 存储值为像素串(如 '0.5rem'),必须映射回 RadiusName
     var radius = readStorage(K('radius'));
     if (radius) {
-      var r = RADII.find(function (x) { return x.px === radius; });
+      var r = RADII.find(function (x) {
+        return x.px === radius;
+      });
       if (r) ap.radius = r.value;
     }
     var f = readStorage(K('font'));
     if (f) {
-      var bf = FONTS.find(function (x) { return x.stack === f; });
+      var bf = FONTS.find(function (x) {
+        return x.stack === f;
+      });
       if (bf) ap.bodyFont = bf.value;
     }
     var hf = readStorage(K('heading-font'));
     if (hf) {
-      var h = FONTS.find(function (x) { return x.stack === hf; });
+      var h = FONTS.find(function (x) {
+        return x.stack === hf;
+      });
       if (h) ap.headingFont = h.value;
     }
     var menuColor = readStorage(K('menu-color'));
     if (menuColor === 'default' || menuColor === 'inverted') ap.menuColor = menuColor;
     var menuAppearance = readStorage(K('menu-appearance'));
-    if (menuAppearance === 'solid' || menuAppearance === 'translucent') ap.menuAppearance = menuAppearance;
+    if (menuAppearance === 'solid' || menuAppearance === 'translucent')
+      ap.menuAppearance = menuAppearance;
     return ap;
   }
 
   /** 读取完整设置 */
   function readSettings() {
     var storedLocale = readStorage(App.i18n.LOCALE_KEY);
-    var locale = (storedLocale === 'zh-CN' || storedLocale === 'zh-TW' || storedLocale === 'en')
-      ? storedLocale
-      : App.i18n.DEFAULT_LOCALE;
+    var locale =
+      storedLocale === 'zh-CN' || storedLocale === 'zh-TW' || storedLocale === 'en'
+        ? storedLocale
+        : App.i18n.DEFAULT_LOCALE;
     var storedTheme = readStorage(K('theme'));
-    var theme = (storedTheme === 'system' || storedTheme === 'light' || storedTheme === 'dark')
-      ? storedTheme
-      : 'system';
+    var theme =
+      storedTheme === 'system' || storedTheme === 'light' || storedTheme === 'dark'
+        ? storedTheme
+        : 'system';
     var storedVariant = readStorage(K('sidebar-variant'));
-    var sidebarVariant = (storedVariant === 'inset' || storedVariant === 'floating' || storedVariant === 'sidebar')
-      ? storedVariant
-      : 'inset';
+    var sidebarVariant =
+      storedVariant === 'inset' || storedVariant === 'floating' || storedVariant === 'sidebar'
+        ? storedVariant
+        : 'inset';
     var storedCollapsible = readStorage(K('sidebar-collapsible'));
-    var sidebarCollapsible = (storedCollapsible === 'icon' || storedCollapsible === 'offcanvas')
-      ? storedCollapsible
-      : 'icon';
+    var sidebarCollapsible =
+      storedCollapsible === 'icon' || storedCollapsible === 'offcanvas'
+        ? storedCollapsible
+        : 'icon';
     var n = Number(readStorage(K('sidebar-width')));
-    var sidebarWidth = Number.isFinite(n) && n >= SIDEBAR_MIN_WIDTH && n <= SIDEBAR_MAX_WIDTH
-      ? n
-      : SIDEBAR_DEFAULT_WIDTH;
+    var sidebarWidth =
+      Number.isFinite(n) && n >= SIDEBAR_MIN_WIDTH && n <= SIDEBAR_MAX_WIDTH
+        ? n
+        : SIDEBAR_DEFAULT_WIDTH;
     // 侧边栏隐藏的菜单项(显示页控制):JSON 数组,白名单为字符串
     var hiddenNav = [];
     var storedHidden = readStorage(K('hidden-nav'));
@@ -170,9 +222,13 @@
       try {
         var arr = JSON.parse(storedHidden);
         if (Array.isArray(arr)) {
-          hiddenNav = arr.filter(function (x) { return typeof x === 'string' && x; });
+          hiddenNav = arr.filter(function (x) {
+            return typeof x === 'string' && x;
+          });
         }
-      } catch (e) { /* 脏数据回退空数组 */ }
+      } catch (e) {
+        /* 脏数据回退空数组 */
+      }
     }
     return {
       locale: locale,
@@ -218,10 +274,22 @@
       root.classList.add(prefix + '-' + value);
     });
 
-    var radiusPx = (RADII.find(function (r) { return r.value === s.appearance.radius; }) || RADII[0]).px;
+    var radiusPx = (
+      RADII.find(function (r) {
+        return r.value === s.appearance.radius;
+      }) || RADII[0]
+    ).px;
     root.style.setProperty('--radius', radiusPx);
-    var bf = (FONTS.find(function (f) { return f.value === s.appearance.bodyFont; }) || FONTS[0]).stack;
-    var hf = (FONTS.find(function (f) { return f.value === s.appearance.headingFont; }) || FONTS[1]).stack;
+    var bf = (
+      FONTS.find(function (f) {
+        return f.value === s.appearance.bodyFont;
+      }) || FONTS[0]
+    ).stack;
+    var hf = (
+      FONTS.find(function (f) {
+        return f.value === s.appearance.headingFont;
+      }) || FONTS[1]
+    ).stack;
     root.style.setProperty('--font-sans-base', bf);
     root.style.setProperty('--font-heading-base', hf);
 
@@ -237,14 +305,32 @@
   function persistSettings(s) {
     writeStorage(App.i18n.LOCALE_KEY, s.locale);
     writeStorage(K('theme'), s.theme);
-    var radiusPx = (RADII.find(function (r) { return r.value === s.appearance.radius; }) || RADII[0]).px;
+    var radiusPx = (
+      RADII.find(function (r) {
+        return r.value === s.appearance.radius;
+      }) || RADII[0]
+    ).px;
     var writes = [
       [K('style'), s.appearance.style],
       [K('base'), s.appearance.baseColor],
       [K('chart'), s.appearance.chartColor],
       [K('radius'), radiusPx],
-      [K('font'), (FONTS.find(function (f) { return f.value === s.appearance.bodyFont; }) || FONTS[0]).stack],
-      [K('heading-font'), (FONTS.find(function (f) { return f.value === s.appearance.headingFont; }) || FONTS[1]).stack],
+      [
+        K('font'),
+        (
+          FONTS.find(function (f) {
+            return f.value === s.appearance.bodyFont;
+          }) || FONTS[0]
+        ).stack,
+      ],
+      [
+        K('heading-font'),
+        (
+          FONTS.find(function (f) {
+            return f.value === s.appearance.headingFont;
+          }) || FONTS[1]
+        ).stack,
+      ],
       [K('menu-color'), s.appearance.menuColor],
       [K('menu-appearance'), s.appearance.menuAppearance],
       [K('sidebar-variant'), s.sidebarVariant],
@@ -255,16 +341,32 @@
     writeStorage(K('profile'), JSON.stringify(s.profile || PROFILE_DEFAULTS));
     writeStorage(K('account'), JSON.stringify(s.account || ACCOUNT_DEFAULTS));
     writeStorage(K('notifications'), JSON.stringify(s.notifications || NOTIFICATIONS_DEFAULTS));
-    writes.forEach(function (w) { if (w[1]) writeStorage(w[0], w[1]); });
+    writes.forEach(function (w) {
+      if (w[1]) writeStorage(w[0], w[1]);
+    });
   }
 
   /** 重置全部设置到默认值并清除存储 */
   function resetAllSettings() {
     [
-      App.i18n.LOCALE_KEY, K('theme'), K('style'), K('base'), K('chart'), K('radius'), K('font'),
-      K('heading-font'), K('menu-color'), K('menu-appearance'), K('sidebar-variant'),
-      K('sidebar-collapsible'), K('sidebar-width'), K('sidebar-open'), K('hidden-nav'),
-      K('profile'), K('account'), K('notifications'),
+      App.i18n.LOCALE_KEY,
+      K('theme'),
+      K('style'),
+      K('base'),
+      K('chart'),
+      K('radius'),
+      K('font'),
+      K('heading-font'),
+      K('menu-color'),
+      K('menu-appearance'),
+      K('sidebar-variant'),
+      K('sidebar-collapsible'),
+      K('sidebar-width'),
+      K('sidebar-open'),
+      K('hidden-nav'),
+      K('profile'),
+      K('account'),
+      K('notifications'),
     ].forEach(removeStorage);
     return {
       locale: App.i18n.DEFAULT_LOCALE,

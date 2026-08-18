@@ -56,7 +56,8 @@ const server = http.createServer((req, res) => {
   const start = Date.now();
   const url = new URL(req.url, 'http://localhost');
   const isApi = url.pathname === '/api' || url.pathname.startsWith('/api/');
-  const done = (status) => log.request(req.method, url.pathname, status, Date.now() - start, { api: isApi });
+  const done = (status) =>
+    log.request(req.method, url.pathname, status, Date.now() - start, { api: isApi });
   if (isApi) {
     handleApi(req, res, url.pathname)
       .then(() => done(res.statusCode || 200))
@@ -79,7 +80,9 @@ function start() {
   return bootstrap()
     .then(() => {
       server.listen(PORT, () => {
-        const dbPath = isLocalSqlite() ? localDbPath() : 'DB_DRIVER=' + (process.env.DB_DRIVER || 'sqlite');
+        const dbPath = isLocalSqlite()
+          ? localDbPath()
+          : 'DB_DRIVER=' + (process.env.DB_DRIVER || 'sqlite');
         log.divider();
         log.info('server', '服务已启动: http://127.0.0.1:' + PORT);
         log.info('db', '数据库: ' + dbPath);

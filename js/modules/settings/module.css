@@ -17,7 +17,9 @@
   margin: 0 auto;
   width: 100%;
 }
-.sp-page-head { flex: none; }
+.sp-page-head {
+  flex: none;
+}
 .sp-page-head h1 {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -25,8 +27,17 @@
   letter-spacing: -0.025em;
   font-family: var(--font-heading-base, inherit);
 }
-.sp-page-head p { color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.125rem; }
-.sp-sep { height: 1px; background: var(--border); margin: 1rem 0; flex: none; }
+.sp-page-head p {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+}
+.sp-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0;
+  flex: none;
+}
 .sp-body {
   display: flex;
   flex-direction: column;
@@ -36,12 +47,22 @@
   overflow: hidden;
 }
 @media (min-width: 1024px) {
-  .sp-body { flex-direction: row; gap: 3rem; }
+  .sp-body {
+    flex-direction: row;
+    gap: 3rem;
+  }
 }
 
 /* ---------- 页内子导航(个人资料/账号/外观/通知/显示) ---------- */
-.sp-nav-col { flex: none; }
-@media (min-width: 1024px) { .sp-nav-col { width: 20%; min-width: 10rem; } }
+.sp-nav-col {
+  flex: none;
+}
+@media (min-width: 1024px) {
+  .sp-nav-col {
+    width: 20%;
+    min-width: 10rem;
+  }
+}
 .sp-nav {
   display: flex;
   gap: 0.5rem;
@@ -49,7 +70,12 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-@media (min-width: 1024px) { .sp-nav { flex-direction: column; gap: 0.25rem; } }
+@media (min-width: 1024px) {
+  .sp-nav {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
 .sp-nav-link {
   display: inline-flex;
   align-items: center;
@@ -65,10 +91,20 @@
   text-decoration: none;
   flex: none;
 }
-.sp-nav-link:hover { background: var(--accent); text-decoration: underline; }
-.sp-nav-link.is-active { background: var(--muted); }
-.sp-nav-link.is-active:hover { background: var(--accent); }
-.sp-nav-link svg { flex: none; color: var(--muted-foreground); }
+.sp-nav-link:hover {
+  background: var(--accent);
+  text-decoration: underline;
+}
+.sp-nav-link.is-active {
+  background: var(--muted);
+}
+.sp-nav-link.is-active:hover {
+  background: var(--accent);
+}
+.sp-nav-link svg {
+  flex: none;
+  color: var(--muted-foreground);
+}
 
 /* ---------- 内容区 ---------- */
 .sp-content {
@@ -78,19 +114,62 @@
   overflow: hidden;
   padding: 0.25rem 1.25rem 0.25rem 1.25rem;
 }
-.sp-section { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.sp-section h3 { font-size: 1.125rem; font-weight: 500; font-family: var(--font-heading-base, inherit); }
-.sp-section-desc { color: var(--muted-foreground); font-size: 0.875rem; }
-.sp-section-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 1rem; padding-bottom: 3rem; }
-.sp-section-inner { max-width: 36rem; }
+.sp-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.sp-section h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  font-family: var(--font-heading-base, inherit);
+}
+.sp-section-desc {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+.sp-section-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 1rem;
+  padding-bottom: 3rem;
+}
+.sp-section-inner {
+  max-width: 36rem;
+}
 
 /* ---------- 表单 ---------- */
-.sp-form { display: flex; flex-direction: column; gap: 2rem; }
-.sp-field { display: flex; flex-direction: column; gap: 0.5rem; }
-.sp-label { font-size: 0.875rem; font-weight: 500; line-height: 1; }
-.sp-field-desc { font-size: 0.75rem; color: var(--muted-foreground); line-height: 1.5; }
-.sp-field-desc a { color: var(--foreground); text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; }
-.sp-field-desc a:hover { text-decoration-style: solid; }
+.sp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.sp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.sp-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+}
+.sp-field-desc {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+.sp-field-desc a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+}
+.sp-field-desc a:hover {
+  text-decoration-style: solid;
+}
 .sp-input,
 .sp-textarea,
 .sp-select,
@@ -107,9 +186,16 @@
   color: var(--foreground);
   box-sizing: border-box;
 }
-.sp-textarea { height: auto; min-height: 5rem; padding: 0.5rem 0.75rem; resize: none; }
+.sp-textarea {
+  height: auto;
+  min-height: 5rem;
+  padding: 0.5rem 0.75rem;
+  resize: none;
+}
 .sp-select,
-.sp-date { cursor: pointer; }
+.sp-date {
+  cursor: pointer;
+}
 .sp-input:focus-visible,
 .sp-textarea:focus-visible,
 .sp-select:focus-visible,
@@ -119,7 +205,9 @@
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 .sp-input::placeholder,
-.sp-textarea::placeholder { color: var(--muted-foreground); }
+.sp-textarea::placeholder {
+  color: var(--muted-foreground);
+}
 
 /* ---------- 开关行(通知页) ---------- */
 .sp-switch-row {
@@ -132,8 +220,12 @@
   padding: 1rem;
   background: var(--card);
 }
-.sp-switch-row .sp-label { font-size: 1rem; }
-.sp-switch-row .sp-field-desc { font-size: 0.875rem; }
+.sp-switch-row .sp-label {
+  font-size: 1rem;
+}
+.sp-switch-row .sp-field-desc {
+  font-size: 0.875rem;
+}
 .sp-switch {
   position: relative;
   display: inline-flex;
@@ -157,10 +249,19 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
   transition: transform 0.2s ease;
 }
-.dark .sp-switch::after { background: var(--foreground); }
-.sp-switch.is-on { background: var(--primary); }
-.sp-switch.is-on::after { transform: translateX(1.25rem); }
-.sp-switch.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.dark .sp-switch::after {
+  background: var(--foreground);
+}
+.sp-switch.is-on {
+  background: var(--primary);
+}
+.sp-switch.is-on::after {
+  transform: translateX(1.25rem);
+}
+.sp-switch.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 /* 真实 checkbox 隐藏,视觉用 span(label 包裹点击即切换) */
 .sp-switch-input {
   position: absolute;
@@ -192,12 +293,25 @@
   border: 1px solid var(--input);
   background: var(--background);
 }
-.sp-checkbox.is-checked { background: var(--primary); border-color: var(--primary); }
-.sp-checkbox.is-checked svg { color: var(--primary-foreground); }
-.sp-checkbox svg { width: 0.75rem; height: 0.75rem; color: transparent; }
+.sp-checkbox.is-checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.sp-checkbox.is-checked svg {
+  color: var(--primary-foreground);
+}
+.sp-checkbox svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: transparent;
+}
 
 /* ---------- 单选(通知页) ---------- */
-.sp-radio { display: flex; align-items: center; gap: 0.75rem; }
+.sp-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 .sp-radio input[type='radio'] {
   accent-color: var(--primary);
   width: 1rem;
@@ -205,17 +319,25 @@
   margin: 0;
   flex: none;
 }
-.sp-radio .sp-label { font-weight: 400; }
+.sp-radio .sp-label {
+  font-weight: 400;
+}
 
 /* ---------- 显示页(侧边栏显示控制) ---------- */
-.sp-display-group { margin-bottom: 2rem; }
+.sp-display-group {
+  margin-bottom: 2rem;
+}
 .sp-display-group h4 {
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted-foreground);
 }
-.sp-display-items { display: flex; flex-direction: column; gap: 0.5rem; }
+.sp-display-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .sp-display-item {
   display: flex;
   width: 100%;
@@ -233,17 +355,33 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
-.sp-display-item:not(.is-locked):hover { background: var(--accent); }
-.sp-display-item.is-hidden .sp-item-icon { color: var(--muted-foreground); }
+.sp-display-item:not(.is-locked):hover {
+  background: var(--accent);
+}
+.sp-display-item.is-hidden .sp-item-icon {
+  color: var(--muted-foreground);
+}
 .sp-display-item.is-hidden .sp-item-title {
   color: var(--muted-foreground);
   text-decoration: line-through;
 }
-.sp-display-item .sp-item-icon { flex: none; color: var(--foreground); width: 1rem; height: 1rem; }
-.sp-display-item .sp-item-icon svg { width: 1rem; height: 1rem; }
-.sp-display-item .sp-item-title { flex: 1; }
+.sp-display-item .sp-item-icon {
+  flex: none;
+  color: var(--foreground);
+  width: 1rem;
+  height: 1rem;
+}
+.sp-display-item .sp-item-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+.sp-display-item .sp-item-title {
+  flex: 1;
+}
 .sp-display-item .sp-lock {
   display: flex;
   align-items: center;
@@ -252,12 +390,29 @@
   font-weight: 400;
   color: var(--muted-foreground);
 }
-.sp-lock svg { width: 0.875rem; height: 0.875rem; }
-.sp-display-item.is-locked { opacity: 0.6; cursor: not-allowed; }
-.sp-display-hint { font-size: 0.75rem; color: var(--muted-foreground); }
+.sp-lock svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.sp-display-item.is-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.sp-display-hint {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
 
 /* ---------- 外观页:区块容器(间距);radio-group 卡片样式统一用 app.css 的 .rg-* ---------- */
-.sp-opt-group { margin-bottom: 1.5rem; }
+.sp-opt-group {
+  margin-bottom: 1.5rem;
+}
 /* ---------- 补充 ---------- */
-.sp-form > button { align-self: flex-start; }
-.sp-switch-info { display: flex; flex-direction: column; gap: 0.25rem; }
+.sp-form > button {
+  align-self: flex-start;
+}
+.sp-switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

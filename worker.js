@@ -70,7 +70,9 @@ function boot(db) {
 function verifyEnvPassword(password, env) {
   const expected = env.AUTH_PASSWORD;
   if (!expected) {
-    throw new Error('[auth] 未配置 AUTH_PASSWORD secret,请用 `wrangler secret put AUTH_PASSWORD` 设置后再登录');
+    throw new Error(
+      '[auth] 未配置 AUTH_PASSWORD secret,请用 `wrangler secret put AUTH_PASSWORD` 设置后再登录'
+    );
   }
   return matchesPassword(password, expected);
 }
@@ -81,7 +83,9 @@ function key(env) {
   if (_key) return _key;
   const hex = env.ENCRYPTION_KEY;
   if (!hex) {
-    throw new Error('[crypto] 缺少 ENCRYPTION_KEY(64 位 hex),请用 `wrangler secret put ENCRYPTION_KEY` 设置');
+    throw new Error(
+      '[crypto] 缺少 ENCRYPTION_KEY(64 位 hex),请用 `wrangler secret put ENCRYPTION_KEY` 设置'
+    );
   }
   const buf = Buffer.from(hex, 'hex');
   if (buf.length !== 32) throw new Error('[crypto] ENCRYPTION_KEY 必须是 64 位 hex(32 字节)');
@@ -106,10 +110,13 @@ async function authed(request, db) {
 function sendJson(status, obj) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: Object.assign({
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-    }, SECURITY_HEADERS),
+    headers: Object.assign(
+      {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+      SECURITY_HEADERS
+    ),
   });
 }
 
@@ -152,7 +159,11 @@ async function handleApi(request, env, pathname) {
     loginThrottle.clear(ip);
     const token = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + ttl).toISOString();
-    await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [sha256(token), expiresAt, expiry]);
+    await db.run('INSERT INTO auth_sessions (token_hash, expires_at, note) VALUES (?, ?, ?)', [
+      sha256(token),
+      expiresAt,
+      expiry,
+    ]);
     return sendJson(200, { token, expiresAt, expiry });
   }
 
@@ -166,7 +177,9 @@ async function handleApi(request, env, pathname) {
 
   // POST /api/auth/logout
   if (method === 'POST' && parts[1] === 'auth' && parts[2] === 'logout') {
-    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [sha256(request.headers.get('x-auth-token'))]);
+    await db.run('DELETE FROM auth_sessions WHERE token_hash = ?', [
+      sha256(request.headers.get('x-auth-token')),
+    ]);
     return sendJson(200, { ok: true });
   }
 
@@ -176,7 +189,7 @@ async function handleApi(request, env, pathname) {
     const out = {};
     for (const r of rows) {
       if (r.key.indexOf(RESERVED_SETTINGS_PREFIX) === 0) continue;
-      out[r.key] = isSensitiveKey(r.key) ? (decrypt(r.value, env) || '') : r.value;
+      out[r.key] = isSensitiveKey(r.key) ? decrypt(r.value, env) || '' : r.value;
     }
     return sendJson(200, out);
   }
@@ -199,7 +212,7 @@ async function handleApi(request, env, pathname) {
       if (isSensitiveKey(k)) v = encrypt(v, env);
       await db.run(
         'INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
-        [k, v, now],
+        [k, v, now]
       );
     }
     return sendJson(200, { ok: true, written: keys.length });

@@ -40,7 +40,6 @@
     run: null,
     history: [],
     lastHashSel: null,
-    jsonExp: {}, // JSON 树展开状态(path → bool)
   };
   var saveTimer = null;
   var dialogMethod = 'GET';
@@ -633,7 +632,6 @@
     var url = buildUrl();
     var started = performance.now();
     view.running = true;
-    view.jsonExp = {}; // 新响应重置 JSON 树展开状态
     renderFull();
 
     var opts = { method: req.method, headers: headers, cache: 'no-store' };
@@ -1183,6 +1181,7 @@
         deleteMsg: t('apihub.deleteGroupMsg'),
         rootGroup: t('apihub.rootGroup'),
         search: t('apihub.searchGroups'),
+        clear: t('apihub.clearSearch'),
         empty: t('apihub.noGroups'),
         noMatch: t('apihub.noGroupsMatch'),
         name: t('apihub.name'),
@@ -1211,7 +1210,7 @@
           (node.public ? ' is-on' : '') +
           '" data-hub-toggle="grouppub" data-id="' +
           escAttr(node.id) +
-          '" title="' +
+          '" data-tip="' +
           escAttr(t('apihub.publicHint')) +
           '" aria-label="' +
           escAttr(t('apihub.publicHint')) +
@@ -1265,6 +1264,7 @@
         deleteConfirm: t('apihub.deleteConfirm'),
         deleteTagMsg: t('apihub.deleteTagMsg'),
         searchTags: t('apihub.searchTags'),
+        clear: t('apihub.clearSearch'),
         empty: t('apihub.noTags'),
         noMatch: t('apihub.noTagsMatch'),
         name: t('apihub.name'),
@@ -1367,21 +1367,21 @@
       esc(t('apihub.groups')) +
       '</span>' +
       '<span class="hub-section-actions">' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="gt-collapseall" title="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="gt-collapseall" data-tip="' +
       escAttr(t('apihub.collapseAll')) +
       '" aria-label="' +
       escAttr(t('apihub.collapseAll')) +
       '">' +
       icon('arrow-up', '') +
       '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="gt-expandall" title="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="gt-expandall" data-tip="' +
       escAttr(t('apihub.expandAll')) +
       '" aria-label="' +
       escAttr(t('apihub.expandAll')) +
       '">' +
       icon('arrow-down', '') +
       '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="newgroup" title="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="newgroup" data-tip="' +
       escAttr(t('apihub.newGroup')) +
       '" aria-label="' +
       escAttr(t('apihub.newGroup')) +
@@ -1399,14 +1399,14 @@
       esc(t('apihub.tags')) +
       '</span>' +
       '<span class="hub-section-actions">' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="clrtag" title="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="clrtag" data-tip="' +
       escAttr(t('apihub.clearTagFilter')) +
       '" aria-label="' +
       escAttr(t('apihub.clearTagFilter')) +
       '">' +
       icon('x', '') +
       '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="newtag" title="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="newtag" data-tip="' +
       escAttr(t('apihub.newTag')) +
       '" aria-label="' +
       escAttr(t('apihub.newTag')) +
@@ -1426,7 +1426,7 @@
     var showKey = mode === 'api-key';
     return (
       '<span class="hub-dd" data-dropdown>' +
-      '<button type="button" data-dropdown-trigger class="hub-action-btn" title="' +
+      '<button type="button" data-dropdown-trigger class="hub-action-btn" data-tip="' +
       escAttr(t('apihub.authDefaults')) +
       '">' +
       icon('key-round', '') +
@@ -1494,7 +1494,7 @@
       pills +=
         '<span class="hub-tagpill" style="' +
         (col ? '--tagc:' + col + ';' : '') +
-        '" title="' +
+        '" data-tip="' +
         escAttr(t('apihub.removeTag')) +
         '">' +
         '<span class="hub-tagpill-hash">#</span>' +
@@ -1505,7 +1505,7 @@
         escAttr(tg.id) +
         '" aria-label="' +
         escAttr(t('apihub.removeTag')) +
-        '" title="' +
+        '" data-tip="' +
         escAttr(t('apihub.removeTag')) +
         '">' +
         icon('x', 'size-3') +
@@ -1519,7 +1519,7 @@
       '</span>' +
       '<button type="button" class="hub-icon-btn hub-tagbtn" data-hub-act="addtag" data-key="' +
       escAttr(key) +
-      '" title="' +
+      '" data-tip="' +
       escAttr(t('apihub.addTag')) +
       '" aria-label="' +
       escAttr(t('apihub.addTag')) +
@@ -1537,7 +1537,7 @@
     return (
       '<span class="hub-token" style="--tokc:' +
       m.color +
-      '" title="' +
+      '" data-tip="' +
       escAttr(authLabel(mode)) +
       '">' +
       authTokenIcon(mode) +
@@ -1557,13 +1557,13 @@
     var meta = '';
     // 鉴权令牌:图标 + 颜色(公开时显示绿色公开徽章代替)
     if (pub) {
-      meta += '<span class="hub-token is-public" title="' + escAttr(t('apihub.publicHint')) + '">' + icon('globe', '') + '</span>';
+      meta += '<span class="hub-token is-public" data-tip="' + escAttr(t('apihub.publicHint')) + '">' + icon('globe', '') + '</span>';
     } else {
       meta += tokenBadgeHtml(mode);
     }
     // 收藏 / 置顶指示
-    if (m.favorite) meta += '<span class="hub-token is-fav" title="' + escAttr(t('apihub.favorite')) + '">' + icon('star', '') + '</span>';
-    if (m.pinned) meta += '<span class="hub-token is-pin" title="' + escAttr(t('apihub.pin')) + '">' + icon('circle-dot', '') + '</span>';
+    if (m.favorite) meta += '<span class="hub-token is-fav" data-tip="' + escAttr(t('apihub.favorite')) + '">' + icon('star', '') + '</span>';
+    if (m.pinned) meta += '<span class="hub-token is-pin" data-tip="' + escAttr(t('apihub.pin')) + '">' + icon('circle-dot', '') + '</span>';
     // 分组
     (m.groupIds || []).forEach(function (gid) {
       var g = groupById(gid);
@@ -1577,23 +1577,23 @@
       '" data-hub-route="' +
       escAttr(key) +
       '">' +
-      '<div class="hub-route-switch-col">' +
-      '<button type="button" class="hub-switch' +
-      (pub ? ' is-on' : '') +
-      (locked ? ' is-disabled' : '') +
-      '" data-hub-toggle="routepub" data-key="' +
-      escAttr(key) +
-      '" title="' +
-      escAttr(t('apihub.publicHint')) +
-      '" aria-label="' +
-      escAttr(t('apihub.publicHint')) +
-      '"><span class="hub-switch-thumb"></span></button>' +
-      '</div>' +
+      '<div class="hub-route-mcol">' +
       '<span class="hub-method ' +
       methodClass(r.method) +
       '">' +
       esc(r.method) +
       '</span>' +
+      '<button type="button" class="hub-switch' +
+      (pub ? ' is-on' : '') +
+      (locked ? ' is-disabled' : '') +
+      '" data-hub-toggle="routepub" data-key="' +
+      escAttr(key) +
+      '" data-tip="' +
+      escAttr(t('apihub.publicHint')) +
+      '" aria-label="' +
+      escAttr(t('apihub.publicHint')) +
+      '"><span class="hub-switch-thumb"></span></button>' +
+      '</div>' +
       '<div class="hub-route-main">' +
       '<div class="hub-route-title">' +
       '<span class="hub-route-path">' +
@@ -1614,7 +1614,7 @@
       '<div class="hub-route-ctx">' +
       '<button type="button" class="hub-icon-btn hub-route-more" data-hub-act="more" data-key="' +
       escAttr(key) +
-      '" title="' +
+      '" data-tip="' +
       escAttr(t('apihub.menu')) +
       '" aria-label="' +
       escAttr(t('apihub.menu')) +
@@ -1900,12 +1900,12 @@
       '<div class="hub-col hub-list">' +
       '<div class="hub-list-toolbar">' +
       '<div class="hub-search">' +
-      icon('search', '') +
-      '<input type="text" data-hub-search placeholder="' +
-      escAttr(t('apihub.search')) +
-      '" value="' +
-      escAttr(view.search) +
-      '" />' +
+      App.ui.searchInput.html({
+        placeholder: t('apihub.search'),
+        value: view.search,
+        attrs: 'data-hub-search',
+        clearLabel: t('apihub.clearSearch'),
+      }) +
       '</div>' +
       '<div class="hub-filters">' +
       moduleFilterHtml() +
@@ -2085,9 +2085,8 @@
     }
   }
 
-  /* ---------- JSON 树(响应查看:逐节点展开/折叠 + 悬停复制节点) ---------- */
-  var jsonNodeMap = {};   // path -> 节点值(渲染时重建,供复制节点查值)
-  var jsonAllPaths = [];  // 全部容器 path(供全部展开/折叠)
+  /* ---------- 响应 JSON 树(公共组件 App.ui.jsonTree) ---------- */
+  var jsonTree = null;
   /** 解析响应文本为解码后的 JSON 值;非 JSON 返回 null */
   function jsonValue(text) {
     try {
@@ -2096,89 +2095,25 @@
       return null;
     }
   }
-  /** 节点路径(带 JSON.stringify 键段,规避键名含 . 的碰撞) */
-  function jsonPath(parent, key) {
-    return parent + '[' + JSON.stringify(String(key)) + ']';
-  }
-  /** 标量值着色渲染 */
-  function jsonScalarHtml(v) {
-    if (v === null) return '<span class="hub-hl-null">null</span>';
-    var t = typeof v;
-    if (t === 'string') return '<span class="hub-hl-str">' + esc(JSON.stringify(v)) + '</span>';
-    if (t === 'number') return '<span class="hub-hl-num">' + esc(String(v)) + '</span>';
-    if (t === 'boolean') return '<span class="hub-hl-bool">' + v + '</span>';
-    return esc(String(v));
-  }
-  /** 递归渲染 JSON 节点(默认展开根 + 第一层,更深默认折叠) */
-  function jsonNodeHtml(path, key, value, depth) {
-    var pad = '';
-    for (var i = 0; i < depth; i++) pad += '<span class="hub-jindent"></span>';
-    var keyHtml = key === null ? '' : '<span class="hub-jkey">' + esc(String(key)) + '</span><span class="hub-jcolon">: </span>';
-    var isObj = value !== null && typeof value === 'object' && !Array.isArray(value);
-    var isArr = Array.isArray(value);
-    var copyBtn =
-      '<button type="button" class="hub-jcopy" data-jcopy="' +
-      escAttr(path) +
-      '" title="' +
-      escAttr(t('apihub.copyNode')) +
-      '" aria-label="' +
-      escAttr(t('apihub.copyNode')) +
-      '">' +
-      icon('copy', '') +
-      '</button>';
-    if (!isObj && !isArr) {
-      jsonNodeMap[path] = value;
-      return '<div class="hub-jline" data-jpath="' + escAttr(path) + '">' + pad + keyHtml + jsonScalarHtml(value) + copyBtn + '</div>';
-    }
-    jsonNodeMap[path] = value;
-    jsonAllPaths.push(path);
-    var kids = isArr
-      ? value.map(function (v, i) { return { k: i, v: v }; })
-      : Object.keys(value).map(function (k) { return { k: k, v: value[k] }; });
-    var open = view.jsonExp.hasOwnProperty(path) ? view.jsonExp[path] : depth <= 1;
-    var head = isObj ? '{' : '[';
-    var tail = isObj ? '}' : ']';
-    var summary =
-      '<span class="hub-jcount">' +
-      (isArr ? kids.length + ' ' + t('apihub.jsonItems') : kids.length + ' ' + t('apihub.jsonKeys')) +
-      '</span>';
-    var html =
-      '<div class="hub-jline hub-jnode' +
-      (open ? ' is-open' : '') +
-      '" data-jpath="' +
-      escAttr(path) +
-      '">' +
-      pad +
-      (kids.length
-        ? '<button type="button" class="hub-jcaret" data-jtoggle="' + escAttr(path) + '" aria-label=""></button>'
-        : '<span class="hub-jcaret is-leaf"></span>') +
-      keyHtml +
-      '<span class="hub-jpunc">' +
-      head +
-      '</span>' +
-      (open ? '' : ' ' + summary + ' <span class="hub-jpunc">' + tail + '</span>') +
-      copyBtn +
-      '</div>';
-    if (open) {
-      html += '<div class="hub-jchildren">';
-      kids.forEach(function (k) {
-        html += jsonNodeHtml(jsonPath(path, k.k), k.k, k.v, depth + 1);
+  function ensureJsonTree(value) {
+    if (!jsonTree) {
+      jsonTree = App.ui.jsonTree.create({
+        labels: {
+          copyNode: t('apihub.copyNode'),
+          items: t('apihub.jsonItems'),
+          keys: t('apihub.jsonKeys'),
+        },
+        onCopy: function (text) {
+          copyText(text, t('apihub.copied'));
+        },
+        onRender: function () {
+          var box = document.querySelector('[data-hub-jsonbox]');
+          if (box) box.innerHTML = jsonTree.render();
+        },
       });
-      html +=
-        '<div class="hub-jline hub-jclose" data-jpath="' +
-        escAttr(path) +
-        '">' +
-        pad +
-        '<span class="hub-jpunc">' +
-        tail +
-        '</span></div>';
     }
-    return html;
-  }
-  function jsonTreeHtml(value) {
-    jsonNodeMap = {};
-    jsonAllPaths = [];
-    return '<div class="hub-json" data-hub-json>' + jsonNodeHtml('root', null, value, 0) + '</div>';
+    jsonTree.setValue(value);
+    return jsonTree;
   }
 
   function responseHtml() {
@@ -2220,7 +2155,7 @@
       esc(t('apihub.raw')) +
       '</button>' +
       (res && isJson && view.resView === 'pretty'
-        ? '<button type="button" class="hub-res-toggle" data-jexpall="all" title="' +
+        ? '<button type="button" class="hub-res-toggle" data-jexpall="all" data-tip="' +
           escAttr(t('apihub.expandAll')) +
           '" aria-label="' +
           escAttr(t('apihub.expandAll')) +
@@ -2228,7 +2163,7 @@
           icon('arrow-down', '') +
           esc(t('apihub.expandAll')) +
           '</button>' +
-          '<button type="button" class="hub-res-toggle" data-jexpall="none" title="' +
+          '<button type="button" class="hub-res-toggle" data-jexpall="none" data-tip="' +
           escAttr(t('apihub.collapseAll')) +
           '" aria-label="' +
           escAttr(t('apihub.collapseAll')) +
@@ -2251,7 +2186,7 @@
     } else {
       var body = res.text || '';
       if (view.resView === 'pretty' && isJson) {
-        html += jsonTreeHtml(jsonValue(body));
+        html += '<div class="hub-json" data-hub-jsonbox>' + ensureJsonTree(jsonValue(body)).render() + '</div>';
       } else if (view.resView === 'pretty') {
         html += '<pre class="hub-pre">' + highlightJson(body) + '</pre>';
       } else {
@@ -2639,31 +2574,13 @@
       return;
     }
 
-    // JSON 树:展开/折叠节点
-    var jt = target.closest('[data-jtoggle]');
-    if (jt) {
-      var jp = jt.getAttribute('data-jtoggle');
-      view.jsonExp[jp] = !(view.jsonExp[jp] !== false);
-      renderFull();
-      return;
-    }
-    // JSON 树:全部展开/折叠
+    // JSON 树:全部展开/折叠(节点展开/折叠与复制由公共组件 json-tree 处理)
     var jx = target.closest('[data-jexpall]');
     if (jx) {
       var jm = jx.getAttribute('data-jexpall');
-      (jsonAllPaths || []).forEach(function (p2) {
-        view.jsonExp[p2] = jm === 'all';
-      });
-      renderFull();
-      return;
-    }
-    // JSON 树:复制节点
-    var jc = target.closest('[data-jcopy]');
-    if (jc) {
-      var jcp = jc.getAttribute('data-jcopy');
-      var jval = jsonNodeMap[jcp];
-      if (jval !== undefined) {
-        copyText(typeof jval === 'string' ? jval : JSON.stringify(jval, null, 2), t('apihub.copied'));
+      if (jsonTree) {
+        if (jm === 'all') jsonTree.expandAll();
+        else jsonTree.collapseAll();
       }
       return;
     }

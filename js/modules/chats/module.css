@@ -47,47 +47,7 @@
   font-weight: 700;
   letter-spacing: -0.025em;
 }
-.ch-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 2.5rem;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 0.375rem;
-  background: var(--background);
-  padding: 0 0.5rem;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-.ch-search:focus-within {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 2px var(--ring);
-}
-.ch-search input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  color: var(--foreground);
-}
-.ch-search-icon {
-  width: 0.9375rem;
-  height: 0.9375rem;
-  color: var(--muted-foreground);
-  flex: none;
-  margin-right: 0.25rem;
-}
-.ch-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
+
 .ch-list {
   flex: 1;
   overflow-y: auto;
@@ -574,23 +534,6 @@
   border: 1px solid var(--border);
   border-radius: 0.375rem;
   overflow: hidden;
-}
-.ch-people-search {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem;
-  background: var(--card);
-}
-.ch-people-search input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  color: var(--foreground);
 }
 .ch-people-list {
   max-height: 16rem;

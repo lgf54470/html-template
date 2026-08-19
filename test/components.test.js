@@ -55,7 +55,12 @@ function loadCore() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const f of ['js/core/color-picker.js', 'js/core/group-tree.js', 'js/core/tag-picker.js']) {
+  for (const f of [
+    'js/core/color-picker.js',
+    'js/core/group-tree.js',
+    'js/core/tag-picker.js',
+    'js/core/search-input.js',
+  ]) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sandbox, { filename: f });
   }
   return sandbox;

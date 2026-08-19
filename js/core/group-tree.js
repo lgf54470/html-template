@@ -278,7 +278,7 @@
       '</span>' +
       '<span class="gt-name" data-gt-name="' +
       esc(node.id) +
-      '" title="' +
+      '" data-tip="' +
       (L.renameHint || '双击重命名') +
       '">' +
       esc(node.name) +
@@ -289,7 +289,7 @@
       esc(node.id) +
       '" aria-label="' +
       esc(L.menu || '菜单') +
-      '" title="' +
+      '" data-tip="' +
       esc(L.menu || '菜单') +
       '">' +
       ic('ellipsis') +
@@ -324,11 +324,15 @@
       '">' +
       (inst.opts.showFilter === false
         ? ''
-        : '<div class="gt-filter"><input type="text" class="gt-filter-input" data-gt-filter placeholder="' +
-          esc(L.search || '搜索分组…') +
-          '" value="' +
-          esc(inst.filter) +
-          '" /></div>') +
+        : '<div class="gt-filter">' +
+          App.ui.searchInput.html({
+            placeholder: L.search || '搜索分组…',
+            value: inst.filter,
+            attrs: 'data-gt-filter',
+            class: 'is-compact',
+            clearLabel: L.clear || '清除',
+          }) +
+          '</div>') +
       '<div class="gt-scroll" data-gt-body>' +
       (inst.opts.rootLabel
         ? '<div class="gt-row gt-root' +
@@ -613,9 +617,12 @@
         '</button>' +
         '</div>' +
         '<div class="gt-icpanel" data-gt-icpanel="icon">' +
-        '<input type="text" class="gt-input" data-gt-icsearch placeholder="' +
-        esc(L.iconSearch || '搜索图标…') +
-        '" />' +
+        App.ui.searchInput.html({
+          placeholder: L.iconSearch || '搜索图标…',
+          attrs: 'data-gt-icsearch',
+          class: 'is-compact gt-icsearch',
+          clearLabel: L.clear || '清除',
+        }) +
         '<div class="gt-icgrid" data-gt-icgrid></div>' +
         '</div>' +
         '<div class="gt-icpanel" data-gt-icpanel="emoji" style="display:none">' +
@@ -657,7 +664,7 @@
           return (
             '<button type="button" class="gt-icbtn" data-gt-icpick="' +
             esc(n) +
-            '" title="' +
+            '" data-tip="' +
             esc(n) +
             '">' +
             ic(n) +
@@ -1065,8 +1072,6 @@
       /* 布局 */
       '.gt-tree{display:flex;flex-direction:column;min-height:0;gap:.125rem}' +
       '.gt-filter{padding:.125rem .375rem .25rem;flex-shrink:0}' +
-      '.gt-filter-input{width:100%;height:1.625rem;border-radius:.4375rem;border:1px solid var(--border,#e4e4e7);background:transparent;color:inherit;padding:0 .5rem;font-size:.75rem;outline:none}' +
-      '.gt-filter-input:focus{border-color:var(--ring,#18181b);box-shadow:0 0 0 2px rgba(24,24,27,.1)}' +
       '.gt-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:1px;padding-bottom:.375rem}' +
       /* 行 */
       '.gt-row{display:flex;align-items:center;gap:.25rem;height:1.75rem;padding-right:.375rem;border-radius:.4375rem;cursor:pointer;user-select:none;position:relative}' +

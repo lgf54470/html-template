@@ -300,7 +300,7 @@
         name +
         '" style="background:' +
         (name === 'accent' ? resolveColor('accent') : NAME_HEX[name]) +
-        '" title="' +
+        '" data-tip="' +
         name +
         '" aria-label="' +
         name +
@@ -318,7 +318,7 @@
       '<input type="text" class="cpk-input" data-cpk-input value="' +
       escAttr(formatHex(rgb)) +
       '" spellcheck="false" />' +
-      '<button type="button" class="cpk-icobtn" data-cpk-copy title="复制 (C)">' +
+      '<button type="button" class="cpk-icobtn" data-cpk-copy data-tip="复制 (C)">' +
       iconSvg('copy') +
       '</button>' +
       '</div>' +

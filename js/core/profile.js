@@ -117,7 +117,7 @@
           '<span class="pf-actions">' +
           '<button type="button" data-pf-edit="' +
           p.id +
-          '" title="' +
+          '" data-tip="' +
           tt('profiles.rename') +
           '" aria-label="' +
           tt('profiles.rename') +
@@ -127,7 +127,7 @@
           (canDelete
             ? '<button type="button" data-pf-delete="' +
               p.id +
-              '" class="pf-delete" title="' +
+              '" class="pf-delete" data-tip="' +
               tt('profiles.delete') +
               '" aria-label="' +
               tt('profiles.delete') +

@@ -411,17 +411,12 @@
       icon().iconSvg('pencil', { class: 'size-6 ch-muted' }) +
       '</button>' +
       '</div>' +
-      '<label class="ch-search">' +
-      icon().iconSvg('search', { class: 'ch-search-icon' }) +
-      '<span class="ch-sr-only">' +
-      t('chats.search') +
-      '</span>' +
-      '<input type="text" data-ch-search value="' +
-      esc(state.search) +
-      '" placeholder="' +
-      t('chats.searchPlaceholder') +
-      '" />' +
-      '</label>' +
+      App.ui.searchInput.html({
+        placeholder: t('chats.searchPlaceholder'),
+        value: state.search,
+        attrs: 'data-ch-search',
+        clearLabel: t('chats.search'),
+      }) +
       '<div class="ch-list">' +
       chats
         .map(function (c) {
@@ -604,14 +599,12 @@
         '</div>' +
         '</div>' +
         '<div class="ch-people">' +
-        '<label class="ch-people-search">' +
-        icon().iconSvg('search', { class: 'ch-search-icon' }) +
-        '<input type="text" data-ch-people-search value="' +
-        esc(state.newSearch) +
-        '" placeholder="' +
-        t('chats.searchPeople') +
-        '" />' +
-        '</label>' +
+        App.ui.searchInput.html({
+          placeholder: t('chats.searchPeople'),
+          value: state.newSearch,
+          attrs: 'data-ch-people-search',
+          clearLabel: t('chats.search'),
+        }) +
         '<div class="ch-people-list">' +
         (filtered.length
           ? filtered

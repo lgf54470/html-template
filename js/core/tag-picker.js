@@ -213,20 +213,18 @@
       '">' +
       '<div class="tp-manager">' +
       '<div class="tp-search">' +
-      '<span class="tp-search-ic">' +
-      ic('search') +
-      '</span>' +
-      '<input type="text" class="tp-input" data-tp-search placeholder="' +
-      escAttr(L.searchTags || '搜索标签…') +
-      '" value="' +
-      escAttr(filter) +
-      '" />' +
-      (filter ? '<button type="button" class="tp-clear" data-tp-clear aria-label=""><span>×</span></button>' : '') +
+      App.ui.searchInput.html({
+        placeholder: L.searchTags || '搜索标签…',
+        value: filter,
+        attrs: 'data-tp-search',
+        class: 'is-compact',
+        clearLabel: L.clear || '清除',
+      }) +
       '</div>' +
       '<div class="tp-colorbar" data-tp-colorbar>' +
       '<button type="button" class="tp-swatch' +
       (colorF === '' ? ' is-on' : '') +
-      '" data-tp-color="" title="' +
+      '" data-tp-color="" data-tip="' +
       escAttr(L.allColors || '全部颜色') +
       '" style="background:conic-gradient(from 0deg,#f43f5e,#f59e0b,#84cc16,#06b6d4,#6366f1,#a855f7,#f43f5e)" aria-label=""></button>' +
       PALETTE.map(function (name) {
@@ -235,7 +233,7 @@
           (colorF === name ? ' is-on' : '') +
           '" data-tp-color="' +
           name +
-          '" title="' +
+          '" data-tip="' +
           name +
           (byColor[name] ? ' (' + byColor[name] + ')' : '') +
           '" style="background:' +
@@ -290,7 +288,7 @@
       (activeId === t.id ? ' is-active' : '') +
       '" data-tp-tag="' +
       escAttr(t.id) +
-      '" title="' +
+      '" data-tip="' +
       escAttr(L.renameHint || '双击重命名,右键更多操作') +
       '">' +
       '<span class="tp-hash" style="' +
@@ -306,7 +304,7 @@
       escAttr(t.id) +
       '" aria-label="' +
       escAttr(L.menu || '菜单') +
-      '" title="' +
+      '" data-tip="' +
       escAttr(L.menu || '菜单') +
       '">' +
       ic('ellipsis') +
@@ -357,15 +355,13 @@
       inst.uid +
       '">' +
       '<div class="tp-picker-search">' +
-      '<span class="tp-search-ic">' +
-      ic('search') +
-      '</span>' +
-      '<input type="text" class="tp-input" data-tp-pick-search placeholder="' +
-      escAttr(L.searchTags || '搜索或创建标签…') +
-      '" value="' +
-      escAttr(q) +
-      '" autocomplete="off" />' +
-      (q ? '<button type="button" class="tp-clear" data-tp-pick-clear aria-label=""><span>×</span></button>' : '') +
+      App.ui.searchInput.html({
+        placeholder: L.searchTags || '搜索或创建标签…',
+        value: q,
+        attrs: 'data-tp-pick-search',
+        class: 'is-compact',
+        clearLabel: L.clear || '清除',
+      }) +
       '</div>' +
       '<div class="tp-pick-list" data-tp-pick-list>';
     if (canCreate) {
@@ -509,7 +505,7 @@
           (picked === name ? ' is-on' : '') +
           '" data-tp-palette="' +
           name +
-          '" title="' +
+          '" data-tip="' +
           name +
           '" style="background:' +
           resolveColor(name) +
@@ -770,20 +766,7 @@
       inst.refresh();
       return;
     }
-    // 清除搜索
-    var clr = t.closest('[data-tp-clear]');
-    if (clr && !t.closest('[data-tp-picker]')) {
-      inst.setManagerFilter('');
-      inst.refresh();
-      return;
-    }
-    // 多选下拉:清除搜索
-    var pickClear = t.closest('[data-tp-pick-clear]');
-    if (pickClear) {
-      inst.setPickerSearch('');
-      if (typeof inst.opts.onRenderMenu === 'function') inst.opts.onRenderMenu();
-      return;
-    }
+    // 清除搜索由公共组件 search-input 处理(派发 input 事件)
     // 多选下拉:切换标签
     var pick = t.closest('[data-tp-pick]');
     if (pick) {
@@ -844,8 +827,8 @@
     var inst = INSTANCES[pickerRoot.getAttribute('data-tp-picker')];
     if (!inst) return;
     inst.setPickerSearch(t.value);
-    var menu = t.closest('[data-dropdown-menu]');
-    if (menu && typeof inst.opts.onRenderMenu === 'function') {
+    // 始终回调(标签 Popover 挂在 body 下,不在 [data-dropdown-menu] 内)
+    if (typeof inst.opts.onRenderMenu === 'function') {
       inst.opts.onRenderMenu();
     }
   });
@@ -956,13 +939,10 @@
       /* 管理列表 */
       '.tp{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}' +
       '.tp-manager{display:flex;flex-direction:column;min-height:0;gap:.25rem;flex:1 1 auto}' +
-      '.tp-search{position:relative;display:flex;align-items:center;padding:.125rem .375rem}' +
-      '.tp-search-ic{position:absolute;left:.625rem;display:inline-flex;color:var(--muted-foreground,#71717a);pointer-events:none}' +
-      '.tp-search-ic svg{width:.8125rem;height:.8125rem}' +
+      '.tp-search{padding:.125rem .375rem}' +
+      '.tp-picker-search{display:flex;align-items:center;padding:0 .125rem}' +
       '.tp-input{width:100%;height:1.625rem;border-radius:.4375rem;border:1px solid var(--border,#e4e4e7);background:transparent;color:inherit;padding:0 1.5rem;font-size:.75rem;outline:none}' +
       '.tp-input:focus{border-color:var(--ring,#18181b);box-shadow:0 0 0 2px rgba(24,24,27,.1)}' +
-      '.tp-clear{position:absolute;right:.625rem;display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1rem;border:0;border-radius:9999px;background:var(--muted,#f4f4f5);color:var(--muted-foreground,#71717a);font-size:.75rem;line-height:1;cursor:pointer;padding:0}' +
-      '.tp-clear:hover{background:var(--accent,#e4e4e7);color:inherit}' +
       '.tp-colorbar{display:flex;align-items:center;gap:.1875rem;padding:.125rem .375rem .25rem;flex-wrap:wrap}' +
       '.tp-swatch{width:.875rem;height:.875rem;border-radius:9999px;border:1px solid rgba(0,0,0,.15);padding:0;cursor:pointer;flex-shrink:0}' +
       '.tp-swatch.is-on{outline:2px solid var(--ring,#18181b);outline-offset:1px}' +

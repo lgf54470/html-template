@@ -150,7 +150,7 @@
           '<span class="ws-menu-actions">' +
           '<button type="button" data-ws-edit="' +
           ws.id +
-          '" title="' +
+          '" data-tip="' +
           t('workspace.edit') +
           '" aria-label="' +
           t('workspace.edit') +
@@ -160,7 +160,7 @@
           (workspaces.length > 1
             ? '<button type="button" data-ws-delete="' +
               ws.id +
-              '" class="ws-menu-delete" title="' +
+              '" class="ws-menu-delete" data-tip="' +
               t('workspace.delete') +
               '" aria-label="' +
               t('workspace.delete') +
@@ -257,7 +257,7 @@
         'group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border'
       ) +
       '">' +
-      '<div role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize sidebar" data-resize-handle class="group/handle absolute inset-y-0 right-0 z-10 flex w-3 translate-x-1/2 cursor-col-resize touch-none items-center justify-center select-none">' +
+      '<div role="separator" aria-orientation="vertical" aria-label="Resize sidebar" data-tip="Drag to resize sidebar" data-resize-handle class="group/handle absolute inset-y-0 right-0 z-10 flex w-3 translate-x-1/2 cursor-col-resize touch-none items-center justify-center select-none">' +
       '<span class="h-10 w-1 rounded-full bg-border group-hover/handle:bg-muted-foreground/40"></span>' +
       '</div>' +
       '<div data-slot="sidebar-header" data-sidebar="header" class="flex flex-col gap-2 p-2">' +
@@ -371,7 +371,7 @@
             (theme === b.value) +
             '" class="' +
             (theme === b.value ? 'is-checked' : '') +
-            '" title="' +
+            '" data-tip="' +
             t(b.key) +
             '" aria-label="' +
             t(b.key) +
@@ -396,7 +396,7 @@
       ui().buttonClass('ghost', 'icon-sm', 'size-7') +
       '" aria-label="' +
       t('header.language') +
-      '" title="' +
+      '" data-tip="' +
       t('header.language') +
       '">' +
       icon().iconSvg('languages', { class: 'size-4' }) +
@@ -439,7 +439,7 @@
       '<header class="relative isolate z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3">' +
       '<button type="button" data-sidebar-trigger data-slot="sidebar-trigger" class="' +
       ui().buttonClass('ghost', 'icon-sm', 'size-7') +
-      '" aria-label="Toggle Sidebar" title="Toggle Sidebar">' +
+      '" aria-label="Toggle Sidebar" data-tip="Toggle Sidebar">' +
       icon().iconSvg('panel-left', { class: 'size-4' }) +
       '<span class="sr-only">Toggle Sidebar</span></button>' +
       '<div class="flex items-center gap-1.5 text-sm text-muted-foreground">' +
@@ -451,14 +451,14 @@
       ui().buttonClass('ghost', 'icon-sm', 'size-7') +
       '" aria-label="' +
       t('settings.title') +
-      '" title="' +
+      '" data-tip="' +
       t('settings.title') +
       '">' +
       icon().iconSvg('palette', { class: 'size-4' }) +
       '</button>' +
       '<button type="button" data-signout class="' +
       ui().buttonClass('ghost', 'icon-sm', 'size-7') +
-      '" title="' +
+      '" data-tip="' +
       t('sidebar.signOut') +
       '" aria-label="' +
       t('sidebar.signOut') +

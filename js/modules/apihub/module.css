@@ -403,8 +403,13 @@
   background: var(--accent);
   border-color: var(--border);
 }
-.hub-route-switch-col {
-  padding-top: 0.125rem;
+/* 方法列:请求方式按钮 + 下方左对齐的公开开关 */
+.hub-route-mcol {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3125rem;
 }
 .hub-method {
   flex: none;
@@ -584,34 +589,8 @@
   border-bottom: 1px solid var(--border);
 }
 .hub-search {
-  position: relative;
   display: flex;
   align-items: center;
-}
-.hub-search svg {
-  position: absolute;
-  left: 0.625rem;
-  width: 0.875rem;
-  height: 0.875rem;
-  color: var(--muted-foreground);
-  pointer-events: none;
-}
-.hub-search input {
-  width: 100%;
-  height: 2rem;
-  box-sizing: border-box;
-  border: 1px solid var(--input);
-  border-radius: 0.5rem;
-  background: var(--background);
-  color: var(--foreground);
-  padding: 0 0.75rem 0 1.875rem;
-  font-size: 0.8125rem;
-  font-family: inherit;
-  outline: none;
-}
-.hub-search input:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 .hub-filters {
   display: flex;
@@ -1061,93 +1040,6 @@
   word-break: break-all;
 }
 
-/* ---------- JSON 树(响应查看) ---------- */
-.hub-json {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
-  line-height: 1.6;
-  padding: 0.125rem 0;
-}
-.hub-jline {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  min-height: 1.375rem;
-  padding: 0.0625rem 0.25rem;
-  border-radius: 0.25rem;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.hub-jline:hover {
-  background: var(--accent);
-}
-.hub-jindent {
-  display: inline-block;
-  width: 1rem;
-  flex: none;
-}
-.hub-jcaret {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 0.875rem;
-  height: 0.875rem;
-  flex: none;
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 0;
-  border-radius: 0.25rem;
-  transition: transform 0.12s ease;
-}
-.hub-jcaret svg {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-.hub-jcaret.is-leaf {
-  visibility: hidden;
-}
-.hub-jnode.is-open > .hub-jcaret {
-  transform: rotate(90deg);
-}
-.hub-jkey {
-  color: #2563eb;
-}
-.hub-jcolon,
-.hub-jpunc {
-  color: var(--muted-foreground);
-}
-.hub-jcount {
-  color: var(--muted-foreground);
-  opacity: 0.85;
-}
-.hub-jcopy {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex: none;
-  margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  border-radius: 0.25rem;
-  opacity: 0;
-}
-.hub-jline:hover .hub-jcopy {
-  opacity: 1;
-}
-.hub-jcopy:hover {
-  background: var(--background);
-  color: var(--foreground);
-}
-.hub-jcopy svg {
-  width: 0.75rem;
-  height: 0.75rem;
-}
 
 /* ---------- 语法高亮 ---------- */
 .hub-hl-key { color: #2563eb; }

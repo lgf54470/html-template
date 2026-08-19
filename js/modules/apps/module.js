@@ -159,14 +159,14 @@
       '</div>' +
       '<div class="ap-toolbar">' +
       '<div class="ap-toolbar-left">' +
-      '<label class="ap-search">' +
-      icon().iconSvg('search', { class: 'ap-search-icon' }) +
-      '<input type="text" data-app-filter placeholder="' +
-      t('apps.filterPlaceholder') +
-      '" value="' +
-      esc(state.term) +
-      '" />' +
-      '</label>' +
+      '<div class="ap-search-wrap">' +
+      App.ui.searchInput.html({
+        placeholder: t('apps.filterPlaceholder'),
+        value: state.term,
+        attrs: 'data-app-filter',
+        clearLabel: t('apps.filterPlaceholder'),
+      }) +
+      '</div>' +
       '<div data-dropdown>' +
       '<button type="button" data-dropdown-trigger class="ap-select ap-select-type" aria-label="' +
       t('apps.type.' + state.type) +

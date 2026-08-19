@@ -79,7 +79,7 @@
         active +
         '" class="ws-pick' +
         (active ? ' is-active' : '') +
-        '" title="' +
+        '" data-tip="' +
         name +
         '">' +
         App.icon.iconSvg(name, { class: 'size-4' }) +
@@ -98,7 +98,7 @@
         active +
         '" class="ws-pick' +
         (active ? ' is-active' : '') +
-        '" title="' +
+        '" data-tip="' +
         c +
         '">' +
         '<span class="ws-dot swatch-' +

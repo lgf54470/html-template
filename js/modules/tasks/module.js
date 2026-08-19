@@ -328,13 +328,12 @@
       '<div data-dropdown-menu class="' +
       App.ui.dropdownContentClass('w-56') +
       '">' +
-      '<input type="text" data-task-filter-search="' +
-      kind +
-      '" value="' +
-      esc(optSearch) +
-      '" placeholder="' +
-      title +
-      '" class="tk-filter-search" />' +
+      App.ui.searchInput.html({
+        placeholder: title,
+        value: optSearch,
+        attrs: 'data-task-filter-search="' + kind + '"',
+        class: 'tk-filter-search-wrap',
+      }) +
       '<div class="tk-filter-list">' +
       visible
         .map(function (o) {
@@ -439,11 +438,14 @@
     return (
       '<div class="flex items-center justify-between">' +
       '<div class="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2">' +
-      '<input type="text" data-task-search value="' +
-      esc(state.search) +
-      '" placeholder="' +
-      t('tasks.searchPlaceholder') +
-      '" class="tk-search-input" />' +
+      '<div class="tk-search-input-wrap">' +
+      App.ui.searchInput.html({
+        placeholder: t('tasks.searchPlaceholder'),
+        value: state.search,
+        attrs: 'data-task-search',
+        clearLabel: t('tasks.searchPlaceholder'),
+      }) +
+      '</div>' +
       '<div class="flex gap-x-2">' +
       filterBtn(t, 'status', t('tasks.filter.status'), STATUSES) +
       filterBtn(t, 'priority', t('tasks.filter.priority'), PRIORITIES) +
@@ -778,7 +780,7 @@
     var dd = function (label, iconName, items, action) {
       return (
         '<div class="relative" data-dropdown>' +
-        '<button type="button" data-dropdown-trigger title="' +
+        '<button type="button" data-dropdown-trigger data-tip="' +
         label +
         '" aria-label="' +
         label +
@@ -819,7 +821,9 @@
       App.ui.buttonClass('outline', 'icon', 'size-6 rounded-full!') +
       '" aria-label="' +
       t('tasks.clearSelection') +
-      '" title="Clear selection (Esc)">' +
+      '" data-tip="' +
+      t('tasks.clearSelection') +
+      '">' +
       icon().iconSvg('x', { class: 'size-4' }) +
       '</button>' +
       '<span class="mx-1 h-5 w-px bg-border"></span>' +
@@ -836,7 +840,7 @@
       dd(t('tasks.bulkPriority'), 'arrow-up-down', PRIORITIES, 'priority') +
       '<button type="button" data-task-bulk-export class="' +
       App.ui.buttonClass('outline', 'icon', 'size-8 rounded-md!') +
-      '" title="' +
+      '" data-tip="' +
       t('tasks.bulkExport') +
       '" aria-label="' +
       t('tasks.bulkExport') +
@@ -845,7 +849,7 @@
       '</button>' +
       '<button type="button" data-task-bulk-delete class="' +
       App.ui.buttonClass('destructive', 'icon', 'size-8 rounded-md!') +
-      '" title="' +
+      '" data-tip="' +
       t('tasks.bulkDelete') +
       '" aria-label="' +
       t('tasks.bulkDelete') +

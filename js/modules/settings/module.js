@@ -75,7 +75,7 @@
         name +
         '" class="sp-avatar-opt' +
         (type === 'icon' && avatar.value === name ? ' is-active' : '') +
-        '" title="' +
+        '" data-tip="' +
         name +
         '">' +
         icon().iconSvg(name) +

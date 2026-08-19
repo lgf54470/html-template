@@ -302,18 +302,15 @@
       esc(t.name) +
       '</span>' +
       (count ? '<span class="tp-count">' + count + '</span>' : '') +
-      '<span class="tp-dd" data-dropdown>' +
-      '<button type="button" class="tp-more" data-dropdown-trigger aria-label="' +
+      '<button type="button" class="tp-more" data-tp-more="' +
+      escAttr(t.id) +
+      '" aria-label="' +
       escAttr(L.menu || '菜单') +
       '" title="' +
       escAttr(L.menu || '菜单') +
       '">' +
       ic('ellipsis') +
       '</button>' +
-      '<div class="tp-ddmenu" data-dropdown-menu>' +
-      tagMenuItemsHtml(inst, t) +
-      '</div>' +
-      '</span>' +
       '</div>'
     );
   }
@@ -730,6 +727,17 @@
     if (!inst) return;
     var L = inst.labels();
 
+    // ⋯ 按钮 → 与右键同款 body 级浮层,锚定按钮下方(修复被侧栏遮挡);再次点击收起
+    var more = t.closest('[data-tp-more]');
+    if (more) {
+      var mt = nodeOf(inst, more.getAttribute('data-tp-more'));
+      if (mt) {
+        if (ctxPopup && ctxTrigger === more) hideCtx();
+        else showCtx(inst, mt, 0, 0, more);
+      }
+      return;
+    }
+
     // 管理列表:标签行选中(筛选)/未标记/清除
     var clearRow = t.closest('[data-tp-clear]');
     if (clearRow) {
@@ -742,7 +750,7 @@
       return;
     }
     var tagRow = t.closest('[data-tp-tag]');
-    if (tagRow && !t.closest('[data-dropdown], [data-tp-act]')) {
+    if (tagRow && !t.closest('[data-tp-act], [data-tp-more]')) {
       if (typeof inst.opts.onSelect === 'function') {
         inst.opts.onSelect(tagRow.getAttribute('data-tp-tag'));
       }
@@ -883,21 +891,43 @@
     }
   });
 
-  // 右键菜单
+  // 右键/⋯ 菜单浮层(统一 body 级 fixed,避免被侧栏遮挡)
   var ctxPopup = null;
-  function showCtx(inst, tag, x, y) {
+  var ctxTrigger = null;
+  function showCtx(inst, tag, x, y, anchorEl) {
     hideCtx();
     ctxPopup = document.createElement('div');
     ctxPopup.className = 'tp-ctxpop';
     ctxPopup.innerHTML = tagMenuItemsHtml(inst, tag);
-    ctxPopup.style.left = Math.max(4, x) + 'px';
-    ctxPopup.style.top = Math.max(4, y) + 'px';
-    // 右键浮层挂在 body 下(不在 [data-tp] 内),把实例引用挂到元素上,
-    // 供 document 级 click 委托解析,否则菜单项点击不生效(仅 ⋯ 下拉可用)。
+    // 浮层挂在 body 下(不在 [data-tp] 内),把实例引用挂到元素上,
+    // 供 document 级 click 委托解析,否则菜单项点击不生效。
     ctxPopup._tpInst = inst;
     document.body.appendChild(ctxPopup);
+    var w = ctxPopup.offsetWidth || 160;
+    var h = ctxPopup.offsetHeight || 160;
+    var left, top;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      var rect = anchorEl.getBoundingClientRect();
+      left = rect.right - w;
+      top = rect.bottom + 4;
+      if (left < 4) left = 4;
+      if (top + h > window.innerHeight - 4) top = Math.max(4, rect.top - h - 4);
+    } else {
+      left = Math.max(4, x || 0);
+      top = Math.max(4, y || 0);
+    }
+    ctxPopup.style.left = left + 'px';
+    ctxPopup.style.top = top + 'px';
+    if (anchorEl) {
+      ctxTrigger = anchorEl;
+      anchorEl.setAttribute('aria-expanded', 'true');
+    }
   }
   function hideCtx() {
+    if (ctxTrigger) {
+      ctxTrigger.removeAttribute('aria-expanded');
+      ctxTrigger = null;
+    }
     if (ctxPopup && ctxPopup.parentNode) ctxPopup.parentNode.removeChild(ctxPopup);
     ctxPopup = null;
   }
@@ -914,7 +944,7 @@
     showCtx(inst, tag, e.clientX, e.clientY);
   });
   document.addEventListener('click', function (e) {
-    if (ctxPopup && e.target && (!e.target.closest || !e.target.closest('.tp-ctxpop'))) hideCtx();
+    if (ctxPopup && e.target && (!e.target.closest || !e.target.closest('.tp-ctxpop, [data-tp-more]'))) hideCtx();
   });
 
   /* ---------- 样式注入 ---------- */
@@ -949,8 +979,6 @@
       '.tp-row:hover .tp-more,.tp-more[aria-expanded="true"]{opacity:1}' +
       '.tp-more:hover{background:var(--background,#fff);color:inherit}' +
       '.tp-more svg{width:.8125rem;height:.8125rem}' +
-      '.tp-ddmenu{position:absolute;right:.25rem;top:100%;z-index:60;display:none;min-width:10rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border,#e4e4e7)}' +
-      '.tp-ddmenu.open{display:block}' +
       '.tp-ctxpop{position:fixed;z-index:1000;min-width:10rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7)}' +
       '.tp-mi{display:flex;align-items:center;gap:.5rem;width:100%;padding:.375rem .5rem;border:0;border-radius:.375rem;background:transparent;color:inherit;font-size:.8125rem;cursor:pointer;text-align:left;outline:none}' +
       '.tp-mi:hover{background:var(--accent,#f4f4f5)}' +

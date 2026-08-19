@@ -238,10 +238,13 @@ test('groupTree: create().render() 输出三要素(树根/行/图标色)', () =>
   assert.match(html, /data-gt-id="b"/);
   assert.match(html, /color:#3b82f6/);
   assert.match(html, /data-gt-clear/); // 根行
-  assert.match(html, /data-gt-ctx="newchild"/); // 右键菜单项
-  assert.match(html, /data-gt-ctx="move"/);
-  assert.match(html, /data-gt-ctx="icon"/);
-  assert.match(html, /data-gt-ctx="color"/);
+  assert.match(html, /data-gt-more="a"/); // ⋯ 菜单按钮(菜单项改为 body 级浮层按需渲染)
+  assert.match(html, /data-gt-more="b"/);
+  const menu = inst.menuHtml('a'); // 菜单项(⋯ 浮层 / 右键浮层共用)
+  assert.match(menu, /data-gt-ctx="newchild"/);
+  assert.match(menu, /data-gt-ctx="move"/);
+  assert.match(menu, /data-gt-ctx="icon"/);
+  assert.match(menu, /data-gt-ctx="color"/);
   assert.match(html, /data-x>on/); // 行内扩展(公开开关)
   // 展开/折叠全部
   assert.equal(typeof inst.expandAll, 'function');

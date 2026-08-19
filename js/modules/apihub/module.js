@@ -28,7 +28,9 @@
     tagFilter: null,
     favOnly: false,
     pubOnly: false,
+    pinOnly: false,
     customOnly: false,
+    moduleFilter: '',
     selected: null,
     runTab: 'params',
     resView: 'pretty',
@@ -1016,36 +1018,62 @@
     );
   }
 
+  /** 路由所属模块:/api/<模块>/... 取 api 后第一段,其余取路径第一段 */
+  function moduleOf(r) {
+    var segs = String(r.path || '/').split('/').filter(Boolean);
+    if (!segs.length) return '';
+    if (segs[0].toLowerCase() === 'api') return (segs[1] || '').toLowerCase();
+    return segs[0].toLowerCase();
+  }
+
+  /** 基础筛选(模块/分组/标签/搜索):与开关 chips 无关,列表与计数共用 */
+  function matchesBase(r) {
+    var key = routeKeyOf(r);
+    var m = memberships(key, r);
+    if (view.moduleFilter && moduleOf(r) !== view.moduleFilter) return false;
+    if (view.groupFilter) {
+      var gids = descendants(state.config.groups || [], view.groupFilter);
+      if (!(m.groupIds || []).some(function (gid) { return gids.indexOf(gid) !== -1; })) return false;
+    }
+    if (view.tagFilter) {
+      var tids = descendants(state.config.tags || [], view.tagFilter);
+      if (!(m.tagIds || []).some(function (tid) { return tids.indexOf(tid) !== -1; })) return false;
+    }
+    var q = (view.search || '').trim().toLowerCase();
+    if (q) {
+      var hay = (r.method + ' ' + r.path + ' ' + (m.name || '') + ' ' + (m.desc || r.desc || '')).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  }
+
+  /** 各筛选开关命中数量(基础筛选之上各自独立,供角标显示) */
+  function filterCounts() {
+    var c = { all: 0, pub: 0, fav: 0, pin: 0, custom: 0 };
+    (state.routes || []).forEach(function (r) {
+      if (!matchesBase(r)) return;
+      c.all++;
+      var key = routeKeyOf(r);
+      var m = memberships(key, r);
+      if (isPublic(key, r)) c.pub++;
+      if (m.favorite) c.fav++;
+      if (m.pinned) c.pin++;
+      if (!r.builtIn) c.custom++;
+    });
+    return c;
+  }
+
   /** 当前筛选条件下的路由列表(置顶优先,再按方法/路径排序) */
   function filteredRoutes() {
-    var q = (view.search || '').trim().toLowerCase();
     return (state.routes || [])
       .filter(function (r) {
         var key = routeKeyOf(r);
         var m = memberships(key, r);
-        if (view.groupFilter) {
-          var gids = descendants(state.config.groups || [], view.groupFilter);
-          if (!(m.groupIds || []).some(function (gid) { return gids.indexOf(gid) !== -1; })) return false;
-        }
-        if (view.tagFilter) {
-          var tids = descendants(state.config.tags || [], view.tagFilter);
-          if (!(m.tagIds || []).some(function (tid) { return tids.indexOf(tid) !== -1; })) return false;
-        }
+        if (!matchesBase(r)) return false;
         if (view.favOnly && !m.favorite) return false;
         if (view.pubOnly && !isPublic(key, r)) return false;
+        if (view.pinOnly && !m.pinned) return false;
         if (view.customOnly && r.builtIn) return false;
-        if (q) {
-          var hay = (
-            r.method +
-            ' ' +
-            r.path +
-            ' ' +
-            (m.name || '') +
-            ' ' +
-            (m.desc || r.desc || '')
-          ).toLowerCase();
-          if (hay.indexOf(q) === -1) return false;
-        }
         return true;
       })
       .sort(function (a, b) {
@@ -1473,7 +1501,91 @@
       .join('');
   }
 
+  /** 模块清单(按 /api/<模块> 提取,含数量) */
+  function moduleFilters() {
+    var map = {};
+    (state.routes || []).forEach(function (r) {
+      var m = moduleOf(r);
+      if (!m) return;
+      map[m] = (map[m] || 0) + 1;
+    });
+    return Object.keys(map)
+      .sort()
+      .map(function (id) {
+        return { id: id, count: map[id] };
+      });
+  }
+
+  /** 模块下拉筛选(全部模块 + 各模块) */
+  function moduleFilterHtml() {
+    var cur = view.moduleFilter;
+    var mods = moduleFilters();
+    return (
+      '<span class="hub-dd" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="hub-filter-chip' +
+      (cur ? ' is-on' : '') +
+      '">' +
+      icon('route', '') +
+      '<span>' +
+      esc(cur || t('apihub.allModules')) +
+      '</span>' +
+      icon('chevron-down', '') +
+      '</button>' +
+      '<div class="hub-dd-menu" data-dropdown-menu style="left:0;right:auto;min-width:10rem">' +
+      '<div class="hub-dd-label">' +
+      esc(t('apihub.module')) +
+      '</div>' +
+      '<button type="button" class="hub-dd-item' +
+      (!cur ? ' is-on' : '') +
+      '" data-hub-module="">' +
+      icon('layers', '') +
+      esc(t('apihub.allModules')) +
+      (!cur ? '<span class="hub-dd-check">' + icon('check', '') + '</span>' : '') +
+      '</button>' +
+      mods
+        .map(function (m) {
+          var on = cur === m.id;
+          return (
+            '<button type="button" class="hub-dd-item' +
+            (on ? ' is-on' : '') +
+            '" data-hub-module="' +
+            escAttr(m.id) +
+            '">' +
+            icon('route', '') +
+            esc(m.id) +
+            '<span class="hub-dd-count">' +
+            fmtCount(m.count) +
+            '</span>' +
+            (on ? '<span class="hub-dd-check">' + icon('check', '') + '</span>' : '') +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div></span>'
+    );
+  }
+
+  /** 筛选 chip(带微信式右上角数量角标) */
+  function filterChipHtml(act, labelKey, iconName, count, on) {
+    return (
+      '<button type="button" class="hub-filter-chip' +
+      (on ? ' is-on' : '') +
+      '" data-hub-act="' +
+      act +
+      '">' +
+      icon(iconName, '') +
+      esc(t(labelKey)) +
+      (count > 0 ? '<span class="hub-filter-badge">' + fmtCount(count) + '</span>' : '') +
+      '</button>'
+    );
+  }
+
+  function fmtCount(n) {
+    return n > 99 ? '99+' : String(n);
+  }
+
   function listHtml() {
+    var counts = filterCounts();
     return (
       '<div class="hub-col hub-list">' +
       '<div class="hub-list-toolbar">' +
@@ -1486,24 +1598,12 @@
       '" />' +
       '</div>' +
       '<div class="hub-filters">' +
-      '<button type="button" class="hub-filter-chip' +
-      (view.favOnly ? ' is-on' : '') +
-      '" data-hub-act="filfav">' +
-      icon('star', '') +
-      esc(t('apihub.favOnly')) +
-      '</button>' +
-      '<button type="button" class="hub-filter-chip' +
-      (view.pubOnly ? ' is-on' : '') +
-      '" data-hub-act="filpub">' +
-      icon('globe', '') +
-      esc(t('apihub.pubOnly')) +
-      '</button>' +
-      '<button type="button" class="hub-filter-chip' +
-      (view.customOnly ? ' is-on' : '') +
-      '" data-hub-act="filcustom">' +
-      icon('plus', '') +
-      esc(t('apihub.customOnly')) +
-      '</button>' +
+      moduleFilterHtml() +
+      filterChipHtml('filall', 'apihub.all', 'circle', counts.all, !view.favOnly && !view.pubOnly && !view.pinOnly && !view.customOnly) +
+      filterChipHtml('filpub', 'apihub.pubOnly', 'globe', counts.pub, view.pubOnly) +
+      filterChipHtml('filfav', 'apihub.favOnly', 'star', counts.fav, view.favOnly) +
+      filterChipHtml('filpin', 'apihub.pinOnly', 'circle-dot', counts.pin, view.pinOnly) +
+      filterChipHtml('filcustom', 'apihub.customOnly', 'plus', counts.custom, view.customOnly) +
       '</div>' +
       '</div>' +
       '<div class="hub-list-body" data-hub-list-body>' +
@@ -1951,6 +2051,15 @@
       return;
     }
 
+    // 模块筛选下拉
+    var md = target.closest('[data-hub-module]');
+    if (md) {
+      view.moduleFilter = md.getAttribute('data-hub-module') || '';
+      closeDropdowns();
+      renderFull();
+      return;
+    }
+
     // 通用动作(按钮)
     var actBtn = target.closest('[data-hub-act]');
     if (actBtn) {
@@ -2019,6 +2128,17 @@
           break;
         case 'filcustom':
           view.customOnly = !view.customOnly;
+          renderFull();
+          break;
+        case 'filall':
+          view.favOnly = false;
+          view.pubOnly = false;
+          view.pinOnly = false;
+          view.customOnly = false;
+          renderFull();
+          break;
+        case 'filpin':
+          view.pinOnly = !view.pinOnly;
           renderFull();
           break;
         case 'clrgroup':

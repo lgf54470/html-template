@@ -551,6 +551,34 @@
   width: 0.75rem;
   height: 0.75rem;
 }
+.hub-filter-chip {
+  position: relative;
+}
+.hub-filter-badge {
+  position: absolute;
+  top: -0.375rem;
+  right: -0.375rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--background);
+}
+.hub-dd-count {
+  margin-left: auto;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+}
 .hub-empty {
   display: flex;
   flex-direction: column;

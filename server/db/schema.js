@@ -23,6 +23,44 @@ CREATE TABLE IF NOT EXISTS app_settings (
   PRIMARY KEY (workspace_id, key)
 );`;
 
+/* ---------- API Hub 业务数据表(模块表,均含 workspace_id 列,不混入 app_settings) ---------- */
+
+/** API Hub 配置表:每个工作空间一行,config 明文 / secrets 加密落库 */
+const APIHUB_CONFIG_TABLE = `
+CREATE TABLE IF NOT EXISTS apihub_config (
+  workspace_id TEXT PRIMARY KEY,
+  config       TEXT NOT NULL,
+  secrets      TEXT NOT NULL,
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);`;
+
+/** API Hub 请求运行历史(工作空间隔离,条数上限由 loadHistory 控制) */
+const APIHUB_HISTORY_TABLE = `
+CREATE TABLE IF NOT EXISTS apihub_history (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL,
+  method       TEXT NOT NULL,
+  path         TEXT NOT NULL,
+  status       INTEGER NOT NULL,
+  ts           INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_apihub_history_ws ON apihub_history (workspace_id, ts);`;
+
+/** API Hub 请求访问日志(工作空间隔离,受条数上限 / 保留天数驱动) */
+const APIHUB_LOGS_TABLE = `
+CREATE TABLE IF NOT EXISTS apihub_logs (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL,
+  method       TEXT NOT NULL,
+  path         TEXT NOT NULL,
+  status       INTEGER NOT NULL,
+  ts           INTEGER NOT NULL,
+  ip           TEXT,
+  ua           TEXT,
+  ms           INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_apihub_logs_ws ON apihub_logs (workspace_id, ts);`;
+
 const SCHEMA =
   APP_SETTINGS_TABLE +
   `
@@ -31,7 +69,10 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   expires_at TEXT,
   note       TEXT
-);`;
+);` +
+  APIHUB_CONFIG_TABLE +
+  APIHUB_HISTORY_TABLE +
+  APIHUB_LOGS_TABLE;
 
 /** 旧版 app_settings(key 单主键,无 workspace_id)→ 新版(复合主键)迁移步骤 */
 const APP_SETTINGS_MIGRATION_SQL = [
@@ -66,6 +107,9 @@ async function migrateAppSettings(db) {
 module.exports = {
   SCHEMA,
   APP_SETTINGS_TABLE,
+  APIHUB_CONFIG_TABLE,
+  APIHUB_HISTORY_TABLE,
+  APIHUB_LOGS_TABLE,
   APP_SETTINGS_MIGRATION_SQL,
   hasWorkspaceColumn,
   migrateAppSettings,

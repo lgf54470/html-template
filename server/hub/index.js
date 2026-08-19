@@ -2,9 +2,12 @@
  * hub/index.js — API Hub 核心(配置存取 + 公开/鉴权策略,Node / Worker 共用)
  * ------------------------------------------------------------
  * 职责:
- *   1. 存取 Hub 配置与密钥:
- *        settings:hub:config   明文(分组/标签/路由覆盖/自定义路由/默认鉴权)
- *        settings:hub:secrets  加密落库(各路由的 API Key,键名含 secret → 敏感键)
+ *   1. 存取 Hub 配置与密钥(独立表 apihub_config/apihub_history/apihub_logs,
+ *      均按当前工作空间 workspace_id 隔离;旧版 settings:hub:* 惰性迁移):
+ *        apihub_config    config 明文(分组/标签/路由覆盖/自定义路由/日志设置)
+ *                        + secrets 加密落库(各路由的 API Key,键名含 secret → 敏感键)
+ *        apihub_history   请求运行历史
+ *        apihub_logs      请求访问日志(受条数上限/保留天数/排除规则驱动)
  *   2. 解析每个路由的生效策略:公开开关(含分组级联)/ 鉴权方式
  *   3. 按鉴权方式校验请求:
  *        none            无需鉴权(公开开关打开时)
@@ -24,10 +27,14 @@
 const { GLOBAL_WORKSPACE_ID } = require('../db/scope');
 const { findSession } = require('../auth/session');
 
+// 旧版 app_settings 存储键(仅用于惰性迁移;新数据落 apihub_* 独立表)
 const HUB_CONFIG_KEY = 'settings:hub:config';
-const HUB_SECRETS_KEY = 'settings:hub:secrets'; // 含 "secret" → 敏感键,落库前加密
-const HUB_HISTORY_KEY = 'settings:hub:history'; // 请求运行历史(非敏感,明文存储)
-const HUB_LOGS_KEY = 'settings:hub:logs'; // 请求访问日志(非敏感,明文存储)
+const HUB_SECRETS_KEY = 'settings:hub:secrets';
+const HUB_HISTORY_KEY = 'settings:hub:history';
+const HUB_LOGS_KEY = 'settings:hub:logs';
+const LEGACY_HUB_KEYS = [HUB_CONFIG_KEY, HUB_SECRETS_KEY, HUB_HISTORY_KEY, HUB_LOGS_KEY];
+/** 未设置活跃工作空间时的兜底(与前端默认工作空间一致) */
+const DEFAULT_WORKSPACE_ID = 'ws-default';
 const HISTORY_CAP = 50; // 历史条数上限(前端展示 20,服务端多留余量)
 
 /** 默认日志配置:条数上限 / 保留天数 / 排除机器人 / 排除项目内部访问 */
@@ -123,20 +130,78 @@ function createHub(deps) {
       }
     };
 
-  async function readRow(key) {
+  /** 解析当前活跃工作空间:读全局指针 settings:activeWorkspace,兜底默认工作空间 */
+  async function resolveWorkspace() {
     const row = await db.get(
-      'SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?',
-      [GLOBAL_WORKSPACE_ID, key]
+      "SELECT value FROM app_settings WHERE workspace_id = ? AND key = 'settings:activeWorkspace'",
+      [GLOBAL_WORKSPACE_ID]
     );
-    return row ? row.value : null;
+    return (row && row.value) || DEFAULT_WORKSPACE_ID;
   }
 
-  async function writeRow(key, value) {
-    const now = new Date().toISOString();
-    await db.run(
-      'INSERT INTO app_settings (workspace_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(workspace_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
-      [GLOBAL_WORKSPACE_ID, key, value, now]
-    );
+  /** 旧版 settings:hub:* → apihub_* 独立表惰性迁移(幂等;旧数据迁入当前工作空间) */
+  let migrated = false;
+  async function ensureMigrated() {
+    if (migrated) return;
+    migrated = true;
+    try {
+      const configRow = await db.get(
+        'SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?',
+        [GLOBAL_WORKSPACE_ID, HUB_CONFIG_KEY]
+      );
+      if (!configRow) return; // 无旧数据
+      const ws = await resolveWorkspace();
+      const secretsRow = await db.get(
+        'SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?',
+        [GLOBAL_WORKSPACE_ID, HUB_SECRETS_KEY]
+      );
+      await db.run(
+        'INSERT INTO apihub_config (workspace_id, config, secrets, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(workspace_id) DO UPDATE SET config = excluded.config, secrets = excluded.secrets, updated_at = excluded.updated_at',
+        [ws, configRow.value, secretsRow ? secretsRow.value : '{}', new Date().toISOString()]
+      );
+      const historyRow = await db.get(
+        'SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?',
+        [GLOBAL_WORKSPACE_ID, HUB_HISTORY_KEY]
+      );
+      if (historyRow) {
+        const list = parseJson(historyRow.value, []);
+        if (Array.isArray(list)) {
+          for (const e of list) {
+            const n = normalizeHistoryEntry(e);
+            if (n) {
+              await db.run(
+                'INSERT INTO apihub_history (workspace_id, method, path, status, ts) VALUES (?, ?, ?, ?, ?)',
+                [ws, n.method, n.path, n.status, n.ts]
+              );
+            }
+          }
+        }
+      }
+      const logsRow = await db.get(
+        'SELECT value FROM app_settings WHERE workspace_id = ? AND key = ?',
+        [GLOBAL_WORKSPACE_ID, HUB_LOGS_KEY]
+      );
+      if (logsRow) {
+        const list = parseJson(logsRow.value, []);
+        if (Array.isArray(list)) {
+          for (const e of list) {
+            const n = normalizeLogEntry(e);
+            if (n) {
+              await db.run(
+                'INSERT INTO apihub_logs (workspace_id, method, path, status, ts, ip, ua, ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [ws, n.method, n.path, n.status, n.ts, n.ip, n.ua, n.ms]
+              );
+            }
+          }
+        }
+      }
+      for (const k of LEGACY_HUB_KEYS) {
+        await db.run('DELETE FROM app_settings WHERE workspace_id = ? AND key = ?', [GLOBAL_WORKSPACE_ID, k]);
+      }
+    } catch (e) {
+      migrated = false; // 失败下次重试
+      throw e;
+    }
   }
 
   /** 校验单条历史:method/path/status/ts 合法才保留 */
@@ -156,23 +221,25 @@ function createHub(deps) {
     };
   }
 
-  /** 读请求历史(非法条目过滤,按 ts 倒序,截断到上限) */
+  /** 读请求历史(按工作空间过滤,ts 倒序,截断到上限) */
   async function loadHistory() {
-    const raw = parseJson(await readRow(HUB_HISTORY_KEY), []);
-    if (!Array.isArray(raw)) return [];
-    const list = raw
+    await ensureMigrated();
+    const ws = await resolveWorkspace();
+    const rows = await db.query(
+      'SELECT method, path, status, ts FROM apihub_history WHERE workspace_id = ? ORDER BY ts DESC LIMIT ?',
+      [ws, HISTORY_CAP]
+    );
+    return (rows || [])
       .map(normalizeHistoryEntry)
       .filter(Boolean)
-      .sort(function (a, b) {
-        return b.ts - a.ts;
-      })
       .slice(0, HISTORY_CAP);
-    return list;
   }
 
-  /** 写请求历史(校验 + 去重同 ts + 截断上限) */
+  /** 写请求历史(校验 + 去重同 ts + 截断上限;整表替换当前工作空间数据) */
   async function saveHistory(history) {
+    await ensureMigrated();
     if (!Array.isArray(history)) throw new Error('需要 history 数组');
+    const ws = await resolveWorkspace();
     const seen = {};
     const list = history
       .map(normalizeHistoryEntry)
@@ -183,7 +250,13 @@ function createHub(deps) {
         return true;
       })
       .slice(0, HISTORY_CAP);
-    await writeRow(HUB_HISTORY_KEY, JSON.stringify(list));
+    await db.run('DELETE FROM apihub_history WHERE workspace_id = ?', [ws]);
+    for (const e of list) {
+      await db.run(
+        'INSERT INTO apihub_history (workspace_id, method, path, status, ts) VALUES (?, ?, ?, ?, ?)',
+        [ws, e.method, e.path, e.status, e.ts]
+      );
+    }
     return list;
   }
 
@@ -209,53 +282,45 @@ function createHub(deps) {
     };
   }
 
-  /** 读请求访问日志(按保留天数清理 → 按条数上限截断,倒序返回) */
+  /** 读请求访问日志(按工作空间过滤 + 保留天数 + 条数上限,倒序返回) */
   async function loadLogs(cfg) {
+    await ensureMigrated();
     const logging = (cfg && cfg.logging) || DEFAULT_LOGGING;
-    const raw = parseJson(await readRow(HUB_LOGS_KEY), []);
-    if (!Array.isArray(raw)) return [];
+    const ws = await resolveWorkspace();
     const cutoff = Date.now() - (Number(logging.retentionDays) || 7) * 86400000;
-    return raw
-      .map(normalizeLogEntry)
-      .filter(Boolean)
-      .filter(function (e) {
-        return e.ts >= cutoff;
-      })
-      .sort(function (a, b) {
-        return b.ts - a.ts;
-      })
-      .slice(0, Number(logging.maxLogs) || 500);
+    const rows = await db.query(
+      'SELECT method, path, status, ts, ip, ua, ms FROM apihub_logs WHERE workspace_id = ? AND ts >= ? ORDER BY ts DESC LIMIT ?',
+      [ws, cutoff, Number(logging.maxLogs) || 500]
+    );
+    return (rows || []).map(normalizeLogEntry).filter(Boolean);
   }
 
-  /** 追加一条请求访问日志(读 → 清理 → 截断 → 写回) */
+  /** 追加一条请求访问日志(INSERT → 清理过期与超出上限的旧行) */
   async function appendLog(entry, cfg) {
+    await ensureMigrated();
     const clean = normalizeLogEntry(entry);
     if (!clean) return;
     const logging = (cfg && cfg.logging) || DEFAULT_LOGGING;
+    const ws = await resolveWorkspace();
+    await db.run(
+      'INSERT INTO apihub_logs (workspace_id, method, path, status, ts, ip, ua, ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [ws, clean.method, clean.path, clean.status, clean.ts, clean.ip, clean.ua, clean.ms]
+    );
+    // 清理:保留天数 + 条数上限(保留最新 maxLogs 行)
     const cutoff = Date.now() - (Number(logging.retentionDays) || 7) * 86400000;
-    const list = [clean].concat(parseJson(await readRow(HUB_LOGS_KEY), []));
-    const seen = {};
-    const kept = [];
-    for (const e of list) {
-      const n = normalizeLogEntry(e);
-      if (!n) continue;
-      if (n.ts < cutoff) continue;
-      if (seen[n.ts]) continue;
-      seen[n.ts] = true;
-      kept.push(n);
-    }
-    // 按时间倒序截断(保证上限始终保留最新条目,与追加顺序无关)
-    kept.sort(function (a, b) {
-      return b.ts - a.ts;
-    });
-    if (kept.length > (Number(logging.maxLogs) || 500)) kept.length = Number(logging.maxLogs) || 500;
-    await writeRow(HUB_LOGS_KEY, JSON.stringify(kept));
-    return kept;
+    const maxLogs = Number(logging.maxLogs) || 500;
+    await db.run(
+      'DELETE FROM apihub_logs WHERE workspace_id = ? AND (ts < ? OR id NOT IN (SELECT id FROM apihub_logs WHERE workspace_id = ? ORDER BY ts DESC LIMIT ?))',
+      [ws, cutoff, ws, maxLogs]
+    );
+    return loadLogs(cfg);
   }
 
-  /** 清空请求访问日志 */
+  /** 清空请求访问日志(当前工作空间) */
   async function clearLogs() {
-    await writeRow(HUB_LOGS_KEY, JSON.stringify([]));
+    await ensureMigrated();
+    const ws = await resolveWorkspace();
+    await db.run('DELETE FROM apihub_logs WHERE workspace_id = ?', [ws]);
     return [];
   }
 
@@ -289,13 +354,15 @@ function createHub(deps) {
     return '';
   }
 
-  /** 读全量状态:config + secrets(secrets 解密失败回退 {}) */
+  /** 读全量状态:config + secrets(secrets 解密失败回退 {};按当前工作空间) */
   async function loadAll() {
-    let config = parseJson(await readRow(HUB_CONFIG_KEY), null);
+    await ensureMigrated();
+    const ws = await resolveWorkspace();
+    const row = await db.get('SELECT config, secrets FROM apihub_config WHERE workspace_id = ?', [ws]);
+    let config = parseJson(row && row.config, null);
     if (!config || !isPlainObject(config)) config = defaultConfig();
     config = normalizeConfig(config);
-    const stored = await readRow(HUB_SECRETS_KEY);
-    const secrets = parseJson(decrypt(stored), {});
+    const secrets = row && row.secrets ? parseJson(decrypt(row.secrets), {}) : {};
     if (!isPlainObject(secrets)) return { config, secrets: {} };
     if (!isPlainObject(secrets.apiKeys)) secrets.apiKeys = {};
     return { config, secrets };
@@ -613,8 +680,12 @@ function createHub(deps) {
     });
     const cleanSecrets = { apiKeys: cleanKeys };
 
-    await writeRow(HUB_CONFIG_KEY, JSON.stringify(cfg));
-    await writeRow(HUB_SECRETS_KEY, encrypt(JSON.stringify(cleanSecrets)));
+    await ensureMigrated();
+    const ws = await resolveWorkspace();
+    await db.run(
+      'INSERT INTO apihub_config (workspace_id, config, secrets, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(workspace_id) DO UPDATE SET config = excluded.config, secrets = excluded.secrets, updated_at = excluded.updated_at',
+      [ws, JSON.stringify(cfg), encrypt(JSON.stringify(cleanSecrets)), new Date().toISOString()]
+    );
     return { config: cfg, secrets: cleanSecrets };
   }
 

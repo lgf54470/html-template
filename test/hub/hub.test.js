@@ -182,9 +182,9 @@ test('API Key 鉴权:未配置/错误密钥拒绝,正确密钥放行,密钥加�
   });
   assert.equal(right.status, 200, '正确密钥应放行');
 
-  // 密钥必须以密文落库
-  const raw = srv.readDbValue('settings:hub:secrets');
-  assert.ok(raw.startsWith('enc:v1:'), 'Hub 密钥应加密落库');
+  // 密钥必须以密文落库(独立表 apihub_config,按当前工作空间隔离)
+  const raw = srv.readHubConfig('secrets', 'ws-default');
+  assert.ok(raw && raw.startsWith('enc:v1:'), 'Hub 密钥应加密落库');
   assert.ok(!raw.includes('hub-secret-key-123'), '落库内容不应含明文密钥');
 
   // 恢复默认会话鉴权,避免影响后续用例

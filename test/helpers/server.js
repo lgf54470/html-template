@@ -135,6 +135,19 @@ async function startServer() {
     }
   }
 
+  /** 直接读 apihub_config 表某列(按工作空间定位,默认当前活跃工作空间),
+   *  用于断言 Hub 密钥加密落库、数据按工作空间隔离。 */
+  function readHubConfig(column, workspaceId) {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    try {
+      const row = db.prepare('SELECT ' + column + ' FROM apihub_config WHERE workspace_id = ?').get(workspaceId || 'ws-default');
+      return row ? row[column] : undefined;
+    } finally {
+      db.close();
+    }
+  }
+
   /** 停止服务器并清理临时目录 */
   async function stop() {
     if (child.exitCode === null && child.signalCode === null) {
@@ -154,6 +167,7 @@ async function startServer() {
     request,
     login,
     readDbValue,
+    readHubConfig,
     stop,
     getStdout: () => stdout,
     getStderr: () => stderr,

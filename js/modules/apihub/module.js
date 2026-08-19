@@ -2,11 +2,12 @@
  * apihub 模块 — 实现(懒加载,首次访问 /apihub 时下载)
  * ------------------------------------------------------------
  * API Hub 管理台,三栏工作区:
- *   左栏  分组(多级)/ 多级标签 / 默认鉴权设置
+ *   左栏  分组(多级)/ 多级标签
  *   中栏  全部 API 路由(自动发现):搜索 / 收藏 / 置顶 /
  *         公开开关 / 分组 / 标签 / 自定义路由 / 复制分享链接
  *   右栏  请求构建器 + 响应查看(状态/耗时/大小/JSON 美化/
  *         语法高亮/复制/最近运行历史)
+ * 默认鉴权设置位于顶栏右侧(刷新按钮之前)。
  * 服务端配合 server/hub/index.js:公开开关与鉴权方式真正生效于
  * 每次 API 请求的门禁,而不只是前端展示。
  * 只依赖核心层 App.ui / App.icon / App.i18n / App.api / ctx。
@@ -1239,30 +1240,29 @@
       '</button>' +
       '</div>' +
       treeHtml('tag', 'apihub.allTags', 'clrtag') +
-      '</div>' +
-      authDefaultsHtml()
+      '</div>'
     );
   }
 
-  function authDefaultsHtml() {
+  /** 默认鉴权下拉(顶栏紧凑版,置于刷新按钮之前) */
+  function authDefaultsCompactHtml() {
     var mode = (state.config.defaults && state.config.defaults.auth) || 'session';
     var showKey = mode === 'api-key';
     return (
-      '<div class="hub-section">' +
-      '<div class="hub-section-head">' +
-      '<span class="hub-section-title">' +
+      '<span class="hub-dd" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="hub-action-btn" title="' +
+      escAttr(t('apihub.authDefaults')) +
+      '">' +
       icon('key-round', '') +
-      esc(t('apihub.authDefaults')) +
-      '</span>' +
-      '</div>' +
-      '<div class="hub-dd" data-dropdown style="padding:0 0.375rem">' +
-      '<button type="button" data-dropdown-trigger class="hub-input" style="display:flex;align-items:center;justify-content:space-between;gap:0.375rem;text-align:left">' +
       '<span>' +
       esc(authLabel(mode)) +
       '</span>' +
       icon('chevron-down', '') +
       '</button>' +
-      '<div class="hub-dd-menu" data-dropdown-menu style="left:0;right:auto;min-width:12rem">' +
+      '<div class="hub-dd-menu" data-dropdown-menu style="right:0;left:auto;min-width:12rem">' +
+      '<div class="hub-dd-label">' +
+      esc(t('apihub.authDefaults')) +
+      '</div>' +
       ['none', 'session', 'bearer', 'global-password', 'api-key']
         .map(function (m) {
           return (
@@ -1277,15 +1277,17 @@
           );
         })
         .join('') +
-      '</div></div>' +
       (showKey
-        ? '<input type="password" class="hub-input" data-hub-default-apikey placeholder="' +
+        ? '<div class="hub-dd-label" style="padding-top:0.375rem">' +
+          esc(t('apihub.defaultApiKey')) +
+          '</div>' +
+          '<input type="password" class="hub-input" data-hub-default-apikey placeholder="' +
           escAttr(t('apihub.defaultApiKey')) +
           '" value="' +
           escAttr(state.secrets.defaultApiKey || '') +
-          '" style="margin:0.375rem" />'
+          '" style="width:calc(100% - 0.5rem);margin:0 0.25rem 0.25rem" />'
         : '') +
-      '</div>'
+      '</div></span>'
     );
   }
 
@@ -1911,6 +1913,7 @@
       '</p>' +
       '</div>' +
       '<div class="hub-head-actions">' +
+      authDefaultsCompactHtml() +
       '<button type="button" class="hub-action-btn" data-hub-act="refresh">' +
       icon('rotate-ccw', '') +
       esc(t('apihub.refresh')) +

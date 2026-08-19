@@ -284,6 +284,8 @@
       '<span class="gt-dd" data-dropdown>' +
       '<button type="button" class="gt-more" data-dropdown-trigger aria-label="' +
       esc(L.menu || '菜单') +
+      '" title="' +
+      esc(L.menu || '菜单') +
       '">' +
       ic('ellipsis') +
       '</button>' +
@@ -796,6 +798,9 @@
     ctxPopup.style.left = Math.max(4, x) + 'px';
     ctxPopup.style.top = Math.max(4, y) + 'px';
     ctxPopup.innerHTML = ctxItemsHtml(inst, id);
+    // 右键浮层挂在 body 下(不在 [data-gt-tree] 内),把实例引用挂到元素上,
+    // 供 document 级 click 委托解析,否则菜单项点击不生效(仅 ⋯ 下拉可用)。
+    ctxPopup._gtInst = inst;
     document.body.appendChild(ctxPopup);
   }
   function hideCtxMenu() {
@@ -819,7 +824,9 @@
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
-    var inst = instOf(t);
+    // 右键浮层挂在 body 下,先尝试从浮层取实例,再回退到树内解析
+    var ctxpop = t.closest('.gt-ctxpop');
+    var inst = ctxpop && ctxpop._gtInst ? ctxpop._gtInst : instOf(t);
     if (!inst) return;
     // 行内 ⋯ 菜单项
     var ctx = t.closest('[data-gt-ctx]');
@@ -1066,7 +1073,7 @@
       '.gt-more svg{width:.875rem;height:.875rem}' +
       '.gt-ddmenu{position:absolute;right:0;top:100%;z-index:50;display:none;min-width:11rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border,#e4e4e7)}' +
       '.gt-ddmenu.open{display:block}' +
-      '.gt-ctxpop{position:fixed;z-index:90;min-width:11rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7)}' +
+      '.gt-ctxpop{position:fixed;z-index:1000;min-width:11rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7)}' +
       '.gt-ctxitem{display:flex;align-items:center;gap:.5rem;width:100%;padding:.375rem .5rem;border:0;border-radius:.375rem;background:transparent;color:inherit;font-size:.8125rem;cursor:pointer;text-align:left;outline:none}' +
       '.gt-ctxitem:hover{background:var(--accent,#f4f4f5)}' +
       '.gt-ctxitem.is-danger{color:var(--destructive,#ef4444)}' +

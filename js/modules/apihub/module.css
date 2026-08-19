@@ -260,12 +260,17 @@
   gap: 1px;
 }
 
-/* ---------- 路由行标签(彩色 # 胶囊 + 多选下拉按钮) ---------- */
-.hub-tagwrap {
-  display: inline-flex;
+/* ---------- 路由行标签(彩色 # 胶囊显示在路由信息下方 + 书签 add tag 按钮) ---------- */
+.hub-route-tags {
+  display: flex;
   align-items: center;
   gap: 0.25rem;
   min-width: 0;
+  margin-top: 0.25rem;
+}
+.hub-route-tags .hub-tagpills {
+  max-width: none;
+  flex-wrap: wrap;
 }
 .hub-tagpills {
   display: inline-flex;
@@ -322,6 +327,7 @@
 }
 .hub-tagbtn {
   position: relative;
+  flex: none;
 }
 .hub-tagbtn-count {
   position: absolute;
@@ -499,49 +505,24 @@
   color: var(--primary);
   background: color-mix(in oklab, var(--primary) 10%, transparent);
 }
-.hub-route-actions {
+/* ---------- 路由行:⋯ 按钮(悬停显示,打开右键菜单) ---------- */
+.hub-route-ctx {
   flex: none;
-  display: none;
+  display: flex;
   align-items: center;
   gap: 0.125rem;
   padding-top: 0.125rem;
 }
-.hub-route:hover .hub-route-actions,
-.hub-route:focus-within .hub-route-actions {
-  display: flex;
+.hub-route-more {
+  opacity: 0;
 }
-.hub-route-pins {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
+.hub-route:hover .hub-route-more,
+.hub-route:focus-within .hub-route-more {
+  opacity: 1;
 }
-.hub-pin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 0.375rem;
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  outline: none;
-}
-.hub-pin-btn:hover {
-  background: var(--accent);
-  color: var(--foreground);
-}
-.hub-pin-btn.is-on {
-  color: #d97706;
-}
-.hub-pin-btn.is-fav {
-  color: #d97706;
-}
-.hub-pin-btn svg {
-  width: 0.875rem;
-  height: 0.875rem;
+.hub-route-more:hover {
+  background: var(--background);
+  color: inherit;
 }
 .hub-action-btn {
   display: inline-flex;
@@ -1417,4 +1398,121 @@ textarea.hub-input {
 .hub-auth-opt-desc {
   font-size: 0.6875rem;
   color: var(--muted-foreground);
+}
+
+/* ---------- 路由右键菜单(⋯ 按钮/右键共用,body 级固定浮层) ---------- */
+.hub-ctxpop {
+  position: fixed;
+  z-index: 1000;
+  min-width: 12rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  border: 1px solid var(--border);
+}
+.hub-ctxitem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  white-space: nowrap;
+}
+.hub-ctxitem:hover {
+  background: var(--accent);
+}
+.hub-ctxitem.is-danger {
+  color: var(--destructive);
+}
+.hub-ctxitem.is-danger:hover {
+  background: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+.hub-ctxitem.is-on {
+  color: var(--primary);
+}
+.hub-ctxitem svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.hub-ctxitem.is-on svg {
+  color: var(--primary);
+}
+.hub-ctxitem.is-danger svg {
+  color: var(--destructive);
+}
+.hub-ctx-caret {
+  margin-left: auto;
+}
+.hub-ctx-check {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--primary);
+}
+.hub-ctxsep {
+  height: 1px;
+  margin: 0.25rem 0.375rem;
+  background: var(--border);
+}
+.hub-ctxwrap {
+  position: relative;
+}
+.hub-ctxsubmenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -0.25rem;
+  min-width: 11rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  border: 1px solid var(--border);
+  z-index: 1001;
+}
+.hub-ctxwrap:hover .hub-ctxsubmenu {
+  display: block;
+}
+.hub-ctx-hash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  flex: none;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, currentColor 14%, transparent);
+}
+.hub-ctxempty {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* ---------- 标签 Popover(书签 add tag 触发,Chrome 添加联系人风格) ---------- */
+.hub-tagpop {
+  position: fixed;
+  z-index: 1000;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.3);
+  border: 1px solid var(--border);
 }

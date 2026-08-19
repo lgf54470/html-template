@@ -48,6 +48,16 @@
   function icon(name, cls) {
     return App.icon.iconSvg(name, { class: cls || 'size-4' });
   }
+  /** 书签(添加标签)图标 — lucide 数据未内置 bookmark,内联 SVG 保持风格一致 */
+  function bookmarkIcon(cls) {
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="' +
+      (cls || '') +
+      '"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>' +
+      '<line x1="12" y1="7" x2="12" y2="13"></line>' +
+      '<line x1="15" y1="10" x2="9" y2="10"></line></svg>'
+    );
+  }
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -407,11 +417,22 @@
   }
 
   /** 标签:扁平彩色标签(id/name/color),新增/重命名/改色/删除 */
+  /** 重绘打开的标签 Popover(创建/重命名/删除/改色后保持勾选与列表最新) */
+  function refreshTagPopover() {
+    var pop = document.querySelector('[data-hub-tagpop]');
+    if (!pop) return;
+    var key = pop.getAttribute('data-hub-tagpop');
+    var r = findRoute(key);
+    if (!r) return;
+    ensureTagTree().setPickerSearch('');
+    pop.innerHTML = ensureTagTree().pickerHtml(memberships(key, r).tagIds || []);
+  }
   function addTag(name, color) {
     var tags = state.config.tags;
     tags.push({ id: uid('t'), name: name, color: color || '', sort: tags.length });
     persist();
     renderFull();
+    refreshTagPopover();
   }
   function renameTag(id, name, color) {
     var tg = tagById(id);
@@ -420,6 +441,7 @@
       if (arguments.length > 2) tg.color = color || '';
       persist();
       renderFull();
+      refreshTagPopover();
     }
   }
   function deleteTag(id) {
@@ -446,6 +468,7 @@
     if (view.tagFilter === id) view.tagFilter = null;
     persist();
     renderFull();
+    refreshTagPopover();
   }
   function setTagColor(id, color) {
     var tg = tagById(id);
@@ -453,6 +476,7 @@
       tg.color = color || '';
       persist();
       renderFull();
+      refreshTagPopover();
     }
   }
 
@@ -1156,7 +1180,11 @@
           (node.public ? ' is-on' : '') +
           '" data-hub-toggle="grouppub" data-id="' +
           escAttr(node.id) +
-          '" aria-label=""><span class="hub-switch-thumb"></span></button>'
+          '" title="' +
+          escAttr(t('apihub.publicHint')) +
+          '" aria-label="' +
+          escAttr(t('apihub.publicHint')) +
+          '"><span class="hub-switch-thumb"></span></button>'
         );
       },
       onSelect: function (id) {
@@ -1257,20 +1285,43 @@
         setTagColor(id, color);
       },
       onToggle: function (id) {
-        if (view.selected) toggleRouteTag(routeKeyOf(findRoute(view.selected)), id);
+        // 从当前打开的标签 Popover 取目标路由,避免误改选中路由
+        var pop = document.querySelector('[data-hub-tagpop]');
+        var key = pop ? pop.getAttribute('data-hub-tagpop') : null;
+        if (!key) return;
+        toggleRouteTag(key, id);
+        var r = findRoute(key);
+        // 延迟到本次点击事件派发结束后再重绘,避免重绘摘除点击目标导致外部点击判断误关闭
+        if (pop && r) {
+          var k2 = key;
+          var r2 = r;
+          var p2 = pop;
+          setTimeout(function () {
+            if (p2 && p2.parentNode) p2.innerHTML = ensureTagTree().pickerHtml(memberships(k2, r2).tagIds || []);
+          }, 0);
+        }
       },
       onRender: function () {
         rerenderSideFilters();
       },
       onRenderMenu: function () {
-        // 只重绘多选下拉菜单内容,保持搜索焦点
-        var menu = document.querySelector('[data-hub-tagmenu]');
-        if (!menu) return;
-        var key = menu.getAttribute('data-hub-tagmenu');
+        // 只重绘标签 Popover 内容,保持搜索焦点
+        var pop = document.querySelector('[data-hub-tagpop]');
+        if (!pop) return;
+        var key = pop.getAttribute('data-hub-tagpop');
         var r = findRoute(key);
         if (!r) return;
         var m = memberships(key, r);
-        menu.innerHTML = ensureTagTree().pickerHtml(m.tagIds || []);
+        pop.innerHTML = ensureTagTree().pickerHtml(m.tagIds || []);
+        var inp = pop.querySelector('[data-tp-pick-search]');
+        if (inp) {
+          inp.focus();
+          try {
+            inp.setSelectionRange(inp.value.length, inp.value.length);
+          } catch (e) {
+            /* noop */
+          }
+        }
       },
     });
     return tagTree;
@@ -1299,7 +1350,9 @@
       '">' +
       icon('arrow-down', '') +
       '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="newgroup" aria-label="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="newgroup" title="' +
+      escAttr(t('apihub.newGroup')) +
+      '" aria-label="' +
       escAttr(t('apihub.newGroup')) +
       '">' +
       icon('plus', '') +
@@ -1322,7 +1375,9 @@
       '">' +
       icon('x', '') +
       '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="newtag" aria-label="' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="newtag" title="' +
+      escAttr(t('apihub.newTag')) +
+      '" aria-label="' +
       escAttr(t('apihub.newTag')) +
       '">' +
       icon('plus', '') +
@@ -1392,40 +1447,8 @@
     );
   }
 
-  function groupAssignHtml(key, m) {
-    return (
-      '<span class="hub-dd" data-dropdown>' +
-      '<button type="button" class="hub-icon-btn" data-dropdown-trigger aria-label="' +
-      escAttr(t('apihub.group')) +
-      '">' +
-      icon('folder', '') +
-      '</button>' +
-      '<div class="hub-dd-menu" data-dropdown-menu>' +
-      '<div class="hub-dd-label">' +
-      esc(t('apihub.group')) +
-      '</div>' +
-      (state.config.groups || [])
-        .map(function (g) {
-          var on = (m.groupIds || []).indexOf(g.id) !== -1;
-          return (
-            '<button type="button" class="hub-dd-item" data-hub-setgroup="' +
-            escAttr(key) +
-            '" data-id="' +
-            escAttr(g.id) +
-            '">' +
-            icon('folder', '') +
-            esc(g.name) +
-            (on ? '<span class="hub-dd-check">' + icon('check', '') + '</span>' : '') +
-            '</button>'
-          );
-        })
-        .join('') +
-      '</div></span>'
-    );
-  }
-
-  /** 路由行标签:Gmail 式多选下拉(模糊搜索/点选切换/快速新建) + 已选彩色 # 胶囊 */
-  function tagAssignHtml(key, m) {
+  /** 路由行标签区:已选彩色 # 胶囊(显示在路由信息下方)+ 书签(add tag)图标 */
+  function routeTagsHtml(key, m) {
     var picked = m.tagIds || [];
     var pills = '';
     picked.forEach(function (tid) {
@@ -1451,30 +1474,29 @@
         escAttr(tg.id) +
         '" aria-label="' +
         escAttr(t('apihub.removeTag')) +
+        '" title="' +
+        escAttr(t('apihub.removeTag')) +
         '">' +
         icon('x', 'size-3') +
         '</button>' +
         '</span>';
     });
     return (
-      '<span class="hub-tagwrap">' +
-      (pills ? '<span class="hub-tagpills">' + pills + '</span>' : '') +
-      '<span class="hub-dd" data-dropdown>' +
-      '<button type="button" class="hub-icon-btn hub-tagbtn" data-dropdown-trigger aria-label="' +
-      escAttr(t('apihub.tag')) +
+      '<div class="hub-route-tags">' +
+      '<span class="hub-tagpills">' +
+      pills +
+      '</span>' +
+      '<button type="button" class="hub-icon-btn hub-tagbtn" data-hub-act="addtag" data-key="' +
+      escAttr(key) +
       '" title="' +
-      escAttr(t('apihub.tag')) +
+      escAttr(t('apihub.addTag')) +
+      '" aria-label="' +
+      escAttr(t('apihub.addTag')) +
       '">' +
-      icon('layers', '') +
+      bookmarkIcon('') +
       (picked.length ? '<span class="hub-tagbtn-count">' + (picked.length > 99 ? '99+' : picked.length) + '</span>' : '') +
       '</button>' +
-      '<div class="hub-dd-menu" data-dropdown-menu data-hub-tagmenu="' +
-      escAttr(key) +
-      '" style="left:auto;right:0;min-width:0;padding:0.25rem">' +
-      ensureTagTree().pickerHtml(picked) +
-      '</div>' +
-      '</span>' +
-      '</span>'
+      '</div>'
     );
   }
 
@@ -1506,6 +1528,8 @@
       (locked ? ' is-disabled' : '') +
       '" data-hub-toggle="routepub" data-key="' +
       escAttr(key) +
+      '" title="' +
+      escAttr(t('apihub.publicHint')) +
       '" aria-label="' +
       escAttr(t('apihub.publicHint')) +
       '"><span class="hub-switch-thumb"></span></button>' +
@@ -1529,69 +1553,188 @@
       '</div>' +
       (desc ? '<div class="hub-route-desc">' + esc(desc) + '</div>' : '') +
       (chips ? '<div class="hub-route-meta">' + chips + '</div>' : '') +
+      routeTagsHtml(key, m) +
       '</div>' +
-      '<div class="hub-route-pins">' +
-      '<button type="button" class="hub-pin-btn' +
-      (m.favorite ? ' is-fav' : '') +
-      '" data-hub-act="fav" data-key="' +
+      '<div class="hub-route-ctx">' +
+      '<button type="button" class="hub-icon-btn hub-route-more" data-hub-act="more" data-key="' +
       escAttr(key) +
+      '" title="' +
+      escAttr(t('apihub.menu')) +
       '" aria-label="' +
-      escAttr(m.favorite ? t('apihub.unfavorite') : t('apihub.favorite')) +
+      escAttr(t('apihub.menu')) +
       '">' +
-      icon('star', '') +
+      icon('ellipsis', '') +
       '</button>' +
-      '<button type="button" class="hub-pin-btn' +
-      (m.pinned ? ' is-on' : '') +
-      '" data-hub-act="pin" data-key="' +
-      escAttr(key) +
-      '" aria-label="' +
-      escAttr(m.pinned ? t('apihub.unpin') : t('apihub.pin')) +
-      '">' +
-      icon('circle-dot', '') +
-      '</button>' +
-      '</div>' +
-      '<div class="hub-route-actions">' +
-      '<button type="button" class="hub-action-btn" data-hub-act="run" data-key="' +
-      escAttr(key) +
-      '">' +
-      icon('send', '') +
-      esc(t('apihub.run')) +
-      '</button>' +
-      groupAssignHtml(key, m) +
-      tagAssignHtml(key, m) +
-      '<button type="button" class="hub-icon-btn" data-hub-act="auth" data-key="' +
-      escAttr(key) +
-      '" aria-label="' +
-      escAttr(t('apihub.auth')) +
-      '">' +
-      icon('key-round', '') +
-      '</button>' +
-      '<button type="button" class="hub-icon-btn" data-hub-act="copylink" data-key="' +
-      escAttr(key) +
-      '" aria-label="' +
-      escAttr(t('apihub.copyLink')) +
-      '">' +
-      icon('link', '') +
-      '</button>' +
-      (isCustom
-        ? '<button type="button" class="hub-icon-btn" data-hub-act="editroute" data-key="' +
-          escAttr(key) +
-          '" aria-label="' +
-          escAttr(t('apihub.edit')) +
-          '">' +
-          icon('pencil', '') +
-          '</button>' +
-          '<button type="button" class="hub-icon-btn" data-hub-act="delroute" data-key="' +
-          escAttr(key) +
-          '" aria-label="' +
-          escAttr(t('apihub.delete')) +
-          '">' +
-          icon('trash-2', '') +
-          '</button>'
-        : '') +
       '</div>' +
       '</div>'
     );
+  }
+
+  /* ---------- 路由右键菜单(⋯ 按钮 + 右键共用,body 级固定浮层) ---------- */
+  var routeCtxPop = null;
+  function routeCtxItemsHtml(key, r) {
+    var m = memberships(key, r);
+    var isCustom = !r.builtIn;
+    function item(act, label, iconName, extra, danger) {
+      return (
+        '<button type="button" class="hub-ctxitem' +
+        (extra || '') +
+        (danger ? ' is-danger' : '') +
+        '" data-hub-ctx="' +
+        act +
+        '" data-key="' +
+        escAttr(key) +
+        '">' +
+        icon(iconName, '') +
+        esc(label) +
+        '</button>'
+      );
+    }
+    function check(on) {
+      return on ? '<span class="hub-ctx-check">' + icon('check', '') + '</span>' : '';
+    }
+    var html =
+      item('run', t('apihub.run'), 'send') +
+      item('fav', m.favorite ? t('apihub.unfavorite') : t('apihub.favorite'), 'star', m.favorite ? ' is-on' : '') +
+      item('pin', m.pinned ? t('apihub.unpin') : t('apihub.pin'), 'circle-dot', m.pinned ? ' is-on' : '') +
+      '<div class="hub-ctxsep"></div>';
+    // 分组子菜单
+    var groups = state.config.groups || [];
+    html +=
+      '<div class="hub-ctxwrap">' +
+      '<button type="button" class="hub-ctxitem hub-ctxparent">' +
+      icon('folder', '') +
+      esc(t('apihub.assignGroup')) +
+      icon('chevron-right', 'hub-ctx-caret') +
+      '</button>' +
+      '<div class="hub-ctxsubmenu">' +
+      (groups.length
+        ? groups
+            .map(function (g) {
+              var on = (m.groupIds || []).indexOf(g.id) !== -1;
+              return (
+                '<button type="button" class="hub-ctxitem" data-hub-ctx="setgroup" data-key="' +
+                escAttr(key) +
+                '" data-id="' +
+                escAttr(g.id) +
+                '">' +
+                icon('folder', '') +
+                esc(g.name) +
+                check(on) +
+                '</button>'
+                              );
+            })
+            .join('')
+        : '<div class="hub-ctxempty">' + esc(t('apihub.noGroups')) + '</div>') +
+      '</div>' +
+      '</div>';
+    // 标签子菜单
+    var tags = state.config.tags || [];
+    html +=
+      '<div class="hub-ctxwrap">' +
+      '<button type="button" class="hub-ctxitem hub-ctxparent">' +
+      icon('layers', '') +
+      esc(t('apihub.assignTags')) +
+      icon('chevron-right', 'hub-ctx-caret') +
+      '</button>' +
+      '<div class="hub-ctxsubmenu">' +
+      (tags.length
+        ? tags
+            .map(function (tg) {
+              var on = (m.tagIds || []).indexOf(tg.id) !== -1;
+              var col = '';
+              try {
+                col = App.ui.color.resolveColor(tg.color);
+              } catch (e) {
+                /* noop */
+              }
+              return (
+                '<button type="button" class="hub-ctxitem" data-hub-ctx="settag" data-key="' +
+                escAttr(key) +
+                '" data-id="' +
+                escAttr(tg.id) +
+                '">' +
+                '<span class="hub-ctx-hash" style="' +
+                (col ? 'color:' + col + ';' : '') +
+                '">#</span>' +
+                esc(tg.name) +
+                check(on) +
+                '</button>'
+              );
+            })
+            .join('')
+        : '<div class="hub-ctxempty">' + esc(t('apihub.noTags')) + '</div>') +
+      '</div>' +
+      '</div>';
+    html +=
+      '<div class="hub-ctxsep"></div>' +
+      item('auth', t('apihub.auth'), 'key-round') +
+      item('copylink', t('apihub.copyLink'), 'link');
+    if (isCustom) {
+      html += item('editroute', t('apihub.edit'), 'pencil') + item('delroute', t('apihub.delete'), 'trash-2', '', true);
+    }
+    return html;
+  }
+  function routeCtxPopup(key, anchorEl, x, y) {
+    closeRouteCtxPopup();
+    var r = findRoute(key);
+    if (!r) return;
+    routeCtxPop = document.createElement('div');
+    routeCtxPop.className = 'hub-ctxpop';
+    routeCtxPop.setAttribute('data-hub-ctxpop', key);
+    routeCtxPop.innerHTML = routeCtxItemsHtml(key, r);
+    document.body.appendChild(routeCtxPop);
+    var w = routeCtxPop.offsetWidth || 200;
+    var h = routeCtxPop.offsetHeight || 260;
+    var left, top;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      var rect = anchorEl.getBoundingClientRect();
+      left = rect.right - w;
+      top = rect.bottom + 4;
+      if (left < 8) left = 8;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, rect.top - h - 4);
+    } else {
+      left = Math.max(4, x || 0);
+      top = Math.max(4, y || 0);
+    }
+    routeCtxPop.style.left = left + 'px';
+    routeCtxPop.style.top = top + 'px';
+  }
+  function closeRouteCtxPopup() {
+    if (routeCtxPop && routeCtxPop.parentNode) routeCtxPop.parentNode.removeChild(routeCtxPop);
+    routeCtxPop = null;
+  }
+
+  /* ---------- 标签 Popover(书签图标触发,Chrome 添加联系人风格) ---------- */
+  function openTagPopover(key, anchorEl) {
+    closeTagPopover();
+    var r = findRoute(key);
+    if (!r) return;
+    var m = memberships(key, r);
+    var pop = document.createElement('div');
+    pop.className = 'hub-tagpop';
+    pop.setAttribute('data-hub-tagpop', key);
+    pop.innerHTML = ensureTagTree().pickerHtml(m.tagIds || []);
+    document.body.appendChild(pop);
+    var w = pop.offsetWidth || 256;
+    var h = pop.offsetHeight || 320;
+    var left, top;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      var rect = anchorEl.getBoundingClientRect();
+      left = rect.right - w;
+      top = rect.bottom + 4;
+      if (left < 8) left = 8;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, rect.top - h - 4);
+    } else {
+      left = Math.max(8, (window.innerWidth - w) / 2);
+      top = Math.max(8, (window.innerHeight - h) / 2);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+  function closeTagPopover() {
+    var pop = document.querySelector('[data-hub-tagpop]');
+    if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
   }
 
   function routesHtml() {
@@ -2094,6 +2237,41 @@
     var target = e.target;
     if (!target || !target.closest) return;
 
+    // 路由右键菜单项(⋯ 按钮/右键浮层共用)
+    var ctxItem = target.closest('[data-hub-ctx]');
+    if (ctxItem) {
+      var cAct = ctxItem.getAttribute('data-hub-ctx');
+      var cKey = ctxItem.getAttribute('data-key');
+      var cId = ctxItem.getAttribute('data-id');
+      closeRouteCtxPopup();
+      if (cAct === 'run') {
+        selectRoute(cKey);
+        runRequest();
+      } else if (cAct === 'fav') toggleFav(cKey);
+      else if (cAct === 'pin') togglePin(cKey);
+      else if (cAct === 'auth') authDialog(cKey);
+      else if (cAct === 'copylink') copyLink(cKey);
+      else if (cAct === 'editroute') routeFormDialog(cKey);
+      else if (cAct === 'delroute') {
+        confirmDialog(
+          t('apihub.deleteConfirm'),
+          t('apihub.deleteRouteMsg'),
+          t('apihub.delete'),
+          function () {
+            deleteCustomRoute(cKey.slice(3));
+          },
+          true
+        );
+      } else if (cAct === 'setgroup') toggleRouteGroup(cKey, cId);
+      else if (cAct === 'settag') toggleRouteTag(cKey, cId);
+      return;
+    }
+    // 点击路由右键菜单外部 → 收起
+    if (!target.closest('[data-hub-ctxpop]')) closeRouteCtxPopup();
+    // 点击标签 Popover 外部(书签按钮除外)→ 收起;点「完成」也收起
+    if (!target.closest('[data-hub-tagpop]') && !target.closest('[data-hub-act="addtag"]') && !target.closest('[data-tp-pop]')) closeTagPopover();
+    if (target.closest('[data-tp-done]')) closeTagPopover();
+
     // 弹窗关闭
     if (target.closest('[data-hub-dlg-close]')) {
       closeDialog();
@@ -2191,8 +2369,15 @@
           ensureGroupTree().collapseAll();
           renderFull();
           break;
+        case 'more':
+          routeCtxPopup(key, actBtn);
+          break;
+        case 'addtag':
+          if (document.querySelector('[data-hub-tagpop]')) closeTagPopover();
+          else openTagPopover(key, actBtn);
+          break;
         case 'newtag':
-          ensureTagTree().openCreateDialog();
+          ensureTagTree().openCreateDialog(actBtn);
           break;
         case 'newroute':
           routeFormDialog(null);
@@ -2349,12 +2534,27 @@
 
   // 回车键:请求路径框 → 发送
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeRouteCtxPopup();
+      closeTagPopover();
+      return;
+    }
     if (e.key !== 'Enter') return;
     var target = e.target;
     if (target && target.hasAttribute && target.hasAttribute('data-hub-reqpath')) {
       e.preventDefault();
       runRequest();
     }
+  });
+
+  // 路由行右键 → 上下文菜单(与 ⋯ 按钮共用)
+  document.addEventListener('contextmenu', function (e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var row = target.closest('[data-hub-route]');
+    if (!row) return;
+    e.preventDefault();
+    routeCtxPopup(row.getAttribute('data-hub-route'), null, e.clientX, e.clientY);
   });
 
   /* ---------- 内容挂载后初始化(懒加载数据) ---------- */

@@ -157,8 +157,9 @@
       pickerHtml: function (pickedIds) {
         return pickerHtml(inst, pickedIds);
       },
-      openCreateDialog: function () {
-        openTagDialog(inst, null);
+      /** 新建标签 Popover(anchorEl 为触发按钮,用于锚定定位) */
+      openCreateDialog: function (anchorEl) {
+        openTagDialog(inst, null, anchorEl || null);
       },
     };
     INSTANCES[inst.uid] = inst;
@@ -167,8 +168,11 @@
 
   function instOf(el) {
     var root = el && el.closest ? el.closest('[data-tp]') : null;
-    if (!root) return null;
-    return INSTANCES[root.getAttribute('data-tp')] || null;
+    if (root) return INSTANCES[root.getAttribute('data-tp')] || null;
+    // 多选下拉 Popover 可能挂在 body 下(无 [data-tp] 祖先),从 data-tp-picker 回退解析
+    var picker = el && el.closest ? el.closest('[data-tp-picker]') : null;
+    if (picker) return INSTANCES[picker.getAttribute('data-tp-picker')] || null;
+    return null;
   }
   function nodeOf(inst, id) {
     var list = inst.nodes();
@@ -300,6 +304,8 @@
       (count ? '<span class="tp-count">' + count + '</span>' : '') +
       '<span class="tp-dd" data-dropdown>' +
       '<button type="button" class="tp-more" data-dropdown-trigger aria-label="' +
+      escAttr(L.menu || '菜单') +
+      '" title="' +
       escAttr(L.menu || '菜单') +
       '">' +
       ic('ellipsis') +
@@ -470,65 +476,118 @@
     return '';
   }
 
-  function openTagDialog(inst, tag) {
+  /* ---------- 标签新建/重命名:锚定 Popover(Chrome 添加联系人风格,无全屏遮罩) ---------- */
+  var tagPop = null;
+  /** 标签表单 HTML(名称 + 色板 + 自定义颜色 + 底部按钮) */
+  function tagFormHtml(inst, isNew, curName, curColor, picked) {
+    var L = inst.labels();
+    return (
+      '<div class="tp-pop-head">' +
+      '<span class="tp-dialog-title">' +
+      esc(isNew ? L.newTag || '新建标签' : L.rename || '重命名标签') +
+      '</span>' +
+      '<button type="button" class="tp-dlg-x" data-tp-dlg-close aria-label="">' +
+      ic('x') +
+      '</button>' +
+      '</div>' +
+      (isNew && (L.newTagDesc || '')
+        ? '<div class="tp-dialog-desc">' + esc(L.newTagDesc) + '</div>'
+        : '') +
+      '<div class="tp-dialog-body">' +
+      '<div class="tp-field"><label>' +
+      esc(L.name || '名称') +
+      '</label>' +
+      '<input type="text" class="tp-input" data-tp-name placeholder="' +
+      escAttr(L.tagNamePlaceholder || '标签名称') +
+      '" value="' +
+      escAttr(curName) +
+      '" maxlength="40" autocomplete="off" /></div>' +
+      '<div class="tp-field"><label>' +
+      esc(L.color || '颜色') +
+      '</label>' +
+      '<div class="tp-swatches" data-tp-swatches>' +
+      PALETTE.map(function (name) {
+        return (
+          '<button type="button" class="tp-swatch tp-swatch-lg' +
+          (picked === name ? ' is-on' : '') +
+          '" data-tp-palette="' +
+          name +
+          '" title="' +
+          name +
+          '" style="background:' +
+          resolveColor(name) +
+          '" aria-label=""></button>'
+        );
+      }).join('') +
+      '<span class="tp-swatch-custom" data-tp-custom-color style="--sw:' +
+      (picked && PALETTE.indexOf(picked) === -1 ? resolveColor(picked) : '') +
+      '">' +
+      ic('palette') +
+      '</span>' +
+      '</div>' +
+      (picked && PALETTE.indexOf(picked) === -1
+        ? '<div class="tp-field" data-tp-custom-row><label>' +
+          esc(L.customColor || '自定义颜色') +
+          '</label><input type="text" class="tp-input" data-tp-hex placeholder="#ff0000" value="' +
+          escAttr(picked) +
+          '" spellcheck="false" /></div>'
+        : '') +
+      '</div>' +
+      '<div class="tp-dialog-foot">' +
+      '<button type="button" class="tp-btn" data-tp-dlg-close>' +
+      esc(L.cancel || '取消') +
+      '</button>' +
+      '<button type="button" class="tp-btn tp-btn-primary" data-tp-dlg-ok>' +
+      esc(L.save || '保存') +
+      '</button>' +
+      '</div>'
+    );
+  }
+  /** 定位 Popover:锚点下方右对齐,空间不足向上翻转;无锚点居中 */
+  function positionTagPop(pop, anchorEl) {
+    var w = pop.offsetWidth || 320;
+    var h = pop.offsetHeight || 220;
+    var left, top;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      var rect = anchorEl.getBoundingClientRect();
+      left = rect.left;
+      top = rect.bottom + 4;
+      if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+      if (top + h > window.innerHeight - 8) top = Math.max(8, rect.top - h - 4);
+    } else {
+      left = Math.max(8, (window.innerWidth - w) / 2);
+      top = Math.max(8, (window.innerHeight - h) / 2);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+  function closeTagPop() {
+    if (tagPop && tagPop.parentNode) tagPop.parentNode.removeChild(tagPop);
+    tagPop = null;
+  }
+
+  function openTagDialog(inst, tag, anchorEl) {
     var L = inst.labels();
     var isNew = !tag;
     var curName = tag ? tag.name : '';
     var curColor = tag ? tag.color || '' : '';
     var picked = curColor || '';
-    var overlayEl = openDialog({
-      title: isNew ? L.newTag || '新建标签' : L.rename || '重命名标签',
-      desc: isNew ? (L.newTagDesc || '') : '',
-      body:
-        '<div class="tp-field"><label>' +
-        esc(L.name || '名称') +
-        '</label>' +
-        '<input type="text" class="tp-input" data-tp-name placeholder="' +
-        escAttr(L.tagNamePlaceholder || '标签名称') +
-        '" value="' +
-        escAttr(curName) +
-        '" maxlength="40" autocomplete="off" /></div>' +
-        '<div class="tp-field"><label>' +
-        esc(L.color || '颜色') +
-        '</label>' +
-        '<div class="tp-swatches" data-tp-swatches>' +
-        PALETTE.map(function (name) {
-          return (
-            '<button type="button" class="tp-swatch tp-swatch-lg' +
-            (picked === name ? ' is-on' : '') +
-            '" data-tp-palette="' +
-            name +
-            '" title="' +
-            name +
-            '" style="background:' +
-            resolveColor(name) +
-            '" aria-label=""></button>'
-          );
-        }).join('') +
-        '<span class="tp-swatch-custom" data-tp-custom-color style="--sw:' +
-        (picked && PALETTE.indexOf(picked) === -1 ? resolveColor(picked) : '') +
-        '">' +
-        ic('palette') +
-        '</span>' +
-        '</div>' +
-        (picked && PALETTE.indexOf(picked) === -1
-          ? '<div class="tp-field" data-tp-custom-row><label>' +
-            esc(L.customColor || '自定义颜色') +
-            '</label><input type="text" class="tp-input" data-tp-hex placeholder="#ff0000" value="' +
-            escAttr(picked) +
-            '" spellcheck="false" /></div>'
-          : ''),
-      foot: '',
-    });
+    closeTagPop();
+    tagPop = document.createElement('div');
+    tagPop.className = 'tp-pop';
+    tagPop.setAttribute('data-tp-pop', '');
+    tagPop.innerHTML = tagFormHtml(inst, isNew, curName, curColor, picked);
+    document.body.appendChild(tagPop);
+    positionTagPop(tagPop, anchorEl);
     // 自定义颜色按钮 → 圆形拾色器弹窗
-    overlayEl.querySelector('[data-tp-custom-color]').addEventListener('click', function () {
+    tagPop.querySelector('[data-tp-custom-color]').addEventListener('click', function () {
       App.ui.colorPicker.pickerDialog(
         picked,
         function (val) {
           picked = val || '';
-          var row = overlayEl.querySelector('[data-tp-custom-row]');
+          var row = tagPop.querySelector('[data-tp-custom-row]');
           if (!row) {
-            var body = overlayEl.querySelector('.tp-dialog-body');
+            var body = tagPop.querySelector('.tp-dialog-body');
             var div = document.createElement('div');
             div.className = 'tp-field';
             div.setAttribute('data-tp-custom-row', '');
@@ -543,32 +602,32 @@
             var hex = row.querySelector('[data-tp-hex]');
             if (hex) hex.value = val || '';
           }
-          var sw = overlayEl.querySelector('[data-tp-custom-color]');
+          var sw = tagPop.querySelector('[data-tp-custom-color]');
           if (sw) sw.style.setProperty('--sw', App.ui.color.resolveColor(val));
         },
         { title: L.color || '设置颜色', labels: L }
       );
     });
     // 色板点击
-    overlayEl.addEventListener('click', function (e) {
+    tagPop.addEventListener('click', function (e) {
       var sw = e.target.closest ? e.target.closest('[data-tp-palette]') : null;
       if (!sw) return;
       picked = sw.getAttribute('data-tp-palette');
-      overlayEl.querySelectorAll('[data-tp-palette]').forEach(function (el) {
+      tagPop.querySelectorAll('[data-tp-palette]').forEach(function (el) {
         el.classList.toggle('is-on', el === sw);
       });
-      var row = overlayEl.querySelector('[data-tp-custom-row]');
+      var row = tagPop.querySelector('[data-tp-custom-row]');
       if (row) row.parentNode.removeChild(row);
     });
     // hex 输入
-    overlayEl.addEventListener('input', function (e) {
+    tagPop.addEventListener('input', function (e) {
       var hex = e.target;
       if (!hex || !hex.hasAttribute || !hex.hasAttribute('data-tp-hex')) return;
       picked = hex.value.trim();
     });
     // 确定:校验 → 回调
-    overlayEl.querySelector('[data-tp-dlg-ok]').addEventListener('click', function () {
-      var name = overlayEl.querySelector('[data-tp-name]').value.trim();
+    tagPop.querySelector('[data-tp-dlg-ok]').addEventListener('click', function () {
+      var name = tagPop.querySelector('[data-tp-name]').value.trim();
       var err = validateName(inst, name, tag ? tag.id : '', L.nameRequired);
       if (err) {
         toast(inst, err, true);
@@ -579,7 +638,7 @@
         var parsed = parseColorSafe(finalColor);
         finalColor = parsed ? App.ui.color.formatHex(parsed) : '';
       }
-      closeDialog();
+      closeTagPop();
       if (isNew) {
         if (typeof inst.opts.onCreate === 'function') inst.opts.onCreate(name, finalColor);
       } else if (typeof inst.opts.onRename === 'function') {
@@ -587,10 +646,10 @@
       }
     });
     // 回车提交
-    overlayEl.querySelector('[data-tp-name]').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') overlayEl.querySelector('[data-tp-dlg-ok]').click();
+    tagPop.querySelector('[data-tp-name]').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') tagPop.querySelector('[data-tp-dlg-ok]').click();
     });
-    var inp = overlayEl.querySelector('[data-tp-name]');
+    var inp = tagPop.querySelector('[data-tp-name]');
     setTimeout(function () {
       inp.focus();
       if (isNew) inp.select();
@@ -599,6 +658,22 @@
       }
     }, 30);
   }
+  // 点击 Popover 外部关闭(触发打开的动作项除外,避免同一次点击关闭刚打开的弹层)
+  document.addEventListener('click', function (e) {
+    if (!tagPop) return;
+    if (e.target && e.target.closest && e.target.closest('[data-tp-dlg-close]')) {
+      closeTagPop();
+      return;
+    }
+    if (e.target && e.target.closest && e.target.closest('[data-tp-pop], [data-tp-act], [data-tp-create]')) return;
+    closeTagPop();
+  });
+  // Esc 关闭 Popover / 右键浮层
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    closeTagPop();
+    hideCtx();
+  });
 
   function parseColorSafe(v) {
     try {
@@ -638,7 +713,7 @@
     var id = el.getAttribute('data-id');
     var tag = nodeOf(inst, id);
     if (!tag) return;
-    if (act === 'rename') openTagDialog(inst, tag);
+    if (act === 'rename') openTagDialog(inst, tag, el);
     else if (act === 'color') {
       App.ui.colorPicker.pickerDialog(tag.color || '', function (val) {
         if (typeof inst.opts.onColorChange === 'function') inst.opts.onColorChange(tag.id, val || '');
@@ -649,7 +724,9 @@
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
-    var inst = instOf(t);
+    // 右键浮层挂在 body 下,先尝试从浮层取实例,再回退到树内解析
+    var ctxpop = t.closest('.tp-ctxpop');
+    var inst = ctxpop && ctxpop._tpInst ? ctxpop._tpInst : instOf(t);
     if (!inst) return;
     var L = inst.labels();
 
@@ -671,9 +748,10 @@
       }
       return;
     }
-    // 行内 ⋯ 菜单动作
+    // 行内 ⋯ 菜单动作 / 右键浮层项(先收起浮层,避免其盖住后续打开的弹窗)
     var actEl = t.closest('[data-tp-act]');
     if (actEl) {
+      if (ctxpop) hideCtx();
       doManagerAction(inst, actEl);
       return;
     }
@@ -691,6 +769,13 @@
       inst.refresh();
       return;
     }
+    // 多选下拉:清除搜索
+    var pickClear = t.closest('[data-tp-pick-clear]');
+    if (pickClear) {
+      inst.setPickerSearch('');
+      if (typeof inst.opts.onRenderMenu === 'function') inst.opts.onRenderMenu();
+      return;
+    }
     // 多选下拉:切换标签
     var pick = t.closest('[data-tp-pick]');
     if (pick) {
@@ -703,7 +788,7 @@
     var createBtn = t.closest('[data-tp-create]');
     if (createBtn) {
       var q = inst.pickerSearch.trim();
-      if (q) inst.openCreateDialog();
+      if (q) inst.openCreateDialog(createBtn);
       return;
     }
     // 完成
@@ -786,7 +871,7 @@
       if (inst.pickerIndex >= 0 && inst.pickerIndex < opts.length) {
         if (typeof inst.opts.onToggle === 'function') inst.opts.onToggle(opts[inst.pickerIndex].getAttribute('data-tp-pick'));
       } else if (createEl && inst.pickerSearch.trim()) {
-        inst.openCreateDialog();
+        inst.openCreateDialog(createEl);
       }
     } else if (e.key === 'Escape') {
       var wrap = t.closest('[data-dropdown]');
@@ -807,6 +892,9 @@
     ctxPopup.innerHTML = tagMenuItemsHtml(inst, tag);
     ctxPopup.style.left = Math.max(4, x) + 'px';
     ctxPopup.style.top = Math.max(4, y) + 'px';
+    // 右键浮层挂在 body 下(不在 [data-tp] 内),把实例引用挂到元素上,
+    // 供 document 级 click 委托解析,否则菜单项点击不生效(仅 ⋯ 下拉可用)。
+    ctxPopup._tpInst = inst;
     document.body.appendChild(ctxPopup);
   }
   function hideCtx() {
@@ -863,7 +951,7 @@
       '.tp-more svg{width:.8125rem;height:.8125rem}' +
       '.tp-ddmenu{position:absolute;right:.25rem;top:100%;z-index:60;display:none;min-width:10rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid var(--border,#e4e4e7)}' +
       '.tp-ddmenu.open{display:block}' +
-      '.tp-ctxpop{position:fixed;z-index:90;min-width:10rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7)}' +
+      '.tp-ctxpop{position:fixed;z-index:1000;min-width:10rem;padding:.25rem;border-radius:.5rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7)}' +
       '.tp-mi{display:flex;align-items:center;gap:.5rem;width:100%;padding:.375rem .5rem;border:0;border-radius:.375rem;background:transparent;color:inherit;font-size:.8125rem;cursor:pointer;text-align:left;outline:none}' +
       '.tp-mi:hover{background:var(--accent,#f4f4f5)}' +
       '.tp-mi.is-danger{color:var(--destructive,#ef4444)}' +
@@ -890,6 +978,9 @@
       '.tp-pick-foot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-top:1px solid var(--border,#e4e4e7);padding:.375rem .125rem 0}' +
       '.tp-pick-count{font-size:.6875rem;color:var(--muted-foreground,#71717a)}' +
       /* 弹窗 */
+      /* 新建/重命名标签:锚定 Popover(Chrome 添加联系人风格) */
+      '.tp-pop{position:fixed;z-index:1100;width:min(20rem,calc(100vw - 2rem));max-height:calc(100vh - 2rem);overflow-y:auto;border-radius:.75rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 10px 30px rgba(0,0,0,.18);border:1px solid var(--border,#e4e4e7);padding:.875rem;display:flex;flex-direction:column;gap:.5rem}' +
+      '.tp-pop-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}' +
       '.tp-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}' +
       '.tp-dialog{width:min(22rem,calc(100vw-2rem));max-height:calc(100vh-4rem);display:flex;flex-direction:column;border-radius:.75rem;background:var(--popover,#fff);color:var(--popover-foreground,#18181b);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:.875rem}' +
       '.tp-dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem}' +

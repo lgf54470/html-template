@@ -262,11 +262,10 @@
 
 /* ---------- 路由行标签(彩色 # 胶囊显示在路由信息下方 + 书签 add tag 按钮) ---------- */
 .hub-route-tags {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   min-width: 0;
-  margin-top: 0.25rem;
 }
 .hub-route-tags .hub-tagpills {
   max-width: none;
@@ -286,7 +285,7 @@
   align-items: center;
   gap: 0.1875rem;
   max-width: 7rem;
-  height: 1.25rem;
+  height: 1.125rem;
   padding: 0 0.3125rem 0 0.4375rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
@@ -392,10 +391,10 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.375rem;
   border: 1px solid transparent;
   border-radius: 0.5rem;
-  padding: 0.5rem 0.5rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
@@ -405,22 +404,21 @@
   border-color: var(--border);
 }
 .hub-route-switch-col {
-  padding-top: 0.25rem;
+  padding-top: 0.125rem;
 }
 .hub-method {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3.125rem;
-  height: 1.375rem;
+  min-width: 2.875rem;
+  height: 1.25rem;
   border-radius: 0.375rem;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: #fff;
-  margin-top: 0.125rem;
 }
 .hub-method-get    { background: #16a34a; }
 .hub-method-post   { background: #2563eb; }
@@ -434,12 +432,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.1875rem;
 }
 .hub-route-title {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.25rem;
   min-width: 0;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -475,8 +473,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.125rem;
+  gap: 0.1875rem;
+  margin-top: 0.1875rem;
 }
 .hub-chip {
   display: inline-flex;
@@ -497,13 +495,33 @@
   height: 0.6875rem;
   flex: none;
 }
-.hub-chip.is-public {
-  color: #16a34a;
-  background: color-mix(in oklab, #16a34a 12%, transparent);
+/* ---------- 鉴权令牌徽章(图标 + 颜色,悬停提示) ---------- */
+.hub-token {
+  --tokc: #71717a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  border-radius: 0.375rem;
+  color: var(--tokc);
+  background: color-mix(in oklab, var(--tokc) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--tokc) 28%, transparent);
+  cursor: help;
 }
-.hub-chip.is-auth {
+.hub-token svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.hub-token.is-public {
+  color: #16a34a;
+}
+.hub-token.is-fav {
+  color: #d97706;
+}
+.hub-token.is-pin {
   color: var(--primary);
-  background: color-mix(in oklab, var(--primary) 10%, transparent);
 }
 /* ---------- 路由行:⋯ 按钮(悬停显示,打开右键菜单) ---------- */
 .hub-route-ctx {
@@ -907,6 +925,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
   padding: 0.5rem 0.625rem;
   border-bottom: 1px solid var(--border);
 }
@@ -1040,6 +1059,94 @@
 .hub-headers-list span:last-child {
   color: var(--muted-foreground);
   word-break: break-all;
+}
+
+/* ---------- JSON 树(响应查看) ---------- */
+.hub-json {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  padding: 0.125rem 0;
+}
+.hub-jline {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.375rem;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.hub-jline:hover {
+  background: var(--accent);
+}
+.hub-jindent {
+  display: inline-block;
+  width: 1rem;
+  flex: none;
+}
+.hub-jcaret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0.25rem;
+  transition: transform 0.12s ease;
+}
+.hub-jcaret svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.hub-jcaret.is-leaf {
+  visibility: hidden;
+}
+.hub-jnode.is-open > .hub-jcaret {
+  transform: rotate(90deg);
+}
+.hub-jkey {
+  color: #2563eb;
+}
+.hub-jcolon,
+.hub-jpunc {
+  color: var(--muted-foreground);
+}
+.hub-jcount {
+  color: var(--muted-foreground);
+  opacity: 0.85;
+}
+.hub-jcopy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: 0.25rem;
+  opacity: 0;
+}
+.hub-jline:hover .hub-jcopy {
+  opacity: 1;
+}
+.hub-jcopy:hover {
+  background: var(--background);
+  color: var(--foreground);
+}
+.hub-jcopy svg {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 /* ---------- 语法高亮 ---------- */

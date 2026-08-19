@@ -40,6 +40,7 @@
     run: null,
     history: [],
     lastHashSel: null,
+    jsonExp: {}, // JSON 树展开状态(path → bool)
   };
   var saveTimer = null;
   var dialogMethod = 'GET';
@@ -57,6 +58,35 @@
       '<line x1="12" y1="7" x2="12" y2="13"></line>' +
       '<line x1="15" y1="10" x2="9" y2="10"></line></svg>'
     );
+  }
+  /** 内联 SVG(补充 lucide 数据未内置的图标:shield / key 等) */
+  function inlineSvg(inner, cls) {
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="' +
+      (cls || '') +
+      '">' +
+      inner +
+      '</svg>'
+    );
+  }
+  /** 鉴权令牌元数据:每种令牌独立图标 + 颜色(路由行图标化展示,悬停提示) */
+  var AUTH_META = {
+    none: { icon: 'globe', color: '#16a34a' },
+    session: { icon: 'key-round', color: '#2563eb' },
+    bearer: { icon: 'shield', color: '#9333ea' },
+    'global-password': { icon: 'lock', color: '#d97706' },
+    'api-key': { icon: 'key', color: '#0891b2' },
+  };
+  /** 鉴权令牌图标(lucide 有则用,无则内联) */
+  function authTokenIcon(mode) {
+    var m = AUTH_META[mode] || AUTH_META.session;
+    if (m.icon === 'shield') {
+      return inlineSvg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>', '');
+    }
+    if (m.icon === 'key') {
+      return inlineSvg('<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>', '');
+    }
+    return icon(m.icon, '');
   }
   function esc(s) {
     return String(s == null ? '' : s)
@@ -603,6 +633,7 @@
     var url = buildUrl();
     var started = performance.now();
     view.running = true;
+    view.jsonExp = {}; // 新响应重置 JSON 树展开状态
     renderFull();
 
     var opts = { method: req.method, headers: headers, cache: 'no-store' };
@@ -970,9 +1001,9 @@
   function copyLink(key) {
     copyText(location.origin + location.pathname + '#/apihub?r=' + encodeURIComponent(key));
   }
-  function copyText(text) {
+  function copyText(text, hint) {
     var done = function () {
-      App.ui.toast(t('apihub.shareHint'));
+      App.ui.toast(hint || t('apihub.shareHint'));
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () {
@@ -1482,7 +1513,7 @@
         '</span>';
     });
     return (
-      '<div class="hub-route-tags">' +
+      '<span class="hub-route-tags">' +
       '<span class="hub-tagpills">' +
       pills +
       '</span>' +
@@ -1496,7 +1527,21 @@
       bookmarkIcon('') +
       (picked.length ? '<span class="hub-tagbtn-count">' + (picked.length > 99 ? '99+' : picked.length) + '</span>' : '') +
       '</button>' +
-      '</div>'
+      '</span>'
+    );
+  }
+
+  /** 鉴权令牌徽章:图标 + 颜色,悬停提示详情 */
+  function tokenBadgeHtml(mode) {
+    var m = AUTH_META[mode] || AUTH_META.session;
+    return (
+      '<span class="hub-token" style="--tokc:' +
+      m.color +
+      '" title="' +
+      escAttr(authLabel(mode)) +
+      '">' +
+      authTokenIcon(mode) +
+      '</span>'
     );
   }
 
@@ -1509,13 +1554,23 @@
     var title = m.name || '';
     var desc = m.desc || r.desc || '';
     var locked = r.builtIn && r.public;
-    var chips = '';
-    if (pub) chips += chipHtml(t('apihub.public'), 'is-public', 'globe');
-    else chips += chipHtml(authLabel(mode), 'is-auth', 'key-round');
+    var meta = '';
+    // 鉴权令牌:图标 + 颜色(公开时显示绿色公开徽章代替)
+    if (pub) {
+      meta += '<span class="hub-token is-public" title="' + escAttr(t('apihub.publicHint')) + '">' + icon('globe', '') + '</span>';
+    } else {
+      meta += tokenBadgeHtml(mode);
+    }
+    // 收藏 / 置顶指示
+    if (m.favorite) meta += '<span class="hub-token is-fav" title="' + escAttr(t('apihub.favorite')) + '">' + icon('star', '') + '</span>';
+    if (m.pinned) meta += '<span class="hub-token is-pin" title="' + escAttr(t('apihub.pin')) + '">' + icon('circle-dot', '') + '</span>';
+    // 分组
     (m.groupIds || []).forEach(function (gid) {
       var g = groupById(gid);
-      if (g) chips += chipHtml(g.name, '', 'folder');
+      if (g) meta += chipHtml(g.name, '', 'folder');
     });
+    // 标签 + 添加标签
+    meta += routeTagsHtml(key, m);
     return (
       '<div class="hub-route' +
       (view.selected === key ? ' is-selected' : '') +
@@ -1552,8 +1607,9 @@
       '</span>' +
       '</div>' +
       (desc ? '<div class="hub-route-desc">' + esc(desc) + '</div>' : '') +
-      (chips ? '<div class="hub-route-meta">' + chips + '</div>' : '') +
-      routeTagsHtml(key, m) +
+      '<div class="hub-route-meta">' +
+      meta +
+      '</div>' +
       '</div>' +
       '<div class="hub-route-ctx">' +
       '<button type="button" class="hub-icon-btn hub-route-more" data-hub-act="more" data-key="' +
@@ -1669,7 +1725,8 @@
     html +=
       '<div class="hub-ctxsep"></div>' +
       item('auth', t('apihub.auth'), 'key-round') +
-      item('copylink', t('apihub.copyLink'), 'link');
+      item('copylink', t('apihub.copyLink'), 'link') +
+      item('copypath', t('apihub.copyPath'), 'route');
     if (isCustom) {
       html += item('editroute', t('apihub.edit'), 'pencil') + item('delroute', t('apihub.delete'), 'trash-2', '', true);
     }
@@ -2028,8 +2085,105 @@
     }
   }
 
+  /* ---------- JSON 树(响应查看:逐节点展开/折叠 + 悬停复制节点) ---------- */
+  var jsonNodeMap = {};   // path -> 节点值(渲染时重建,供复制节点查值)
+  var jsonAllPaths = [];  // 全部容器 path(供全部展开/折叠)
+  /** 解析响应文本为解码后的 JSON 值;非 JSON 返回 null */
+  function jsonValue(text) {
+    try {
+      return decodeNested(JSON.parse(text));
+    } catch (e) {
+      return null;
+    }
+  }
+  /** 节点路径(带 JSON.stringify 键段,规避键名含 . 的碰撞) */
+  function jsonPath(parent, key) {
+    return parent + '[' + JSON.stringify(String(key)) + ']';
+  }
+  /** 标量值着色渲染 */
+  function jsonScalarHtml(v) {
+    if (v === null) return '<span class="hub-hl-null">null</span>';
+    var t = typeof v;
+    if (t === 'string') return '<span class="hub-hl-str">' + esc(JSON.stringify(v)) + '</span>';
+    if (t === 'number') return '<span class="hub-hl-num">' + esc(String(v)) + '</span>';
+    if (t === 'boolean') return '<span class="hub-hl-bool">' + v + '</span>';
+    return esc(String(v));
+  }
+  /** 递归渲染 JSON 节点(默认展开根 + 第一层,更深默认折叠) */
+  function jsonNodeHtml(path, key, value, depth) {
+    var pad = '';
+    for (var i = 0; i < depth; i++) pad += '<span class="hub-jindent"></span>';
+    var keyHtml = key === null ? '' : '<span class="hub-jkey">' + esc(String(key)) + '</span><span class="hub-jcolon">: </span>';
+    var isObj = value !== null && typeof value === 'object' && !Array.isArray(value);
+    var isArr = Array.isArray(value);
+    var copyBtn =
+      '<button type="button" class="hub-jcopy" data-jcopy="' +
+      escAttr(path) +
+      '" title="' +
+      escAttr(t('apihub.copyNode')) +
+      '" aria-label="' +
+      escAttr(t('apihub.copyNode')) +
+      '">' +
+      icon('copy', '') +
+      '</button>';
+    if (!isObj && !isArr) {
+      jsonNodeMap[path] = value;
+      return '<div class="hub-jline" data-jpath="' + escAttr(path) + '">' + pad + keyHtml + jsonScalarHtml(value) + copyBtn + '</div>';
+    }
+    jsonNodeMap[path] = value;
+    jsonAllPaths.push(path);
+    var kids = isArr
+      ? value.map(function (v, i) { return { k: i, v: v }; })
+      : Object.keys(value).map(function (k) { return { k: k, v: value[k] }; });
+    var open = view.jsonExp.hasOwnProperty(path) ? view.jsonExp[path] : depth <= 1;
+    var head = isObj ? '{' : '[';
+    var tail = isObj ? '}' : ']';
+    var summary =
+      '<span class="hub-jcount">' +
+      (isArr ? kids.length + ' ' + t('apihub.jsonItems') : kids.length + ' ' + t('apihub.jsonKeys')) +
+      '</span>';
+    var html =
+      '<div class="hub-jline hub-jnode' +
+      (open ? ' is-open' : '') +
+      '" data-jpath="' +
+      escAttr(path) +
+      '">' +
+      pad +
+      (kids.length
+        ? '<button type="button" class="hub-jcaret" data-jtoggle="' + escAttr(path) + '" aria-label=""></button>'
+        : '<span class="hub-jcaret is-leaf"></span>') +
+      keyHtml +
+      '<span class="hub-jpunc">' +
+      head +
+      '</span>' +
+      (open ? '' : ' ' + summary + ' <span class="hub-jpunc">' + tail + '</span>') +
+      copyBtn +
+      '</div>';
+    if (open) {
+      html += '<div class="hub-jchildren">';
+      kids.forEach(function (k) {
+        html += jsonNodeHtml(jsonPath(path, k.k), k.k, k.v, depth + 1);
+      });
+      html +=
+        '<div class="hub-jline hub-jclose" data-jpath="' +
+        escAttr(path) +
+        '">' +
+        pad +
+        '<span class="hub-jpunc">' +
+        tail +
+        '</span></div>';
+    }
+    return html;
+  }
+  function jsonTreeHtml(value) {
+    jsonNodeMap = {};
+    jsonAllPaths = [];
+    return '<div class="hub-json" data-hub-json>' + jsonNodeHtml('root', null, value, 0) + '</div>';
+  }
+
   function responseHtml() {
     var res = view.run;
+    var isJson = res ? prettyJson(res.text || '') !== null : false;
     var html =
       '<div class="hub-res-head">' +
       '<span class="hub-res-title">' +
@@ -2065,6 +2219,24 @@
       '" data-hub-resview="raw">' +
       esc(t('apihub.raw')) +
       '</button>' +
+      (res && isJson && view.resView === 'pretty'
+        ? '<button type="button" class="hub-res-toggle" data-jexpall="all" title="' +
+          escAttr(t('apihub.expandAll')) +
+          '" aria-label="' +
+          escAttr(t('apihub.expandAll')) +
+          '">' +
+          icon('arrow-down', '') +
+          esc(t('apihub.expandAll')) +
+          '</button>' +
+          '<button type="button" class="hub-res-toggle" data-jexpall="none" title="' +
+          escAttr(t('apihub.collapseAll')) +
+          '" aria-label="' +
+          escAttr(t('apihub.collapseAll')) +
+          '">' +
+          icon('arrow-up', '') +
+          esc(t('apihub.collapseAll')) +
+          '</button>'
+        : '') +
       '<button type="button" class="hub-res-toggle" data-hub-act="copyres">' +
       icon('copy', '') +
       esc(t('apihub.copy')) +
@@ -2078,7 +2250,9 @@
       html += '<div class="hub-res-empty">' + icon('route', '') + esc(t('apihub.emptyRun')) + '</div>';
     } else {
       var body = res.text || '';
-      if (view.resView === 'pretty' && prettyJson(body) !== null) {
+      if (view.resView === 'pretty' && isJson) {
+        html += jsonTreeHtml(jsonValue(body));
+      } else if (view.resView === 'pretty') {
         html += '<pre class="hub-pre">' + highlightJson(body) + '</pre>';
       } else {
         html += '<pre class="hub-pre">' + esc(body) + '</pre>';
@@ -2251,6 +2425,10 @@
       else if (cAct === 'pin') togglePin(cKey);
       else if (cAct === 'auth') authDialog(cKey);
       else if (cAct === 'copylink') copyLink(cKey);
+      else if (cAct === 'copypath') {
+        var cr = findRoute(cKey);
+        if (cr) copyText(cr.path, t('apihub.copied'));
+      }
       else if (cAct === 'editroute') routeFormDialog(cKey);
       else if (cAct === 'delroute') {
         confirmDialog(
@@ -2458,6 +2636,35 @@
     if (rv) {
       view.resView = rv.getAttribute('data-hub-resview');
       renderFull();
+      return;
+    }
+
+    // JSON 树:展开/折叠节点
+    var jt = target.closest('[data-jtoggle]');
+    if (jt) {
+      var jp = jt.getAttribute('data-jtoggle');
+      view.jsonExp[jp] = !(view.jsonExp[jp] !== false);
+      renderFull();
+      return;
+    }
+    // JSON 树:全部展开/折叠
+    var jx = target.closest('[data-jexpall]');
+    if (jx) {
+      var jm = jx.getAttribute('data-jexpall');
+      (jsonAllPaths || []).forEach(function (p2) {
+        view.jsonExp[p2] = jm === 'all';
+      });
+      renderFull();
+      return;
+    }
+    // JSON 树:复制节点
+    var jc = target.closest('[data-jcopy]');
+    if (jc) {
+      var jcp = jc.getAttribute('data-jcopy');
+      var jval = jsonNodeMap[jcp];
+      if (jval !== undefined) {
+        copyText(typeof jval === 'string' ? jval : JSON.stringify(jval, null, 2), t('apihub.copied'));
+      }
       return;
     }
 

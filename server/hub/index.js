@@ -149,6 +149,11 @@ function createHub(deps) {
               parentId: validId(g.parentId) ? String(g.parentId) : '',
               public: !!g.public,
               sort: Number(g.sort) || 0,
+              icon: typeof g.icon === 'string' ? String(g.icon).slice(0, 16) : '',
+              color:
+                typeof g.color === 'string' && /^(#[0-9a-fA-F]{3,8}|[a-z][a-z0-9-]{0,20})$/.test(g.color)
+                  ? String(g.color).slice(0, 24)
+                  : '',
             };
           });
       }

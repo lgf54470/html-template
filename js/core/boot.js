@@ -24,6 +24,8 @@
     'api',
     'auth',
     'ui',
+    'color-picker',
+    'group-tree',
     'avatar',
     'shell',
     'app',

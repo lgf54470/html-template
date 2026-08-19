@@ -377,6 +377,36 @@
     persist();
     renderFull();
   }
+  /** 拖拽/移动到目标分组(zone: before/after/inside;targetId 空 → 根) */
+  function moveGroup(id, targetId, zone) {
+    var list = state.config.groups || [];
+    var g = groupById(id);
+    if (!g) return;
+    var t = targetId ? groupById(targetId) : null;
+    if (t && descendants(list, id).indexOf(t.id) !== -1) {
+      App.ui.toast(t('apihub.noDrop'), 'error');
+      return;
+    }
+    var next = App.ui.groupTree.moveNode(list, id, targetId, zone);
+    if (!next) return; // 无效目标
+    state.config.groups = next;
+    persist();
+    renderFull();
+  }
+  function setGroupIcon(id, icon) {
+    var g = groupById(id);
+    if (!g) return;
+    g.icon = icon || '';
+    persist();
+    renderFull();
+  }
+  function setGroupColor(id, color) {
+    var g = groupById(id);
+    if (!g) return;
+    g.color = color || '';
+    persist();
+    renderFull();
+  }
 
   function addTag(name, parentId) {
     var tags = state.config.tags;
@@ -1211,6 +1241,90 @@
     return html;
   }
 
+  /** 公共分组树组件(懒创建,展开/过滤等内部状态常驻) */
+  var groupTree = null;
+  function ensureGroupTree() {
+    if (groupTree) return groupTree;
+    groupTree = App.ui.groupTree.create({
+      nodes: function () {
+        return state.config.groups || [];
+      },
+      rootLabel: t('apihub.allGroups'),
+      activeId: view.groupFilter || 'root',
+      labels: {
+        newGroup: t('apihub.newGroup'),
+        newChild: t('apihub.newSubgroup'),
+        newSibling: t('apihub.newSibling'),
+        rename: t('apihub.rename'),
+        moveTo: t('apihub.moveTo'),
+        icon: t('apihub.icon'),
+        color: t('apihub.color'),
+        delete: t('apihub.delete'),
+        deleteConfirm: t('apihub.deleteConfirm'),
+        deleteMsg: t('apihub.deleteGroupMsg'),
+        rootGroup: t('apihub.rootGroup'),
+        search: t('apihub.searchGroups'),
+        empty: t('apihub.noGroups'),
+        noMatch: t('apihub.noGroupsMatch'),
+        name: t('apihub.name'),
+        namePlaceholder: t('apihub.groupNamePlaceholder'),
+        nameRequired: t('apihub.nameRequired'),
+        parentGroup: t('apihub.parentGroup'),
+        chooseParent: t('apihub.chooseParent'),
+        iconSearch: t('apihub.iconSearch'),
+        emoji: t('apihub.emoji'),
+        emojiInput: t('apihub.emojiInput'),
+        clearIcon: t('apihub.clearIcon'),
+        clearColor: t('apihub.clearColor'),
+        apply: t('apihub.save'),
+        cancel: t('apihub.cancel'),
+        save: t('apihub.save'),
+        copied: t('apihub.copied'),
+        menu: t('apihub.menu'),
+        renameHint: t('apihub.renameHint'),
+      },
+      count: function (node) {
+        return treeCount('group', node.id);
+      },
+      rowExtra: function (node) {
+        return (
+          '<button type="button" class="hub-switch' +
+          (node.public ? ' is-on' : '') +
+          '" data-hub-toggle="grouppub" data-id="' +
+          escAttr(node.id) +
+          '" aria-label=""><span class="hub-switch-thumb"></span></button>'
+        );
+      },
+      onSelect: function (id) {
+        view.groupFilter = id || null;
+        rerenderList();
+        rerenderSideFilters();
+      },
+      onCreate: function (parentId, name) {
+        addGroup(name, parentId);
+      },
+      onRename: function (id, name) {
+        renameGroup(id, name);
+      },
+      onDelete: function (id) {
+        deleteGroup(id);
+      },
+      onMove: function (id, targetId, zone) {
+        moveGroup(id, targetId, zone);
+      },
+      onIconChange: function (id, iconName) {
+        setGroupIcon(id, iconName);
+      },
+      onColorChange: function (id, color) {
+        setGroupColor(id, color);
+      },
+      onRender: function () {
+        rerenderSideFilters();
+      },
+    });
+    return groupTree;
+  }
+
   function sideSectionsHtml() {
     return (
       '<div class="hub-section">' +
@@ -1219,13 +1333,29 @@
       icon('folder', '') +
       esc(t('apihub.groups')) +
       '</span>' +
+      '<span class="hub-section-actions">' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="gt-collapseall" title="' +
+      escAttr(t('apihub.collapseAll')) +
+      '" aria-label="' +
+      escAttr(t('apihub.collapseAll')) +
+      '">' +
+      icon('arrow-up', '') +
+      '</button>' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="gt-expandall" title="' +
+      escAttr(t('apihub.expandAll')) +
+      '" aria-label="' +
+      escAttr(t('apihub.expandAll')) +
+      '">' +
+      icon('arrow-down', '') +
+      '</button>' +
       '<button type="button" class="hub-icon-btn" data-hub-act="newgroup" aria-label="' +
       escAttr(t('apihub.newGroup')) +
       '">' +
       icon('plus', '') +
       '</button>' +
+      '</span>' +
       '</div>' +
-      treeHtml('group', 'apihub.allGroups', 'clrgroup') +
+      ensureGroupTree().render() +
       '</div>' +
       '<div class="hub-section">' +
       '<div class="hub-section-head">' +
@@ -2101,9 +2231,15 @@
           );
           break;
         case 'newgroup':
-          promptNameDialog(t('apihub.newGroup'), '', '', function (name) {
-            addGroup(name, '');
-          });
+          ensureGroupTree().createDialog('');
+          break;
+        case 'gt-expandall':
+          ensureGroupTree().expandAll();
+          renderFull();
+          break;
+        case 'gt-collapseall':
+          ensureGroupTree().collapseAll();
+          renderFull();
           break;
         case 'newtag':
           promptNameDialog(t('apihub.newTag'), '', '', function (name) {

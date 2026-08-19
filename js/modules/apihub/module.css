@@ -131,6 +131,16 @@
   gap: 0.5rem;
   padding: 0.25rem 0.375rem;
 }
+.hub-section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+/* 公共分组树组件宿主:占满区块剩余高度,内部独立滚动(样式见 js/core/group-tree.js) */
+.hub-section .gt-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .hub-section-title {
   display: inline-flex;
   align-items: center;

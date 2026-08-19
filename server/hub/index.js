@@ -168,6 +168,11 @@ function createHub(deps) {
               name: String(t.name).trim().slice(0, 40),
               parentId: validId(t.parentId) ? String(t.parentId) : '',
               sort: Number(t.sort) || 0,
+              icon: typeof t.icon === 'string' ? String(t.icon).slice(0, 16) : '',
+              color:
+                typeof t.color === 'string' && /^(#[0-9a-fA-F]{3,8}|[a-z][a-z0-9-]{0,20})$/.test(t.color)
+                  ? String(t.color).slice(0, 24)
+                  : '',
             };
           });
       }

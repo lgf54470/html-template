@@ -55,14 +55,14 @@ function loadCore() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const f of ['js/core/color-picker.js', 'js/core/group-tree.js']) {
+  for (const f of ['js/core/color-picker.js', 'js/core/group-tree.js', 'js/core/tag-picker.js']) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sandbox, { filename: f });
   }
   return sandbox;
 }
 
 const sandbox = loadCore();
-const { color, groupTree } = sandbox.App.ui;
+const { color, groupTree, tagPicker } = sandbox.App.ui;
 
 /** 跨 realm 对象(VM 沙箱原型不同)先 JSON 归一化再断言 */
 function eq(actual, expected) {
@@ -264,4 +264,92 @@ test('groupTree: 过滤后只渲染命中节点及其祖先/子孙', () => {
   assert.match(html, /data-gt-id="a"/); // 祖先可见
   assert.match(html, /data-gt-id="b"/); // 祖先可见
   assert.doesNotMatch(html, /data-gt-id="c"/); // 无关节点隐藏
+});
+
+/* ---------- 标签组件(tag-picker) ---------- */
+
+test('tagPicker: 调色板为 19 色且首色为 accent', () => {
+  assert.equal(tagPicker.PALETTE.length, 19);
+  assert.equal(tagPicker.PALETTE[0], 'accent');
+  assert.ok(tagPicker.PALETTE.includes('zinc'));
+  assert.ok(tagPicker.PALETTE.includes('yellow'));
+});
+
+test('tagPicker: fuzzyMatch 按序不连续匹配、忽略大小写', () => {
+  assert.equal(tagPicker.fuzzyMatch('Payments', 'pay'), true);
+  assert.equal(tagPicker.fuzzyMatch('Payments', 'pmt'), true);
+  assert.equal(tagPicker.fuzzyMatch('Payments', 'pym'), true); // p→y→m 按序存在
+  assert.equal(tagPicker.fuzzyMatch('Payments', 'myp'), false); // 顺序颠倒
+  assert.equal(tagPicker.fuzzyMatch('Payments', 'pmz'), false);
+  assert.equal(tagPicker.fuzzyMatch('', 'x'), false);
+  assert.equal(tagPicker.fuzzyMatch('anything', ''), true);
+});
+
+test('tagPicker: highlight 仅标记按序命中的字符并转义其余文本', () => {
+  assert.equal(tagPicker.highlight('Payments', 'pmt', (s) => s), '<mark>P</mark>ay<mark>m</mark>en<mark>t</mark>s');
+  assert.equal(tagPicker.highlight('Payments', 'pay', (s) => s), '<mark>P</mark><mark>a</mark><mark>y</mark>ments');
+  assert.equal(tagPicker.highlight('<b>', 'b', (s) => s), '<<mark>b</mark>>');
+  assert.equal(tagPicker.highlight('abc', '', (s) => s), 'abc');
+});
+
+test('tagPicker: nextColor 在 19 色内循环', () => {
+  const seen = new Set();
+  for (let i = 0; i < 19; i++) seen.add(tagPicker.nextColor());
+  assert.equal(seen.size, 19);
+  assert.ok(tagPicker.PALETTE.includes(tagPicker.nextColor()));
+});
+
+test('tagPicker: create().render() 输出管理列表(# 行/计数/颜色过滤/未标记)', () => {
+  const inst = tagPicker.create({
+    nodes: () => [
+      { id: 't1', name: 'Payments', color: 'blue' },
+      { id: 't2', name: 'Auth', color: 'red' },
+    ],
+    activeId: '',
+    count: (id) => (id === null ? 2 : id === 't1' ? 5 : 3),
+    labels: { allTags: '全部标签', untagged: '未标记' },
+  });
+  const html = inst.render();
+  assert.match(html, /data-tp="/);
+  assert.match(html, /data-tp-tag="t1"/);
+  assert.match(html, /data-tp-tag="t2"/);
+  assert.match(html, /data-tp-none/); // 未标记行
+  assert.match(html, /data-tp-clear/); // 全部标签行
+  assert.match(html, /data-tp-color="accent"/); // 19 色过滤条
+  assert.match(html, /data-tp-color="red"/);
+  assert.match(html, />5<\/span>/); // 计数
+  assert.match(html, />2<\/span>/);
+  // 搜索过滤
+  inst.setManagerFilter('pay');
+  const html2 = inst.render();
+  assert.match(html2, /data-tp-tag="t1"/);
+  assert.doesNotMatch(html2, /data-tp-tag="t2"/);
+  // 颜色过滤
+  inst.setManagerFilter('');
+  inst.setManagerColor('red');
+  const html3 = inst.render();
+  assert.doesNotMatch(html3, /data-tp-tag="t1"/);
+  assert.match(html3, /data-tp-tag="t2"/);
+});
+
+test('tagPicker: pickerHtml 输出多选下拉(搜索/勾选/创建/已选计数)', () => {
+  const inst = tagPicker.create({
+    nodes: () => [
+      { id: 't1', name: 'Payments', color: 'blue' },
+      { id: 't2', name: 'Auth', color: '' },
+    ],
+    labels: { searchTags: '搜索标签…', createTag: '创建标签' },
+  });
+  const html = inst.pickerHtml(['t1']);
+  assert.match(html, /data-tp-pick="t1"/);
+  assert.match(html, /data-tp-pick="t2"/);
+  assert.match(html, /data-tp-pick-search/);
+  assert.match(html, /data-tp-done/);
+  assert.doesNotMatch(html, /data-tp-create/); // 无搜索时不出创建行
+  assert.match(html, />1 \u5df2\u9009</); // 已选计数
+  // 搜索无匹配 → 出现创建行
+  inst.setPickerSearch('zzz');
+  const html2 = inst.pickerHtml([]);
+  assert.match(html2, /data-tp-create/);
+  assert.doesNotMatch(html2, /data-tp-pick="t1"/);
 });

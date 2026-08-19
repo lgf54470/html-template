@@ -26,6 +26,7 @@
     'ui',
     'color-picker',
     'group-tree',
+    'tag-picker',
     'avatar',
     'shell',
     'app',

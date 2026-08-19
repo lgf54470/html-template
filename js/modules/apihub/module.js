@@ -2,7 +2,7 @@
  * apihub 模块 — 实现(懒加载,首次访问 /apihub 时下载)
  * ------------------------------------------------------------
  * API Hub 管理台,三栏工作区:
- *   左栏  分组(多级)/ 多级标签
+ *   左栏  分组(多级)/ 标签(扁平彩色 # 标签)
  *   中栏  全部 API 路由(自动发现):搜索 / 收藏 / 置顶 /
  *         公开开关 / 分组 / 标签 / 自定义路由 / 复制分享链接
  *   右栏  请求构建器 + 响应查看(状态/耗时/大小/JSON 美化/
@@ -39,8 +39,6 @@
     running: false,
     run: null,
     history: [],
-    expandedGroups: {},
-    expandedTags: {},
     lastHashSel: null,
   };
   var saveTimer = null;
@@ -408,45 +406,54 @@
     renderFull();
   }
 
-  function addTag(name, parentId) {
+  /** 标签:扁平彩色标签(id/name/color),新增/重命名/改色/删除 */
+  function addTag(name, color) {
     var tags = state.config.tags;
-    tags.push({ id: uid('t'), name: name, parentId: parentId || '', sort: tags.length });
+    tags.push({ id: uid('t'), name: name, color: color || '', sort: tags.length });
     persist();
     renderFull();
   }
-  function renameTag(id, name) {
+  function renameTag(id, name, color) {
     var tg = tagById(id);
     if (tg) {
       tg.name = name;
+      if (arguments.length > 2) tg.color = color || '';
       persist();
       renderFull();
     }
   }
   function deleteTag(id) {
     var tags = state.config.tags;
-    var removeIds = descendants(tags, id);
     state.config.tags = tags.filter(function (x) {
-      return removeIds.indexOf(x.id) === -1;
+      return x.id !== id;
     });
     [state.config.routes, state.config.customRoutes].forEach(function (coll) {
       if (!coll) return;
       if (Array.isArray(coll)) {
         coll.forEach(function (c) {
           c.tagIds = (c.tagIds || []).filter(function (tid) {
-            return removeIds.indexOf(tid) === -1;
+            return tid !== id;
           });
         });
       } else {
         Object.keys(coll).forEach(function (key) {
           coll[key].tagIds = (coll[key].tagIds || []).filter(function (tid) {
-            return removeIds.indexOf(tid) === -1;
+            return tid !== id;
           });
         });
       }
     });
-    if (view.tagFilter && removeIds.indexOf(view.tagFilter) !== -1) view.tagFilter = null;
+    if (view.tagFilter === id) view.tagFilter = null;
     persist();
     renderFull();
+  }
+  function setTagColor(id, color) {
+    var tg = tagById(id);
+    if (tg) {
+      tg.color = color || '';
+      persist();
+      renderFull();
+    }
   }
 
   function setRouteAuth(key, mode) {
@@ -703,42 +710,6 @@
       closeDialog();
       onOk();
     });
-  }
-
-  function promptNameDialog(title, placeholder, value, onOk) {
-    var overlay = openDialog({
-      title: title,
-      desc: '',
-      body:
-        '<div class="hub-form"><div class="hub-field"><label>' +
-        t('apihub.name') +
-        '</label><input type="text" class="hub-input" data-hub-name placeholder="' +
-        escAttr(placeholder || '') +
-        '" value="' +
-        escAttr(value || '') +
-        '" /></div></div>',
-      foot:
-        '<button type="button" class="hub-btn hub-btn-outline" data-hub-dlg-close>' +
-        t('apihub.cancel') +
-        '</button>' +
-        '<button type="button" class="hub-btn hub-btn-primary" data-hub-dlg-ok>' +
-        t('apihub.save') +
-        '</button>',
-    });
-    overlay.querySelector('[data-hub-dlg-ok]').addEventListener('click', function () {
-      var val = overlay.querySelector('[data-hub-name]').value.trim();
-      if (!val) {
-        App.ui.toast(t('apihub.nameRequired'), 'error');
-        return;
-      }
-      closeDialog();
-      onOk(val);
-    });
-    var inp = overlay.querySelector('[data-hub-name]');
-    setTimeout(function () {
-      inp.focus();
-      inp.select();
-    }, 30);
   }
 
   /** 鉴权设置弹窗(默认 / 单路由共用) */
@@ -1066,9 +1037,11 @@
       var gids = descendants(state.config.groups || [], view.groupFilter);
       if (!(m.groupIds || []).some(function (gid) { return gids.indexOf(gid) !== -1; })) return false;
     }
-    if (view.tagFilter) {
+    if (view.tagFilter && view.tagFilter !== '__none__') {
       var tids = descendants(state.config.tags || [], view.tagFilter);
       if (!(m.tagIds || []).some(function (tid) { return tids.indexOf(tid) !== -1; })) return false;
+    } else if (view.tagFilter === '__none__') {
+      if ((m.tagIds || []).length) return false;
     }
     var q = (view.search || '').trim().toLowerCase();
     if (q) {
@@ -1130,115 +1103,6 @@
       if ((list || []).some(function (x) { return ids.indexOf(x) !== -1; })) n++;
     });
     return n;
-  }
-
-  function treeRowHtml(kind, node) {
-    var isGroup = kind === 'group';
-    var nodes = isGroup ? state.config.groups || [] : state.config.tags || [];
-    var expanded = (isGroup ? view.expandedGroups : view.expandedTags)[node.id] !== false;
-    var active = (isGroup ? view.groupFilter : view.tagFilter) === node.id;
-    var children = treeChildren(nodes, node.id);
-    var html =
-      '<div class="hub-tree-row' +
-      (active ? ' is-active' : '') +
-      '">' +
-      '<button type="button" class="hub-tree-caret' +
-      (expanded ? ' is-open' : '') +
-      (children.length ? '' : ' is-leaf') +
-      '" data-hub-caret="' +
-      kind +
-      '" data-id="' +
-      escAttr(node.id) +
-      '" aria-label=""></button>' +
-      '<div class="hub-tree-label" data-hub-tree="' +
-      kind +
-      '" data-id="' +
-      escAttr(node.id) +
-      '">' +
-      icon(isGroup ? 'folder' : 'layers', '') +
-      '<span class="hub-tree-name">' +
-      esc(node.name) +
-      '</span>' +
-      (treeCount(kind, node.id)
-        ? '<span class="hub-tree-count">' + treeCount(kind, node.id) + '</span>'
-        : '') +
-      '<span class="hub-dd" data-dropdown>' +
-      '<button type="button" class="hub-icon-btn" data-dropdown-trigger aria-label="">' +
-      icon('ellipsis', '') +
-      '</button>' +
-      '<div class="hub-dd-menu" data-dropdown-menu>' +
-      '<button type="button" class="hub-dd-item" data-hub-ctx="newchild" data-kind="' +
-      kind +
-      '" data-id="' +
-      escAttr(node.id) +
-      '">' +
-      icon('plus', '') +
-      esc(t(isGroup ? 'apihub.newSubgroup' : 'apihub.newSubtag')) +
-      '</button>' +
-      '<button type="button" class="hub-dd-item" data-hub-ctx="rename" data-kind="' +
-      kind +
-      '" data-id="' +
-      escAttr(node.id) +
-      '">' +
-      icon('pencil', '') +
-      esc(t('apihub.rename')) +
-      '</button>' +
-      '<button type="button" class="hub-dd-item" data-hub-ctx="del" data-kind="' +
-      kind +
-      '" data-id="' +
-      escAttr(node.id) +
-      '">' +
-      icon('trash-2', '') +
-      esc(t('apihub.delete')) +
-      '</button>' +
-      '</div></span>' +
-      '</div>' +
-      (isGroup
-        ? '<button type="button" class="hub-switch' +
-          (node.public ? ' is-on' : '') +
-          '" data-hub-toggle="grouppub" data-id="' +
-          escAttr(node.id) +
-          '" aria-label=""><span class="hub-switch-thumb"></span></button>'
-        : '') +
-      '</div>';
-    if (children.length && expanded) {
-      html +=
-        '<div class="hub-tree-children">' +
-        children
-          .map(function (c) {
-            return treeRowHtml(kind, c);
-          })
-          .join('') +
-        '</div>';
-    }
-    return html;
-  }
-
-  function treeHtml(kind, allLabel, clearAct) {
-    var nodes = kind === 'group' ? state.config.groups || [] : state.config.tags || [];
-    var roots = treeChildren(nodes, '');
-    var activeNone = kind === 'group' ? !view.groupFilter : !view.tagFilter;
-    var html =
-      '<div class="hub-tree">' +
-      '<div class="hub-tree-row' +
-      (activeNone ? ' is-active' : '') +
-      '" data-hub-act="' +
-      clearAct +
-      '"><span class="hub-tree-caret is-leaf"></span>' +
-      '<div class="hub-tree-label"><span class="hub-tree-name">' +
-      esc(t(allLabel)) +
-      '</span></div></div>';
-    if (!roots.length) {
-      html += '<div class="hub-empty" style="padding:0.75rem 0.375rem">' + icon('layers', '') + esc(t('apihub.empty')) + '</div>';
-    } else {
-      html += roots
-        .map(function (n) {
-          return treeRowHtml(kind, n);
-        })
-        .join('');
-    }
-    html += '</div>';
-    return html;
   }
 
   /** 公共分组树组件(懒创建,展开/过滤等内部状态常驻) */
@@ -1325,6 +1189,93 @@
     return groupTree;
   }
 
+  /** 公共标签组件(扁平彩色 # 标签 + Gmail 式多选下拉,懒创建) */
+  var tagTree = null;
+  function ensureTagTree() {
+    if (tagTree) return tagTree;
+    tagTree = App.ui.tagPicker.create({
+      nodes: function () {
+        return state.config.tags || [];
+      },
+      activeId: view.tagFilter || '',
+      labels: {
+        newTag: t('apihub.newTag'),
+        rename: t('apihub.rename'),
+        color: t('apihub.color'),
+        delete: t('apihub.delete'),
+        deleteConfirm: t('apihub.deleteConfirm'),
+        deleteTagMsg: t('apihub.deleteTagMsg'),
+        searchTags: t('apihub.searchTags'),
+        empty: t('apihub.noTags'),
+        noMatch: t('apihub.noTagsMatch'),
+        name: t('apihub.name'),
+        namePlaceholder: t('apihub.tagNamePlaceholder'),
+        nameRequired: t('apihub.nameRequired'),
+        nameExists: t('apihub.nameExists'),
+        nameTooLong: t('apihub.nameTooLong'),
+        allTags: t('apihub.allTags'),
+        untagged: t('apihub.untagged'),
+        allColors: t('apihub.allColors'),
+        customColor: t('apihub.customColor'),
+        createTag: t('apihub.createTag'),
+        selected: t('apihub.selected'),
+        noneSelected: t('apihub.noneSelected'),
+        done: t('apihub.done'),
+        menu: t('apihub.menu'),
+        renameHint: t('apihub.renameHint'),
+        cancel: t('apihub.cancel'),
+        save: t('apihub.save'),
+        copied: t('apihub.copied'),
+      },
+      count: function (id) {
+        if (id === null) {
+          // 未标记:没有任何标签的路由数
+          var n = 0;
+          (state.routes || []).forEach(function (r) {
+            var m = memberships(routeKeyOf(r), r);
+            if (!(m.tagIds || []).length) n++;
+          });
+          return n;
+        }
+        return treeCount('tag', id);
+      },
+      onSelect: function (id) {
+        view.tagFilter = id || null;
+        rerenderList();
+        rerenderSideFilters();
+      },
+      onCreate: function (name, color) {
+        addTag(name, color);
+      },
+      onRename: function (id, name, color) {
+        renameTag(id, name, color);
+      },
+      onDelete: function (id) {
+        deleteTag(id);
+      },
+      onColorChange: function (id, color) {
+        setTagColor(id, color);
+      },
+      onToggle: function (id) {
+        if (view.selected) toggleRouteTag(routeKeyOf(findRoute(view.selected)), id);
+      },
+      onRender: function () {
+        rerenderSideFilters();
+      },
+      onRenderMenu: function () {
+        // 只重绘多选下拉菜单内容,保持搜索焦点
+        var menu = document.querySelector('[data-hub-tagmenu]');
+        if (!menu) return;
+        var key = menu.getAttribute('data-hub-tagmenu');
+        var r = findRoute(key);
+        if (!r) return;
+        var m = memberships(key, r);
+        menu.innerHTML = ensureTagTree().pickerHtml(m.tagIds || []);
+      },
+    });
+    return tagTree;
+  }
+
   function sideSectionsHtml() {
     return (
       '<div class="hub-section">' +
@@ -1363,13 +1314,22 @@
       icon('layers', '') +
       esc(t('apihub.tags')) +
       '</span>' +
+      '<span class="hub-section-actions">' +
+      '<button type="button" class="hub-icon-btn" data-hub-act="clrtag" title="' +
+      escAttr(t('apihub.clearTagFilter')) +
+      '" aria-label="' +
+      escAttr(t('apihub.clearTagFilter')) +
+      '">' +
+      icon('x', '') +
+      '</button>' +
       '<button type="button" class="hub-icon-btn" data-hub-act="newtag" aria-label="' +
       escAttr(t('apihub.newTag')) +
       '">' +
       icon('plus', '') +
       '</button>' +
+      '</span>' +
       '</div>' +
-      treeHtml('tag', 'apihub.allTags', 'clrtag') +
+      ensureTagTree().render() +
       '</div>'
     );
   }
@@ -1464,35 +1424,57 @@
     );
   }
 
+  /** 路由行标签:Gmail 式多选下拉(模糊搜索/点选切换/快速新建) + 已选彩色 # 胶囊 */
   function tagAssignHtml(key, m) {
+    var picked = m.tagIds || [];
+    var pills = '';
+    picked.forEach(function (tid) {
+      var tg = tagById(tid);
+      if (!tg) return;
+      var col = '';
+      try {
+        col = App.ui.color.resolveColor(tg.color);
+      } catch (e) {
+        /* noop */
+      }
+      pills +=
+        '<span class="hub-tagpill" style="' +
+        (col ? '--tagc:' + col + ';' : '') +
+        '" title="' +
+        escAttr(t('apihub.removeTag')) +
+        '">' +
+        '<span class="hub-tagpill-hash">#</span>' +
+        esc(tg.name) +
+        '<button type="button" class="hub-tagpill-x" data-hub-tagpill="' +
+        escAttr(key) +
+        '" data-id="' +
+        escAttr(tg.id) +
+        '" aria-label="' +
+        escAttr(t('apihub.removeTag')) +
+        '">' +
+        icon('x', 'size-3') +
+        '</button>' +
+        '</span>';
+    });
     return (
+      '<span class="hub-tagwrap">' +
+      (pills ? '<span class="hub-tagpills">' + pills + '</span>' : '') +
       '<span class="hub-dd" data-dropdown>' +
-      '<button type="button" class="hub-icon-btn" data-dropdown-trigger aria-label="' +
+      '<button type="button" class="hub-icon-btn hub-tagbtn" data-dropdown-trigger aria-label="' +
+      escAttr(t('apihub.tag')) +
+      '" title="' +
       escAttr(t('apihub.tag')) +
       '">' +
       icon('layers', '') +
+      (picked.length ? '<span class="hub-tagbtn-count">' + (picked.length > 99 ? '99+' : picked.length) + '</span>' : '') +
       '</button>' +
-      '<div class="hub-dd-menu" data-dropdown-menu>' +
-      '<div class="hub-dd-label">' +
-      esc(t('apihub.tag')) +
+      '<div class="hub-dd-menu" data-dropdown-menu data-hub-tagmenu="' +
+      escAttr(key) +
+      '" style="left:auto;right:0;min-width:0;padding:0.25rem">' +
+      ensureTagTree().pickerHtml(picked) +
       '</div>' +
-      (state.config.tags || [])
-        .map(function (tg) {
-          var on = (m.tagIds || []).indexOf(tg.id) !== -1;
-          return (
-            '<button type="button" class="hub-dd-item" data-hub-settag="' +
-            escAttr(key) +
-            '" data-id="' +
-            escAttr(tg.id) +
-            '">' +
-            icon('layers', '') +
-            esc(tg.name) +
-            (on ? '<span class="hub-dd-check">' + icon('check', '') + '</span>' : '') +
-            '</button>'
-          );
-        })
-        .join('') +
-      '</div></span>'
+      '</span>' +
+      '</span>'
     );
   }
 
@@ -1511,10 +1493,6 @@
     (m.groupIds || []).forEach(function (gid) {
       var g = groupById(gid);
       if (g) chips += chipHtml(g.name, '', 'folder');
-    });
-    (m.tagIds || []).forEach(function (tid) {
-      var tg = tagById(tid);
-      if (tg) chips += chipHtml(tg.name, '', 'layers');
     });
     return (
       '<div class="hub-route' +
@@ -2134,33 +2112,10 @@
       return;
     }
 
-    // 分组/标签节点上下文菜单 —— 先于树筛选处理(菜单项位于树行内)
-    var ctx = target.closest('[data-hub-ctx]');
-    if (ctx) {
-      handleCtx(ctx);
-      return;
-    }
-
-    // 树节点:分组/标签筛选(点击 caret 只展开,不筛选)
-    var caret = target.closest('[data-hub-caret]');
-    if (caret) {
-      var cKind = caret.getAttribute('data-hub-caret');
-      var cId = caret.getAttribute('data-id');
-      if (cKind === 'group') view.expandedGroups[cId] = !view.expandedGroups[cId];
-      else view.expandedTags[cId] = !view.expandedTags[cId];
-      renderFull();
-      return;
-    }
-    var tree = target.closest('[data-hub-tree]');
-    if (tree) {
-      var id = tree.getAttribute('data-id');
-      if (tree.getAttribute('data-hub-tree') === 'group') {
-        view.groupFilter = view.groupFilter === id ? null : id;
-      } else {
-        view.tagFilter = view.tagFilter === id ? null : id;
-      }
-      rerenderList();
-      rerenderSideFilters();
+    // 标签胶囊移除
+    var tagpill = target.closest('[data-hub-tagpill]');
+    if (tagpill) {
+      toggleRouteTag(tagpill.getAttribute('data-hub-tagpill'), tagpill.getAttribute('data-id'));
       return;
     }
 
@@ -2168,11 +2123,6 @@
     var sg = target.closest('[data-hub-setgroup]');
     if (sg) {
       toggleRouteGroup(sg.getAttribute('data-hub-setgroup'), sg.getAttribute('data-id'));
-      return;
-    }
-    var st = target.closest('[data-hub-settag]');
-    if (st) {
-      toggleRouteTag(st.getAttribute('data-hub-settag'), st.getAttribute('data-id'));
       return;
     }
 
@@ -2242,9 +2192,7 @@
           renderFull();
           break;
         case 'newtag':
-          promptNameDialog(t('apihub.newTag'), '', '', function (name) {
-            addTag(name, '');
-          });
+          ensureTagTree().openCreateDialog();
           break;
         case 'newroute':
           routeFormDialog(null);
@@ -2366,47 +2314,6 @@
       return;
     }
   });
-
-  /** 分组/标签节点上下文菜单动作 */
-  function handleCtx(ctx) {
-    var ck = ctx.getAttribute('data-kind');
-    var cid = ctx.getAttribute('data-id');
-    var act = ctx.getAttribute('data-hub-ctx');
-    closeDropdowns();
-    if (act === 'newchild') {
-      promptNameDialog(
-        ck === 'group' ? t('apihub.newSubgroup') : t('apihub.newSubtag'),
-        '',
-        '',
-        function (name) {
-          if (ck === 'group') addGroup(name, cid);
-          else addTag(name, cid);
-        }
-      );
-    } else if (act === 'rename') {
-      var cur = ck === 'group' ? groupById(cid) : tagById(cid);
-      promptNameDialog(
-        t('apihub.rename'),
-        '',
-        cur ? cur.name : '',
-        function (name) {
-          if (ck === 'group') renameGroup(cid, name);
-          else renameTag(cid, name);
-        }
-      );
-    } else if (act === 'del') {
-      confirmDialog(
-        t('apihub.deleteConfirm'),
-        ck === 'group' ? t('apihub.deleteGroupMsg') : t('apihub.deleteTagMsg'),
-        t('apihub.delete'),
-        function () {
-          if (ck === 'group') deleteGroup(cid);
-          else deleteTag(cid);
-        },
-        true
-      );
-    }
-  }
 
   // 输入:搜索 / KV 行 / 请求路径/体 / 默认 API Key(实时更新,不重渲染以免抢焦点)
   document.addEventListener('input', function (e) {

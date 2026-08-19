@@ -260,6 +260,87 @@
   gap: 1px;
 }
 
+/* ---------- 路由行标签(彩色 # 胶囊 + 多选下拉按钮) ---------- */
+.hub-tagwrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.hub-tagpills {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  max-width: 11rem;
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+.hub-tagpill {
+  --tagc: #71717a;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  max-width: 7rem;
+  height: 1.25rem;
+  padding: 0 0.3125rem 0 0.4375rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--tagc);
+  background: color-mix(in oklab, var(--tagc) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--tagc) 32%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.hub-tagpill-hash {
+  font-weight: 700;
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+.hub-tagpill-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+}
+.hub-tagpill-x:hover {
+  opacity: 1;
+  background: color-mix(in oklab, var(--tagc) 22%, transparent);
+}
+.hub-tagpill-x svg {
+  width: 0.6875rem;
+  height: 0.6875rem;
+}
+.hub-tagbtn {
+  position: relative;
+}
+.hub-tagbtn-count {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 0.9375rem;
+  height: 0.9375rem;
+  padding: 0 0.21875rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.5625rem;
+  line-height: 0.9375rem;
+  text-align: center;
+  font-weight: 600;
+  border: 1.5px solid var(--background, #fff);
+  box-sizing: content-box;
+}
+
 /* ---------- Switch(公开开关) ---------- */
 .hub-switch {
   position: relative;

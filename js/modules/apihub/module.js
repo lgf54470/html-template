@@ -1246,7 +1246,7 @@
 
   /** 默认鉴权下拉(顶栏紧凑版,置于刷新按钮之前) */
   function authDefaultsCompactHtml() {
-    var mode = (state.config.defaults && state.config.defaults.auth) || 'session';
+    var mode = (state.config && state.config.defaults && state.config.defaults.auth) || 'session';
     var showKey = mode === 'api-key';
     return (
       '<span class="hub-dd" data-dropdown>' +

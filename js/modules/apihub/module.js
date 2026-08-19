@@ -42,6 +42,7 @@
     lastHashSel: null,
   };
   var saveTimer = null;
+  var historyTimer = null;
   var dialogMethod = 'GET';
 
   /* ---------- 工具 ---------- */
@@ -241,6 +242,7 @@
         state.routes = data.routes || [];
         state.config = data.config || null;
         state.secrets = data.secrets || { apiKeys: {} };
+        view.history = (data.history || []).slice(0, 20);
         if (!state.config) {
           state.config = {
             version: 1,
@@ -294,6 +296,21 @@
         })
         .catch(function (e) {
           App.ui.toast((e && e.data && e.data.message) || t('apihub.saveFailed'), 'error');
+        });
+    }, 300);
+  }
+
+  /* ---------- 请求历史持久化(防抖,沿用配置保存的失败提示) ---------- */
+  function persistHistory() {
+    if (historyTimer) clearTimeout(historyTimer);
+    historyTimer = setTimeout(function () {
+      historyTimer = null;
+      if (!App.api) return;
+      App.api
+        .put('/api/hub/history', { history: (view.history || []).slice(0, 20) })
+        .then(function () {})
+        .catch(function (e) {
+          if (e && e.status !== 401) App.logger.warn('apihub', '请求历史落库失败', e);
         });
     }, 300);
   }
@@ -668,6 +685,7 @@
           };
           view.history.unshift({ method: req.method, path: url, status: res.status, ts: Date.now() });
           view.history = view.history.slice(0, 20);
+          persistHistory();
         });
       })
       .catch(function (e) {
@@ -1417,6 +1435,62 @@
       '</div>' +
       ensureTagTree().render() +
       '</div>'
+    );
+  }
+
+  /** 日志设置按钮(顶栏,位于默认鉴权下拉左侧):条数上限 / 保留天数 / 排除机器人 / 排除内部 */
+  function loggingSettingsHtml() {
+    var lg = (state.config && state.config.logging) || {};
+    return (
+      '<span class="hub-dd" data-dropdown>' +
+      '<button type="button" data-dropdown-trigger class="hub-action-btn" data-tip="' +
+      escAttr(t('apihub.logSettings')) +
+      '">' +
+      icon('settings', '') +
+      '</button>' +
+      '<div class="hub-dd-menu hub-logmenu" data-dropdown-menu style="right:0;left:auto;min-width:17rem">' +
+      '<div class="hub-dd-label">' +
+      esc(t('apihub.logSettings')) +
+      '</div>' +
+      '<div class="hub-log-row">' +
+      '<span class="hub-log-label">' +
+      esc(t('apihub.maxLogs')) +
+      '</span>' +
+      '<input type="number" class="hub-input hub-log-num" data-hub-logset="maxLogs" min="10" max="10000" step="10" value="' +
+      escAttr(lg.maxLogs || 500) +
+      '" />' +
+      '</div>' +
+      '<div class="hub-log-row">' +
+      '<span class="hub-log-label">' +
+      esc(t('apihub.retentionDays')) +
+      '</span>' +
+      '<input type="number" class="hub-input hub-log-num" data-hub-logset="retentionDays" min="1" max="365" step="1" value="' +
+      escAttr(lg.retentionDays || 7) +
+      '" />' +
+      '</div>' +
+      '<label class="hub-log-row">' +
+      '<input type="checkbox" class="hub-log-check-input" data-hub-logset="excludeBots"' +
+      (lg.excludeBots ? ' checked' : '') +
+      ' />' +
+      '<span class="hub-log-check">' +
+      icon('check', '') +
+      '</span>' +
+      '<span class="hub-log-label">' +
+      esc(t('apihub.excludeBots')) +
+      '</span>' +
+      '</label>' +
+      '<label class="hub-log-row">' +
+      '<input type="checkbox" class="hub-log-check-input" data-hub-logset="excludeInternal"' +
+      (lg.excludeInternal !== false ? ' checked' : '') +
+      ' />' +
+      '<span class="hub-log-check">' +
+      icon('check', '') +
+      '</span>' +
+      '<span class="hub-log-label">' +
+      esc(t('apihub.excludeInternal')) +
+      '</span>' +
+      '</label>' +
+      '</div></span>'
     );
   }
 
@@ -2273,6 +2347,7 @@
       '</p>' +
       '</div>' +
       '<div class="hub-head-actions">' +
+      loggingSettingsHtml() +
       authDefaultsCompactHtml() +
       '<button type="button" class="hub-action-btn" data-hub-act="refresh">' +
       icon('rotate-ccw', '') +
@@ -2654,6 +2729,23 @@
       setDefaultApiKey(target.value);
       return;
     }
+  });
+
+  // 日志设置变更(数字输入 / 复选框)
+  document.addEventListener('change', function (e) {
+    var target = e.target;
+    if (!target || !target.getAttribute) return;
+    if (!target.hasAttribute('data-hub-logset')) return;
+    if (!state.config.logging) state.config.logging = {};
+    var k = target.getAttribute('data-hub-logset');
+    if (k === 'maxLogs' || k === 'retentionDays') {
+      var v = parseInt(target.value, 10);
+      if (!Number.isFinite(v)) return;
+      state.config.logging[k] = v;
+    } else {
+      state.config.logging[k] = target.checked;
+    }
+    persist();
   });
 
   // 回车键:请求路径框 → 发送

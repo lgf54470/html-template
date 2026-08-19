@@ -26,6 +26,27 @@ const { findSession } = require('../auth/session');
 
 const HUB_CONFIG_KEY = 'settings:hub:config';
 const HUB_SECRETS_KEY = 'settings:hub:secrets'; // 含 "secret" → 敏感键,落库前加密
+const HUB_HISTORY_KEY = 'settings:hub:history'; // 请求运行历史(非敏感,明文存储)
+const HUB_LOGS_KEY = 'settings:hub:logs'; // 请求访问日志(非敏感,明文存储)
+const HISTORY_CAP = 50; // 历史条数上限(前端展示 20,服务端多留余量)
+
+/** 默认日志配置:条数上限 / 保留天数 / 排除机器人 / 排除项目内部访问 */
+const DEFAULT_LOGGING = {
+  maxLogs: 500,
+  retentionDays: 7,
+  excludeBots: false,
+  excludeInternal: true,
+};
+
+/** 常见机器人 / 爬虫 / 监测 UA 特征(排除机器人请求时命中即不记录) */
+const BOT_RE =
+  /(bot|crawl|spider|slurp|bingpreview|googlebot|baiduspider|yandex|duckduckbot|facebookexternalhit|pingdom|uptimerobot|monitor|headless|curl\/|wget|python-requests|go-http-client|axios\/|node-fetch)/i;
+
+/** 项目内部管理接口:apihub 管理 / 设置 / 鉴权(排除项目内部访问时命中即不记录) */
+function isInternalPath(pathname) {
+  const p = String(pathname || '');
+  return p.indexOf('/api/hub/') === 0 || p.indexOf('/api/settings') === 0 || p.indexOf('/api/auth/') === 0;
+}
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 const AUTH_MODES = ['none', 'session', 'bearer', 'global-password', 'api-key'];
@@ -39,6 +60,7 @@ function defaultConfig() {
     tags: [],
     routes: {}, // "METHOD path" → 覆盖配置
     customRoutes: [],
+    logging: Object.assign({}, DEFAULT_LOGGING),
   };
 }
 
@@ -115,6 +137,156 @@ function createHub(deps) {
       'INSERT INTO app_settings (workspace_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(workspace_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
       [GLOBAL_WORKSPACE_ID, key, value, now]
     );
+  }
+
+  /** 校验单条历史:method/path/status/ts 合法才保留 */
+  function normalizeHistoryEntry(e) {
+    if (!isPlainObject(e)) return null;
+    if (METHODS.indexOf(e.method) === -1) return null;
+    if (typeof e.path !== 'string' || !e.path) return null;
+    const status = Number(e.status);
+    if (!Number.isFinite(status) || status < 0 || status > 599) return null;
+    const ts = Number(e.ts);
+    if (!Number.isFinite(ts) || ts <= 0) return null;
+    return {
+      method: String(e.method),
+      path: String(e.path).slice(0, 500),
+      status: Math.floor(status),
+      ts: Math.floor(ts),
+    };
+  }
+
+  /** 读请求历史(非法条目过滤,按 ts 倒序,截断到上限) */
+  async function loadHistory() {
+    const raw = parseJson(await readRow(HUB_HISTORY_KEY), []);
+    if (!Array.isArray(raw)) return [];
+    const list = raw
+      .map(normalizeHistoryEntry)
+      .filter(Boolean)
+      .sort(function (a, b) {
+        return b.ts - a.ts;
+      })
+      .slice(0, HISTORY_CAP);
+    return list;
+  }
+
+  /** 写请求历史(校验 + 去重同 ts + 截断上限) */
+  async function saveHistory(history) {
+    if (!Array.isArray(history)) throw new Error('需要 history 数组');
+    const seen = {};
+    const list = history
+      .map(normalizeHistoryEntry)
+      .filter(Boolean)
+      .filter(function (e) {
+        if (seen[e.ts]) return false;
+        seen[e.ts] = true;
+        return true;
+      })
+      .slice(0, HISTORY_CAP);
+    await writeRow(HUB_HISTORY_KEY, JSON.stringify(list));
+    return list;
+  }
+
+  /* ---------- 请求访问日志(配置驱动:条数上限 / 保留天数 / 排除机器人 / 排除内部) ---------- */
+
+  /** 校验单条日志:method/path/status/ts 合法才保留(ip/ua/ms 可选) */
+  function normalizeLogEntry(e) {
+    if (!isPlainObject(e)) return null;
+    if (METHODS.indexOf(e.method) === -1) return null;
+    if (typeof e.path !== 'string' || !e.path) return null;
+    const status = Number(e.status);
+    if (!Number.isFinite(status) || status < 0 || status > 599) return null;
+    const ts = Number(e.ts);
+    if (!Number.isFinite(ts) || ts <= 0) return null;
+    return {
+      method: String(e.method),
+      path: String(e.path).slice(0, 500),
+      status: Math.floor(status),
+      ts: Math.floor(ts),
+      ip: typeof e.ip === 'string' ? String(e.ip).slice(0, 64) : '',
+      ua: typeof e.ua === 'string' ? String(e.ua).slice(0, 200) : '',
+      ms: Number.isFinite(Number(e.ms)) ? Math.max(0, Math.floor(Number(e.ms))) : 0,
+    };
+  }
+
+  /** 读请求访问日志(按保留天数清理 → 按条数上限截断,倒序返回) */
+  async function loadLogs(cfg) {
+    const logging = (cfg && cfg.logging) || DEFAULT_LOGGING;
+    const raw = parseJson(await readRow(HUB_LOGS_KEY), []);
+    if (!Array.isArray(raw)) return [];
+    const cutoff = Date.now() - (Number(logging.retentionDays) || 7) * 86400000;
+    return raw
+      .map(normalizeLogEntry)
+      .filter(Boolean)
+      .filter(function (e) {
+        return e.ts >= cutoff;
+      })
+      .sort(function (a, b) {
+        return b.ts - a.ts;
+      })
+      .slice(0, Number(logging.maxLogs) || 500);
+  }
+
+  /** 追加一条请求访问日志(读 → 清理 → 截断 → 写回) */
+  async function appendLog(entry, cfg) {
+    const clean = normalizeLogEntry(entry);
+    if (!clean) return;
+    const logging = (cfg && cfg.logging) || DEFAULT_LOGGING;
+    const cutoff = Date.now() - (Number(logging.retentionDays) || 7) * 86400000;
+    const list = [clean].concat(parseJson(await readRow(HUB_LOGS_KEY), []));
+    const seen = {};
+    const kept = [];
+    for (const e of list) {
+      const n = normalizeLogEntry(e);
+      if (!n) continue;
+      if (n.ts < cutoff) continue;
+      if (seen[n.ts]) continue;
+      seen[n.ts] = true;
+      kept.push(n);
+    }
+    // 按时间倒序截断(保证上限始终保留最新条目,与追加顺序无关)
+    kept.sort(function (a, b) {
+      return b.ts - a.ts;
+    });
+    if (kept.length > (Number(logging.maxLogs) || 500)) kept.length = Number(logging.maxLogs) || 500;
+    await writeRow(HUB_LOGS_KEY, JSON.stringify(kept));
+    return kept;
+  }
+
+  /** 清空请求访问日志 */
+  async function clearLogs() {
+    await writeRow(HUB_LOGS_KEY, JSON.stringify([]));
+    return [];
+  }
+
+  /** 是否命中机器人 UA(排除机器人请求时使用) */
+  function isBotUa(ua) {
+    return typeof ua === 'string' && BOT_RE.test(ua);
+  }
+
+  /**
+   * 判断某请求是否应记录日志(依据配置):
+   *   excludeInternal → 项目内部管理接口(/api/hub /api/settings /api/auth)不记录
+   *   excludeBots      → 机器人 / 爬虫 / 监测 UA 不记录
+   */
+  function shouldLogRequest(req, pathname, cfg) {
+    const logging = (cfg && cfg.logging) || DEFAULT_LOGGING;
+    if (logging.excludeInternal && isInternalPath(pathname)) return false;
+    if (logging.excludeBots) {
+      const ua = getHeader(req, 'user-agent');
+      if (isBotUa(ua)) return false;
+    }
+    return true;
+  }
+
+  /** 从 Node req / Worker Request 提取客户端 IP(兼容两种形态) */
+  function clientIp(req) {
+    const h = getHeader(req, 'x-forwarded-for');
+    if (typeof h === 'string' && h) return h.split(',')[0].trim();
+    const cf = getHeader(req, 'cf-connecting-ip');
+    if (typeof cf === 'string' && cf) return cf;
+    if (req && req.socket && req.socket.remoteAddress) return String(req.socket.remoteAddress);
+    return '';
   }
 
   /** 读全量状态:config + secrets(secrets 解密失败回退 {}) */
@@ -228,6 +400,18 @@ function createHub(deps) {
               tagIds: Array.isArray(c.tagIds) ? c.tagIds.filter(validId).map(String).slice(0, 20) : [],
             };
           });
+      }
+      if (isPlainObject(input.logging)) {
+        const lg = Object.assign({}, DEFAULT_LOGGING);
+        const maxLogs = Number(input.logging.maxLogs);
+        lg.maxLogs = Number.isFinite(maxLogs) ? Math.max(10, Math.min(10000, Math.floor(maxLogs))) : DEFAULT_LOGGING.maxLogs;
+        const retentionDays = Number(input.logging.retentionDays);
+        lg.retentionDays = Number.isFinite(retentionDays)
+          ? Math.max(1, Math.min(365, Math.floor(retentionDays)))
+          : DEFAULT_LOGGING.retentionDays;
+        lg.excludeBots = !!input.logging.excludeBots;
+        lg.excludeInternal = !!input.logging.excludeInternal;
+        cfg.logging = lg;
       }
     }
     return cascadeGroupPublic(cfg);
@@ -503,12 +687,23 @@ function createHub(deps) {
   return {
     HUB_CONFIG_KEY,
     HUB_SECRETS_KEY,
+    HUB_HISTORY_KEY,
+    HUB_LOGS_KEY,
     AUTH_MODES,
     METHODS,
+    DEFAULT_LOGGING,
     defaultConfig,
     normalizeConfig,
     loadAll,
     saveAll,
+    loadHistory,
+    saveHistory,
+    loadLogs,
+    appendLog,
+    clearLogs,
+    shouldLogRequest,
+    isBotUa,
+    clientIp,
     policyFor,
     authorize,
     handleCustom,
@@ -516,4 +711,13 @@ function createHub(deps) {
   };
 }
 
-module.exports = { createHub, defaultConfig, AUTH_MODES, HUB_CONFIG_KEY, HUB_SECRETS_KEY };
+module.exports = {
+  createHub,
+  defaultConfig,
+  AUTH_MODES,
+  DEFAULT_LOGGING,
+  HUB_CONFIG_KEY,
+  HUB_SECRETS_KEY,
+  HUB_HISTORY_KEY,
+  HUB_LOGS_KEY,
+};

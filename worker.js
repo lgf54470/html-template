@@ -140,6 +140,7 @@ function matchStaticRoute(method, pathname) {
     { key: 'DELETE /api/settings', kind: 'deleteSettings' },
     { key: 'GET /api/hub/state', kind: 'hubState', mgmt: true },
     { key: 'PUT /api/hub/config', kind: 'hubConfig', mgmt: true },
+    { key: 'PUT /api/hub/history', kind: 'hubHistory', mgmt: true },
   ];
   for (const r of table) {
     if (r.key === key) return r;
@@ -266,6 +267,7 @@ async function handleApi(request, env, pathname) {
       routes: staticRoutes.concat(customRoutes),
       config: state.config,
       secrets: state.secrets,
+      history: await hub.loadHistory(),
     });
   }
 
@@ -277,6 +279,17 @@ async function handleApi(request, env, pathname) {
       return sendJson(200, { ok: true, config: saved.config, secrets: saved.secrets });
     } catch (e) {
       return sendJson(400, { error: 'bad_config', message: String((e && e.message) || e) });
+    }
+  }
+
+  // PUT /api/hub/history — 保存请求运行历史
+  if (staticMeta.kind === 'hubHistory') {
+    const body = await readJson(request);
+    try {
+      const saved = await hub.saveHistory(body && body.history);
+      return sendJson(200, { ok: true, history: saved });
+    } catch (e) {
+      return sendJson(400, { error: 'bad_history', message: String((e && e.message) || e) });
     }
   }
 
@@ -395,7 +408,38 @@ export default {
     const url = new URL(request.url);
     try {
       if (isApiPath(url.pathname)) {
-        return await handleApi(request, env, url.pathname);
+        const started = Date.now();
+        const response = await handleApi(request, env, url.pathname);
+        // 请求访问日志(配置驱动;失败绝不影响响应)
+        try {
+          const db = getDb(env);
+          await boot(db);
+          const hub = createHub({
+            db,
+            encrypt: (v) => encrypt(v, env),
+            decrypt: (v) => decrypt(v, env),
+            verifyPassword: (p) => verifyEnvPassword(p, env),
+            matchesPassword,
+          });
+          const state = await hub.loadAll();
+          if (hub.shouldLogRequest(request, url.pathname, state.config)) {
+            await hub.appendLog(
+              {
+                method: request.method,
+                path: url.pathname,
+                status: response.status,
+                ts: Date.now(),
+                ip: clientIp(request),
+                ua: String(request.headers.get('user-agent') || '').slice(0, 200),
+                ms: Date.now() - started,
+              },
+              state.config
+            );
+          }
+        } catch (e) {
+          console.error('[worker] 请求日志落库失败: ' + ((e && e.message) || e));
+        }
+        return response;
       }
       // 非 API:透传给静态资源(assets 绑定);未命中资源时按 not_found_handling 处理
       return await env.ASSETS.fetch(request);

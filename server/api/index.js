@@ -69,41 +69,67 @@ function createApiHandler(ctx) {
   ctx.staticRouteKeys = hub.staticRouteKeys;
 
   return async function handleApi(req, res, pathname) {
-    const key = req.method + ' ' + normalizePath(pathname);
-    const route = routes[key] || null;
-    const state = await hub.loadAll();
-    // 内置路由未命中时,尝试匹配自定义路由
-    const custom =
-      route === null
-        ? state.config.customRoutes.filter(function (c) {
-            return c.method + ' ' + c.path === key;
-          })[0] || null
-        : null;
-    if (!route && !custom) return sendJson(res, 404, { error: 'not_found' });
+    const started = Date.now();
+    let state = null;
+    try {
+      const key = req.method + ' ' + normalizePath(pathname);
+      const route = routes[key] || null;
+      state = await hub.loadAll();
+      // 内置路由未命中时,尝试匹配自定义路由
+      const custom =
+        route === null
+          ? state.config.customRoutes.filter(function (c) {
+              return c.method + ' ' + c.path === key;
+            })[0] || null
+          : null;
+      if (!route && !custom) return sendJson(res, 404, { error: 'not_found' });
 
-    // 管理接口强制会话鉴权;其余按 Hub 策略(公开开关 + 鉴权方式)
-    const mgmt = route && route.path.indexOf('/api/hub/') === 0;
-    let policy;
-    if (mgmt) {
-      policy = { public: false, auth: 'session', isHubMgmt: true };
-    } else if (route && route.public) {
-      policy = { public: true, auth: 'none', isHubMgmt: false };
-    } else {
-      policy = hub.policyFor(key, custom, state.config);
-    }
+      // 管理接口强制会话鉴权;其余按 Hub 策略(公开开关 + 鉴权方式)
+      const mgmt = route && route.path.indexOf('/api/hub/') === 0;
+      let policy;
+      if (mgmt) {
+        policy = { public: false, auth: 'session', isHubMgmt: true };
+      } else if (route && route.public) {
+        policy = { public: true, auth: 'none', isHubMgmt: false };
+      } else {
+        policy = hub.policyFor(key, custom, state.config);
+      }
 
-    const auth = await hub.authorize(req, key, { auth: policy.auth, customId: custom ? custom.id : null }, state);
-    if (!auth.ok) {
-      return sendJson(res, auth.status, {
-        error: auth.error,
-        message: auth.message,
-      });
-    }
+      const auth = await hub.authorize(req, key, { auth: policy.auth, customId: custom ? custom.id : null }, state);
+      if (!auth.ok) {
+        return sendJson(res, auth.status, {
+          error: auth.error,
+          message: auth.message,
+        });
+      }
 
-    if (custom) {
-      return hub.handleCustom(custom, req, res, sendJson);
+      if (custom) {
+        return hub.handleCustom(custom, req, res, sendJson);
+      }
+      return route.handler(req, res, Object.assign({}, ctx, { session: auth.session }));
+    } finally {
+      // 请求访问日志(配置驱动;失败绝不影响请求本身)
+      try {
+        if (state && hub.shouldLogRequest(req, normalizePath(pathname), state.config)) {
+          const ua =
+            (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+          await hub.appendLog(
+            {
+              method: req.method,
+              path: normalizePath(pathname),
+              status: res.statusCode || 0,
+              ts: Date.now(),
+              ip: hub.clientIp(req),
+              ua: String(ua).slice(0, 200),
+              ms: Date.now() - started,
+            },
+            state.config
+          );
+        }
+      } catch (e) {
+        /* 日志落库失败仅静默忽略,不阻塞响应 */
+      }
     }
-    return route.handler(req, res, Object.assign({}, ctx, { session: auth.session }));
   };
 }
 

@@ -40,6 +40,7 @@ function hubRoutes({ db, hub }) {
       routes: staticRoutes.concat(customRoutes),
       config: state.config,
       secrets: state.secrets,
+      history: await hub.loadHistory(),
     });
   }
 
@@ -58,9 +59,25 @@ function hubRoutes({ db, hub }) {
     }
   }
 
+  async function putHistory(req, res) {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { error: 'bad_json' });
+    }
+    try {
+      const saved = await hub.saveHistory(body && body.history);
+      return sendJson(res, 200, { ok: true, history: saved });
+    } catch (e) {
+      return sendJson(res, 400, { error: 'bad_history', message: String((e && e.message) || e) });
+    }
+  }
+
   return [
-    { method: 'GET', path: '/api/hub/state', desc: '获取 API Hub 全量状态(路由发现 + 配置 + 密钥)', handler: getState },
+    { method: 'GET', path: '/api/hub/state', desc: '获取 API Hub 全量状态(路由发现 + 配置 + 密钥 + 历史)', handler: getState },
     { method: 'PUT', path: '/api/hub/config', desc: '保存 API Hub 配置(分组/标签/公开/鉴权/自定义路由)', handler: putConfig },
+    { method: 'PUT', path: '/api/hub/history', desc: '保存 API Hub 请求运行历史', handler: putHistory },
   ];
 }
 
